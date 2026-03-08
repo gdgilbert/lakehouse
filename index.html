@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rough River Lake House - Transaction Entry</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #1a1a2e; min-height: 100vh; padding: 20px; }
+  select, input, button { font-family: inherit; }
+  input:focus, select:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
+  @keyframes toastIn { from { transform: translate(-50%, -20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    padding: 12px 28px; border-radius: 10px; font-weight: 600; font-size: 15px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18); z-index: 1000; animation: toastIn 0.3s ease;
+    color: white; }
+  .toast-ok { background: #16a34a; }
+  .toast-warn { background: #d97706; }
+
+  /* ── Photo collage background ── */
+  .photo-collage {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr);
+    gap: 3px; z-index: 0;
+  }
+  .photo-collage .cell {
+    background-size: cover; background-position: center;
+    filter: brightness(0.35) saturate(0.7);
+  }
+  .photo-collage .cell:nth-child(1) { background-image: url("Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/500186a3-7c3c-4d96-8f9d-21f1500bae45.jpg"); }
+  .photo-collage .cell:nth-child(2) { background-image: url("Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/473f492d-b833-420c-83a2-54e1c71738d8.jpg"); }
+  .photo-collage .cell:nth-child(3) { background-image: url("Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/057e4f05-ec1e-4c81-82c6-612d8aa5f711.jpg"); }
+  .photo-collage .cell:nth-child(4) { background-image: url("Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/d57d4528-3a91-41c7-a85b-b0b89e664d0e.jpg"); }
+  .photo-collage .cell:nth-child(5) { background-image: url("Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/b9e68ae2-f437-4bf2-85cb-2620a9ccb01d.jpg"); }
+  .photo-collage .cell:nth-child(6) { background-image: url("Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/194a9d9b-b11d-4ae9-96d5-fb187f46a598.jpg"); }
+  .photo-collage .cell:nth-child(7) { background-image: url("Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/1a352e13-5867-499d-a3ff-7316278bbb72.jpg"); }
+  .photo-collage .cell:nth-child(8) { background-image: url("Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/a6ee982f-ea33-4c08-b3c2-77154db78b34.jpg"); }
+
+  #root { position: relative; z-index: 1; }
+
+  @media (max-width: 600px) {
+    body { padding: 10px; }
+    .photo-collage { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(4, 1fr); }
+  }
+</style>
+</head>
+<body>
+<!-- Photo collage background -->
+<div class="photo-collage">
+  <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+  <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+</div>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+/* ── Mobile detection hook ─────────────────────────────── */
+function useIsMobile(breakpoint = 600) {
+  const [mobile, setMobile] = useState(window.innerWidth <= breakpoint);
+  useEffect(() => {
+    const onResize = () => setMobile(window.innerWidth <= breakpoint);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [breakpoint]);
+  return mobile;
+}
+
+const TYPES = [
+  "Rental Income", "Cleaning", "General Expense", "Internet",
+  "Utilities (Electric, Water, Trash)", "Mortgage Payment",
+  "Monthly Contribution", "Interest", "Transfer",
+];
+const SPENDERS = ["", "Mgg", "Dkg", "Acns"];
+const ACCOUNTS = ["Chase", "Acorns"];
+const ACORNS_SUBS = ["Checking", "General"];
+const TRANSFER_DIRS = [
+  { value: "acorns-general-to-chase", label: "Acorns General \u2192 Chase" },
+  { value: "chase-to-acorns-general", label: "Chase \u2192 Acorns General" },
+  { value: "acorns-general-to-checking", label: "Acorns General \u2192 Acorns Checking" },
+];
+
+const CATEGORIES = [
+  "Rental Income", "Interest", "Monthly Contribution",
+  "Startup Costs", "Cleaning", "Internet",
+  "Utilities (Electric, Water, Trash)", "Mortgage Payment", "General Expense",
+  "Transfer",
+];
+const QUICK_ADDS = [
+  { emoji: "\uD83C\uDFE0", label: "Mortgage",  type: "Mortgage Payment", amount: "3330.11", account: "Chase", description: "Mortgage Payment" },
+  { emoji: "\uD83C\uDF10", label: "Internet",  type: "Internet",         amount: "80.00",   account: "Chase", description: "Internet" },
+  { emoji: "\uD83D\uDCCA", label: "PriceLabs", type: "Utilities (Electric, Water, Trash)", amount: "22.00", account: "Chase", description: "PriceLabs" },
+];
+
+const INITIAL_STATE = {
+  lastRR: 66, lastCH: 54, lastAC: 10,
+  chaseBalance: 1028.36, acornsBalance: 6767.28, acornsChecking: 460.09,
+  grandTotal: 7795.64,
+};
+
+/* ── localStorage helpers ────────────────────────────────── */
+const SK = { state: "lh_state", history: "lh_history", email: "lh_email", script: "lh_script" };
+const load = (key, fallback) => {
+  try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : fallback; }
+  catch { return fallback; }
+};
+const save = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} };
+
+/* ── Formatting helpers ──────────────────────────────────── */
+const formatMoney = (n) => {
+  const abs = Math.abs(n);
+  const formatted = "$" + abs.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return n < 0 ? "(" + formatted + ")" : formatted;
+};
+const padNum = (prefix, num) => prefix + String(num).padStart(3, "0");
+const fmtDate = (d) => { const p = d.split("-"); return p[1] + "/" + p[2] + "/" + p[0]; };
+
+const emptyForm = {
+  type: "", date: new Date().toISOString().split("T")[0],
+  spender: "", account: "Chase", acornsSub: "Checking", description: "", amount: "",
+  signOverride: null, isSplit: false, splitCash: "", splitAcorns: "", splitAcornsSub: "Checking",
+  splitExpenses: "", splitExpenseDesc: "", notes: "",
+  emailReminder: false, emailNotes: "",
+  transferDir: "acorns-general-to-chase",
+};
+
+/* ── Balance card ────────────────────────────────────────── */
+function BalanceCard({ label, amount, sub }) {
+  return React.createElement("div", {
+    style: { background: "white", borderRadius: 12, padding: "16px 20px",
+      boxShadow: "0 4px 16px rgba(0,0,0,0.25)", flex: 1, minWidth: 160 }
+  },
+    React.createElement("div", { style: { fontSize: 13, color: "#666", marginBottom: 4 } }, label),
+    React.createElement("div", { style: { fontSize: 22, fontWeight: 700,
+      color: amount >= 0 ? "#1a7a4c" : "#c0392b" } }, formatMoney(amount)),
+    sub && React.createElement("div", { style: { fontSize: 11, color: "#999", marginTop: 2 } }, sub)
+  );
+}
+
+/* ── PDF + Email generators for Close Statement ────────── */
+
+function generateStatementPDF(cv) {
+  var jsPDF = window.jspdf.jsPDF;
+  var doc = new jsPDF({ unit: "mm", format: "letter" });
+  var W = 215.9, mL = 18, mR = 18, cW = W - mL - mR;
+  var y = 20;
+  var fmtM = formatMoney;
+
+  // Helpers
+  var center = function(text, size, style) {
+    doc.setFontSize(size); doc.setFont("helvetica", style || "normal");
+    doc.text(text, W / 2, y, { align: "center" }); y += size * 0.45;
+  };
+  var hr = function() { doc.setDrawColor(200); doc.line(mL, y, W - mR, y); y += 4; };
+  var box = function(fillR, fillG, fillB, h) {
+    doc.setFillColor(fillR, fillG, fillB); doc.rect(mL, y, cW, h, "F");
+  };
+  // Table row: label (left), val1 (right col 1), val2 (right col 2)
+  var col1X = W - mR - 60, col2X = W - mR - 5;
+  var tRow = function(label, v1, v2, opts) {
+    opts = opts || {};
+    if (opts.bg) { doc.setFillColor(opts.bg[0], opts.bg[1], opts.bg[2]); doc.rect(mL, y - 4, cW, 7, "F"); }
+    doc.setFont("helvetica", opts.bold ? "bold" : "normal");
+    doc.setFontSize(opts.size || 10);
+    doc.setTextColor(opts.color ? opts.color[0] : 30, opts.color ? opts.color[1] : 30, opts.color ? opts.color[2] : 30);
+    doc.text(opts.indent ? "     " + label : label, mL + 2, y);
+    if (v1) doc.text(v1, col1X, y, { align: "right" });
+    if (v2) { doc.setTextColor(100, 116, 139); doc.text(v2, col2X, y, { align: "right" }); }
+    doc.setTextColor(30, 30, 30);
+    y += 7;
+  };
+
+  // ── Title ──
+  doc.setTextColor(26, 26, 46);
+  center("Rough River Lake House", 20, "bold"); y += 2;
+  center("Monthly Statement", 14, "bold"); y += 1;
+  doc.setTextColor(100, 116, 139);
+  center(cv.startDate + "  \u2013  " + cv.endDate, 11); y += 6;
+
+  // ── Starting Balance ──
+  box(248, 250, 252, 10);
+  doc.setTextColor(100, 116, 139); doc.setFontSize(9); doc.setFont("helvetica", "normal");
+  doc.text("STARTING BALANCE  " + cv.startDate, mL + 3, y + 6.5);
+  doc.setTextColor(30, 30, 30); doc.setFontSize(14); doc.setFont("helvetica", "bold");
+  doc.text(fmtM(cv.startingBalance), W - mR - 3, y + 7, { align: "right" });
+  y += 14;
+
+  // ── Column headers ──
+  doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(100, 116, 139);
+  doc.text("This Month", col1X, y, { align: "right" });
+  doc.text("Fiscal YTD", col2X, y, { align: "right" });
+  y += 6;
+
+  // ── Income ──
+  tRow("Total Income", fmtM(cv.totalIncome), fmtM(cv.fyTotalIncome),
+    { bold: true, color: [22, 163, 74], bg: [240, 253, 244] });
+  Object.keys(cv.monthIncome || {}).forEach(function(k) {
+    tRow(k, fmtM(cv.monthIncome[k]), fmtM(cv.fyIncome[k]), { indent: true });
+  });
+  y += 3;
+
+  // ── Expenses ──
+  tRow("Total Expenses", fmtM(cv.totalExpense), fmtM(cv.fyTotalExpense),
+    { bold: true, color: [220, 38, 38], bg: [254, 242, 242] });
+  Object.keys(cv.monthExpense || {}).forEach(function(k) {
+    tRow(k, fmtM(Math.abs(cv.monthExpense[k])), fmtM(Math.abs(cv.fyExpense[k])), { indent: true });
+  });
+  y += 3;
+
+  // ── Net ──
+  hr();
+  var netColor = cv.net >= 0 ? [22, 163, 74] : [220, 38, 38];
+  tRow("TOTAL MONTHLY NET", fmtM(cv.net), "", { bold: true, size: 11, color: netColor });
+  y += 4;
+
+  // ── Ending Balance ──
+  var ebColor = cv.endingBalance >= 0 ? [22, 163, 74] : [220, 38, 38];
+  box(248, 250, 252, 10);
+  doc.setTextColor(100, 116, 139); doc.setFontSize(9); doc.setFont("helvetica", "normal");
+  doc.text("ENDING BALANCE  " + cv.endDate, mL + 3, y + 6.5);
+  doc.setTextColor(ebColor[0], ebColor[1], ebColor[2]); doc.setFontSize(14); doc.setFont("helvetica", "bold");
+  doc.text(fmtM(cv.endingBalance), W - mR - 3, y + 7, { align: "right" });
+  y += 16;
+
+  // ── YTD Profit / Loss ──
+  var ytdPL = ((cv.fyIncome["Rental Income"] || 0) + (cv.fyIncome["Interest"] || 0) + cv.endingBalance)
+            - ((cv.fyIncome["Monthly Contribution"] || 0) + Math.abs(cv.fyTotalExpense));
+  var plColor = ytdPL >= 0 ? [22, 163, 74] : [220, 38, 38];
+  doc.setFillColor(254, 243, 199); doc.rect(mL, y, cW, 20, "F");
+  doc.setDrawColor(245, 158, 11); doc.rect(mL, y, cW, 20, "S");
+  doc.setTextColor(146, 64, 14); doc.setFontSize(8); doc.setFont("helvetica", "bold");
+  doc.text("YEAR TO DATE ACTUAL PROFIT / LOSS", W / 2, y + 5, { align: "center" });
+  doc.setTextColor(plColor[0], plColor[1], plColor[2]); doc.setFontSize(18); doc.setFont("helvetica", "bold");
+  doc.text(fmtM(ytdPL), W / 2, y + 13, { align: "center" });
+  doc.setTextColor(146, 64, 14); doc.setFontSize(7); doc.setFont("helvetica", "normal");
+  doc.text("(YTD Rental Income + YTD Interest + Ending Balance) - (YTD Contributions + YTD Expenses)", W / 2, y + 18, { align: "center" });
+  y += 26;
+
+  // ── Footer ──
+  doc.setTextColor(148, 163, 184); doc.setFontSize(9); doc.setFont("helvetica", "normal");
+  doc.text(cv.txCount + " transaction" + (cv.txCount !== 1 ? "s" : "") + " in this period", W / 2, y, { align: "center" });
+  y += 5;
+  doc.text("Generated: " + new Date().toLocaleString(), W / 2, y, { align: "center" });
+  y += 5;
+  doc.setFontSize(8);
+  doc.text("Rough River Lake House Transaction System", W / 2, y, { align: "center" });
+
+  var filename = "LakeHouse_Statement_" + cv.endDate.replace(/\//g, "-") + ".pdf";
+  return { base64: doc.output("datauristring").split(",")[1], filename: filename, doc: doc };
+}
+
+function generateStatementEmailHTML(cv) {
+  var fmtM = formatMoney;
+  var ytdPL = ((cv.fyIncome["Rental Income"] || 0) + (cv.fyIncome["Interest"] || 0) + cv.endingBalance)
+            - ((cv.fyIncome["Monthly Contribution"] || 0) + Math.abs(cv.fyTotalExpense));
+  var plColor = ytdPL >= 0 ? "#16a34a" : "#dc2626";
+  var netColor = cv.net >= 0 ? "#16a34a" : "#dc2626";
+  var ebColor = cv.endingBalance >= 0 ? "#16a34a" : "#dc2626";
+
+  var incomeRows = "";
+  Object.keys(cv.monthIncome || {}).forEach(function(k) {
+    incomeRows += '<tr><td style="padding:6px 8px 6px 28px;font-size:13px;">' + k + '</td>' +
+      '<td style="text-align:right;padding:6px 8px;font-size:13px;">' + fmtM(cv.monthIncome[k]) + '</td>' +
+      '<td style="text-align:right;padding:6px 8px;font-size:13px;color:#64748b;font-style:italic;">' + fmtM(cv.fyIncome[k]) + '</td></tr>';
+  });
+
+  var expenseRows = "";
+  Object.keys(cv.monthExpense || {}).forEach(function(k) {
+    expenseRows += '<tr><td style="padding:6px 8px 6px 28px;font-size:13px;">' + k + '</td>' +
+      '<td style="text-align:right;padding:6px 8px;font-size:13px;">' + fmtM(Math.abs(cv.monthExpense[k])) + '</td>' +
+      '<td style="text-align:right;padding:6px 8px;font-size:13px;color:#64748b;font-style:italic;">' + fmtM(Math.abs(cv.fyExpense[k])) + '</td></tr>';
+  });
+
+  return '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">' +
+    // Header
+    '<div style="background:#1a1a2e;color:#fff;padding:24px;text-align:center;">' +
+      '<h1 style="margin:0;font-size:20px;">Rough River Lake House</h1>' +
+      '<p style="margin:4px 0 0;font-size:14px;color:#94a3b8;">Monthly Statement</p>' +
+      '<p style="margin:4px 0 0;font-size:13px;color:#94a3b8;">' + cv.startDate + ' \u2013 ' + cv.endDate + '</p>' +
+    '</div>' +
+    // Starting Balance
+    '<div style="background:#f8fafc;padding:16px;border-bottom:1px solid #e2e8f0;">' +
+      '<table width="100%" style="border-collapse:collapse;"><tr>' +
+        '<td style="font-size:11px;color:#64748b;text-transform:uppercase;">Starting Balance &nbsp; ' + cv.startDate + '</td>' +
+        '<td style="text-align:right;font-size:18px;font-weight:bold;">' + fmtM(cv.startingBalance) + '</td>' +
+      '</tr></table>' +
+    '</div>' +
+    // Column headers
+    '<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">' +
+      '<tr style="background:#f1f5f9;">' +
+        '<td style="padding:6px 8px;font-size:11px;color:#64748b;font-weight:bold;"></td>' +
+        '<td style="text-align:right;padding:6px 8px;font-size:11px;color:#64748b;font-weight:bold;">This Month</td>' +
+        '<td style="text-align:right;padding:6px 8px;font-size:11px;color:#64748b;font-weight:bold;">Fiscal YTD</td>' +
+      '</tr>' +
+    // Income
+      '<tr style="background:#f0fdf4;">' +
+        '<td style="padding:8px;font-weight:bold;color:#16a34a;">Total Income</td>' +
+        '<td style="text-align:right;padding:8px;font-weight:bold;color:#16a34a;">' + fmtM(cv.totalIncome) + '</td>' +
+        '<td style="text-align:right;padding:8px;font-style:italic;color:#64748b;">' + fmtM(cv.fyTotalIncome) + '</td>' +
+      '</tr>' + incomeRows +
+    // Expenses
+      '<tr style="background:#fef2f2;">' +
+        '<td style="padding:8px;font-weight:bold;color:#dc2626;">Total Expenses</td>' +
+        '<td style="text-align:right;padding:8px;font-weight:bold;color:#dc2626;">' + fmtM(cv.totalExpense) + '</td>' +
+        '<td style="text-align:right;padding:8px;font-style:italic;color:#64748b;">' + fmtM(cv.fyTotalExpense) + '</td>' +
+      '</tr>' + expenseRows +
+    '</table>' +
+    // Net
+    '<div style="padding:12px 16px;border-top:2px solid #cbd5e1;">' +
+      '<table width="100%" style="border-collapse:collapse;"><tr>' +
+        '<td style="font-weight:bold;font-size:14px;">TOTAL MONTHLY NET</td>' +
+        '<td style="text-align:right;font-size:16px;font-weight:bold;color:' + netColor + ';">' + fmtM(cv.net) + '</td>' +
+      '</tr></table>' +
+    '</div>' +
+    // Ending Balance
+    '<div style="background:' + (cv.endingBalance >= 0 ? '#f0fdf4' : '#fef2f2') + ';padding:16px;border:1px solid ' + (cv.endingBalance >= 0 ? '#bbf7d0' : '#fecaca') + ';">' +
+      '<table width="100%" style="border-collapse:collapse;"><tr>' +
+        '<td style="font-size:11px;color:#64748b;text-transform:uppercase;">Ending Balance &nbsp; ' + cv.endDate + '</td>' +
+        '<td style="text-align:right;font-size:18px;font-weight:bold;color:' + ebColor + ';">' + fmtM(cv.endingBalance) + '</td>' +
+      '</tr></table>' +
+    '</div>' +
+    // YTD P/L
+    '<div style="background:linear-gradient(135deg,#fef3c7,#fde68a);padding:16px;margin:16px;border:1px solid #f59e0b;border-radius:8px;text-align:center;">' +
+      '<div style="font-size:11px;color:#92400e;text-transform:uppercase;font-weight:600;">Year To Date Actual Profit / Loss</div>' +
+      '<div style="font-size:24px;font-weight:800;color:' + plColor + ';margin:8px 0;">' + fmtM(ytdPL) + '</div>' +
+      '<div style="font-size:10px;color:#92400e;">(YTD Rental Income + YTD Interest + Ending Balance) \u2212 (YTD Contributions + YTD Expenses)</div>' +
+    '</div>' +
+    // Footer
+    '<div style="text-align:center;padding:16px;font-size:11px;color:#94a3b8;">' +
+      cv.txCount + ' transaction' + (cv.txCount !== 1 ? 's' : '') + ' in this period<br>' +
+      'Generated: ' + new Date().toLocaleString() + '<br>' +
+      '<em>Rough River Lake House Transaction System</em>' +
+    '</div>' +
+  '</div>';
+}
+
+/* ══════════════════════════════════════════════════════════ */
+function App() {
+  const isMobile = useIsMobile();
+  const [state, setState] = useState(() => load(SK.state, INITIAL_STATE));
+  const [form, setForm] = useState({...emptyForm});
+  const [queue, setQueue] = useState([]);
+  const [toast, setToast] = useState(null);
+  const [showHelp, setShowHelp] = useState(false);
+  const [history, setHistory] = useState(() => load(SK.history, []));
+  const [showHistory, setShowHistory] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [reminderEmail, setReminderEmail] = useState(() => {
+    try { return localStorage.getItem(SK.email) || ""; } catch { return ""; }
+  });
+  const [closeMonthView, setCloseMonthView] = useState(null);
+  const [scriptUrl, setScriptUrl] = useState(() => {
+    try { return localStorage.getItem(SK.script) || ""; } catch { return ""; }
+  });
+  const [syncing, setSyncing] = useState(false);
+  const [processing, setProcessing] = useState(false);
+
+  // Persist settings
+  useEffect(() => { try { localStorage.setItem(SK.email, reminderEmail); } catch {} }, [reminderEmail]);
+  useEffect(() => { try { localStorage.setItem(SK.script, scriptUrl); } catch {} }, [scriptUrl]);
+
+  // Sync state from Google Sheet on load
+  useEffect(() => {
+    const url = scriptUrl;
+    if (!url) return;
+    setSyncing(true);
+    fetch(url).then(r => r.json()).then(data => {
+      if (data.lastRR !== undefined) { setState(data); save(SK.state, data); }
+    }).catch(() => {}).finally(() => setSyncing(false));
+  }, []);
+
+  const flash = (msg, warn) => { setToast({ msg, warn }); setTimeout(() => setToast(null), 3500); };
+  const updateForm = (field, value) => setForm(f => ({...f, [field]: value}));
+  const isIncomeType = (t) => ["Rental Income", "Interest", "Monthly Contribution"].includes(t);
+
+  /* ── Validation ──────────────────────────────────────── */
+  const validate = () => {
+    if (!form.type) return "Select a transaction type";
+    if (!form.date) return "Enter a date";
+    if (!form.amount || isNaN(parseFloat(form.amount)) || parseFloat(form.amount) === 0) return "Enter a valid amount";
+    if (!form.description) return "Enter a description";
+    if (form.type === "Monthly Contribution" && form.isSplit) {
+      const total = (parseFloat(form.splitCash)||0) + (parseFloat(form.splitAcorns)||0) + (parseFloat(form.splitExpenses)||0);
+      if (Math.abs(total - parseFloat(form.amount)) > 0.01)
+        return "Split amounts (" + formatMoney(total) + ") don't equal total (" + formatMoney(parseFloat(form.amount)) + ")";
+    }
+    return null;
+  };
+
+  /* ── Queue management ────────────────────────────────── */
+  const addToQueue = () => {
+    const err = validate();
+    if (err) { alert(err); return; }
+    if (form.type === "Transfer") {
+      setQueue(q => [...q, { ...form, rrNum: "", acctNum: "", isIncome: false }]);
+      setForm({...emptyForm});
+      return;
+    }
+    const nonTransferCount = queue.filter(t => t.type !== "Transfer").length;
+    const nextRR = state.lastRR + 1 + nonTransferCount;
+    const isChase = form.account === "Chase";
+    // Count CH/AC consumed by all queued items
+    let chUsed = 0, acUsed = 0;
+    queue.forEach(t => {
+      if (t.type === "Transfer") {
+        if (t.transferDir !== "acorns-general-to-checking") chUsed++;
+        acUsed += t.transferDir === "acorns-general-to-checking" ? 2 : 1;
+      } else {
+        if (t.account === "Chase") chUsed++; else acUsed++;
+      }
+    });
+    const nextAcct = isChase ? state.lastCH + 1 + chUsed : state.lastAC + 1 + acUsed;
+    const resolvedIncome = form.signOverride ? form.signOverride === "income" : isIncomeType(form.type);
+    setQueue(q => [...q, {
+      ...form, rrNum: padNum("RR", nextRR),
+      acctNum: isChase ? padNum("CH", nextAcct) : padNum("AC", nextAcct),
+      isIncome: resolvedIncome,
+    }]);
+    setForm({...emptyForm});
+  };
+
+  const removeFromQueue = (index) => {
+    setQueue(q => {
+      const newQ = q.filter((_, i) => i !== index);
+      let rrC = 0, chC = 0, acC = 0;
+      return newQ.map(tx => {
+        if (tx.type === "Transfer") {
+          // Transfers consume CH/AC numbers but no RR
+          if (tx.transferDir !== "acorns-general-to-checking") chC++;
+          acC += tx.transferDir === "acorns-general-to-checking" ? 2 : 1;
+          return { ...tx };
+        }
+        rrC++;
+        const isChase = tx.account === "Chase";
+        if (isChase) chC++; else acC++;
+        return { ...tx, rrNum: padNum("RR", state.lastRR + rrC),
+          acctNum: isChase ? padNum("CH", state.lastCH + chC) : padNum("AC", state.lastAC + acC) };
+      });
+    });
+  };
+
+  /* ── Process all — the big "Go" ──────────────────────── */
+  const processAll = async () => {
+    if (queue.length === 0) return;
+    setProcessing(true);
+
+    // Build transaction payload
+    const transactions = queue.map(tx => {
+      if (tx.type === "Transfer") {
+        return {
+          type: "Transfer", transferDir: tx.transferDir, date: tx.date,
+          description: tx.description, amount: Math.abs(parseFloat(tx.amount)),
+          notes: tx.notes || "",
+        };
+      }
+      const amt = tx.isIncome ? Math.abs(parseFloat(tx.amount)) : -Math.abs(parseFloat(tx.amount));
+      return {
+        account: tx.account, type: tx.type, date: tx.date,
+        spender: tx.spender, description: tx.description, amount: amt,
+        notes: tx.notes || "",
+        acornsSub: tx.acornsSub || "Checking",
+        ...(tx.isSplit && { split: {
+          cash: parseFloat(tx.splitCash)||0, acorns: parseFloat(tx.splitAcorns)||0,
+          acornsSub: tx.splitAcornsSub || "Checking",
+          expenses: parseFloat(tx.splitExpenses)||0, expenseDesc: tx.splitExpenseDesc
+        }})
+      };
+    });
+
+    const reminders = queue.filter(tx => tx.emailReminder).map(tx => ({
+      desc: tx.description,
+      amt: tx.isIncome ? Math.abs(parseFloat(tx.amount)) : -Math.abs(parseFloat(tx.amount)),
+      notes: tx.emailNotes
+    }));
+
+    let success = false;
+    let emailSent = false;
+
+    if (scriptUrl) {
+      // ── POST to Google Sheet ──
+      try {
+        const payload = { transactions };
+        if (reminders.length > 0 && reminderEmail) {
+          payload.reminders = reminders;
+          payload.reminderEmail = reminderEmail;
+        }
+        const res = await fetch(scriptUrl, { method: "POST", body: JSON.stringify(payload) });
+        const result = await res.json();
+        if (result.success && result.state) {
+          setState(result.state);
+          save(SK.state, result.state);
+          success = true;
+          emailSent = !!result.emailSent;
+        } else {
+          flash("Sheet error: " + (result.error || "Unknown error"), true);
+        }
+      } catch (err) {
+        flash("Could not reach Google Sheet: " + err.message, true);
+      }
+    } else {
+      // ── Local-only fallback ──
+      const ns = { ...state };
+      queue.forEach(tx => {
+        if (tx.type === "Transfer") {
+          const a = Math.abs(parseFloat(tx.amount));
+          if (tx.transferDir === "chase-to-acorns-general") {
+            ns.lastCH++; ns.lastAC++; ns.chaseBalance -= a; ns.acornsBalance += a;
+          } else if (tx.transferDir === "acorns-general-to-chase") {
+            ns.lastAC++; ns.lastCH++; ns.acornsBalance -= a; ns.chaseBalance += a;
+          } else { // acorns-general-to-checking
+            ns.lastAC += 2; ns.acornsChecking += a;
+          }
+          return;
+        }
+        const amt = tx.isIncome ? Math.abs(parseFloat(tx.amount)) : -Math.abs(parseFloat(tx.amount));
+        ns.lastRR++;
+        if (tx.account === "Chase") { ns.lastCH++; ns.chaseBalance += amt; }
+        else { ns.lastAC++; ns.acornsBalance += amt; }
+        ns.grandTotal += amt;
+      });
+      setState(ns);
+      save(SK.state, ns);
+      success = true;
+    }
+
+    setProcessing(false);
+    if (!success) return;
+
+    // Local history
+    const processed = queue.map(tx => {
+      if (tx.type === "Transfer") {
+        const dir = (TRANSFER_DIRS.find(d => d.value === tx.transferDir) || {}).label || tx.transferDir;
+        return { rrNum: "", acctNum: dir, account: "Transfer", type: "Transfer",
+          date: tx.date, spender: "", description: tx.description,
+          amount: Math.abs(parseFloat(tx.amount)),
+          notes: tx.notes, processedAt: new Date().toISOString() };
+      }
+      const amt = tx.isIncome ? Math.abs(parseFloat(tx.amount)) : -Math.abs(parseFloat(tx.amount));
+      return { rrNum: tx.rrNum, acctNum: tx.acctNum, account: tx.account, type: tx.type,
+        date: tx.date, spender: tx.spender, description: tx.description, amount: amt,
+        notes: tx.notes, processedAt: new Date().toISOString() };
+    });
+    const newHist = [...history, ...processed];
+    setHistory(newHist);
+    save(SK.history, newHist);
+
+    // Email reminder status
+    if (reminders.length > 0 && !reminderEmail) {
+      flash("Processed! Set a reminder email in Settings to send reminders.", true);
+      setQueue([]);
+      return;
+    }
+
+    const n = queue.length;
+    const emailMsg = emailSent ? " ✉️ Reminder sent!" : "";
+    flash(n + " transaction" + (n !== 1 ? "s" : "") + (scriptUrl ? " saved to Sheet!" : " processed!") + emailMsg);
+    setQueue([]);
+  };
+
+  /* ── Close Statement (writes to Statements sheet) ────── */
+  const [closingStatement, setClosingStatement] = useState(false);
+  const [pdfState, setPdfState] = useState("idle");
+  const [emailState, setEmailState] = useState("idle");
+  const [pdfData, setPdfData] = useState(null);
+  const [txBrowserView, setTxBrowserView] = useState(null);
+  const [txBrowserFilters, setTxBrowserFilters] = useState({
+    category: "all", startDate: "", endDate: new Date().toISOString().split("T")[0]
+  });
+  const [txCatSummaryView, setTxCatSummaryView] = useState(null);
+
+  const closeStatement = async () => {
+    if (!scriptUrl) { flash("Set your Script URL in Settings first.", true); return; }
+    setClosingStatement(true);
+    try {
+      const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+      const res = await fetch(scriptUrl, {
+        method: "POST",
+        body: JSON.stringify({ action: "closeMonth", endDate: today })
+      });
+      const result = await res.json();
+      if (result.success && result.statement) {
+        const s = result.statement;
+        setCloseMonthView({
+          startDate: s.startDate,
+          endDate: s.endDate,
+          label: s.startDate + " \u2013 " + s.endDate,
+          totalIncome: s.totalIncome,
+          totalExpense: s.totalExpense,
+          net: s.net,
+          startingBalance: s.startingBalance,
+          endingBalance: s.endingBalance,
+          txCount: s.txCount,
+          fyTotalIncome: s.fyTotalIncome,
+          fyTotalExpense: s.fyTotalExpense,
+          monthIncome: s.monthIncome || {},
+          monthExpense: s.monthExpense || {},
+          fyIncome: s.fyIncome || {},
+          fyExpense: s.fyExpense || {},
+        });
+        flash("Statement written to Statements sheet!");
+      } else {
+        flash(result.error || "Unknown error closing statement.", true);
+      }
+    } catch (err) {
+      flash("Could not reach Google Sheet: " + err.message, true);
+    }
+    setClosingStatement(false);
+  };
+
+  const handleGeneratePDF = () => {
+    setPdfState("generating");
+    try {
+      const result = generateStatementPDF(closeMonthView);
+      setPdfData(result);
+      result.doc.save(result.filename);
+      setPdfState("done");
+      flash("PDF generated and downloaded!");
+    } catch (err) {
+      flash("PDF generation failed: " + err.message, true);
+      setPdfState("idle");
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!pdfData) { flash("Generate the PDF first.", true); return; }
+    if (!scriptUrl) { flash("Set your Script URL in Settings first.", true); return; }
+    setEmailState("sending");
+    try {
+      const htmlBody = generateStatementEmailHTML(closeMonthView);
+      const subject = "Rough River Lake House -- Monthly Statement (" +
+                      closeMonthView.startDate + " - " + closeMonthView.endDate + ")";
+      const res = await fetch(scriptUrl, {
+        method: "POST",
+        body: JSON.stringify({
+          action: "sendStatement",
+          recipients: "kasgilbert@gmail.com, gilbertlumber@gmail.com, mogilbert1@gmail.com",
+          subject: subject,
+          htmlBody: htmlBody,
+          pdfBase64: pdfData.base64,
+          pdfFilename: pdfData.filename
+        })
+      });
+      const result = await res.json();
+      if (result.success) {
+        setEmailState("sent");
+        flash("Statement emailed to all recipients!");
+      } else {
+        flash("Email failed: " + (result.error || "Unknown error"), true);
+        setEmailState("idle");
+      }
+    } catch (err) {
+      flash("Could not send email: " + err.message, true);
+      setEmailState("idle");
+    }
+  };
+
+  /* ── Transaction Browser query ──────────────────────── */
+  const queryTransactions = async (category, startDate, endDate) => {
+    if (!scriptUrl) {
+      setTxBrowserView(v => ({ ...v, results: null, loading: false,
+        error: "Set your Script URL in Settings to use the Transaction Browser." }));
+      return;
+    }
+    setTxBrowserView(v => ({ ...v, results: null, loading: true, error: null }));
+    try {
+      const res = await fetch(scriptUrl, {
+        method: "POST",
+        body: JSON.stringify({ action: "queryTransactions", category, startDate, endDate })
+      });
+      const result = await res.json();
+      if (result.success) {
+        setTxBrowserView(v => ({ ...v, results: result.transactions, loading: false }));
+      } else {
+        setTxBrowserView(v => ({ ...v, error: result.error || "Unknown error", loading: false }));
+      }
+    } catch (err) {
+      setTxBrowserView(v => ({ ...v, error: "Could not reach Google Sheet: " + err.message, loading: false }));
+    }
+  };
+
+  /* ── Category Summary query ───────────────────────────── */
+  const queryCategorySummary = async (category) => {
+    if (!scriptUrl) {
+      setTxCatSummaryView({ category, periods: null, loading: false,
+        error: "Set your Script URL in Settings to use this feature." });
+      return;
+    }
+    setTxCatSummaryView({ category, periods: null, loading: true, error: null });
+    try {
+      const res = await fetch(scriptUrl, {
+        method: "POST",
+        body: JSON.stringify({ action: "categorySummary", category })
+      });
+      const result = await res.json();
+      if (result.success) {
+        setTxCatSummaryView(v => ({ ...v, periods: result.periods, loading: false }));
+      } else {
+        setTxCatSummaryView(v => ({ ...v, error: result.error || "Unknown error", loading: false }));
+      }
+    } catch (err) {
+      setTxCatSummaryView(v => ({ ...v, error: "Could not reach Google Sheet: " + err.message, loading: false }));
+    }
+  };
+
+  /* ── Derived values ──────────────────────────────────── */
+  // Count CH/AC numbers consumed by all queued items (regular + transfers)
+  let qCH = 0, qAC = 0;
+  queue.forEach(t => {
+    if (t.type === "Transfer") {
+      if (t.transferDir !== "acorns-general-to-checking") qCH++;
+      qAC += t.transferDir === "acorns-general-to-checking" ? 2 : 1;
+    } else {
+      if (t.account === "Chase") qCH++; else qAC++;
+    }
+  });
+  const currentRR = padNum("RR", state.lastRR + 1 + queue.filter(t => t.type !== "Transfer").length);
+  const currentAcct = form.account === "Chase"
+    ? padNum("CH", state.lastCH + 1 + qCH)
+    : padNum("AC", state.lastAC + 1 + qAC);
+
+  const projectedTotal = queue.reduce((sum, tx) => {
+    const amt = tx.isIncome ? Math.abs(parseFloat(tx.amount)) : -Math.abs(parseFloat(tx.amount));
+    return sum + amt;
+  }, state.grandTotal);
+
+  /* ── Shared styles ───────────────────────────────────── */
+  const is = { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #d1d5db", fontSize: 14, boxSizing: "border-box", outline: "none" };
+  const ls = { display: "block", fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 4 };
+  const bp = { padding: "10px 24px", background: "#2563eb", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" };
+
+  /* ── Category Summary renderer ────────────────────────── */
+  const renderCategorySummary = () => {
+    const cv = txCatSummaryView;
+    const isExpense = !["Rental Income", "Interest", "Monthly Contribution"].includes(cv.category);
+    const total = cv.periods ? cv.periods.reduce((s, p) => s + p.monthAmount, 0) : 0;
+
+    // Convert statement date MM/DD/YYYY to YYYY-MM-DD for queries
+    const toISO = (s) => { const p = s.split("/"); return p[2] + "-" + p[0] + "-" + p[1]; };
+
+    // Derive a period label from the bulk month (the calendar month with the most days in the range)
+    const monthLabel = (startDate, endDate) => {
+      try {
+        const names = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+        const sp = startDate.split("/"), ep = endDate.split("/");
+        const s = new Date(+sp[2], +sp[0] - 1, +sp[1]);
+        const e = new Date(+ep[2], +ep[0] - 1, +ep[1]);
+        // Count days per month
+        const counts = {};
+        for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+          const key = d.getFullYear() + "-" + d.getMonth();
+          counts[key] = (counts[key] || 0) + 1;
+        }
+        // Find month with most days
+        let best = "", max = 0;
+        for (const k in counts) { if (counts[k] > max) { max = counts[k]; best = k; } }
+        const [yr, mo] = best.split("-");
+        return names[+mo] + " " + yr;
+      } catch(e) { return endDate; }
+    };
+
+    return React.createElement("div", null,
+      // Back
+      React.createElement("button", {
+        onClick: () => setTxCatSummaryView(null),
+        style: { background: "none", border: "none", color: "rgba(255,255,255,0.7)", fontSize: 14, cursor: "pointer", padding: "8px 0", marginBottom: 12 }
+      }, "\u2190 Back"),
+      // Title
+      React.createElement("h2", {
+        style: { color: "white", fontSize: 20, fontWeight: 700, marginBottom: 16, textShadow: "0 1px 4px rgba(0,0,0,0.5)" }
+      }, "\uD83D\uDCCA " + cv.category + " \u2014 Fiscal Year Summary"),
+      // Error
+      cv.error && React.createElement("div", {
+        style: { background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: 14, color: "#dc2626", fontSize: 13, marginBottom: 16 }
+      }, cv.error),
+      // Loading
+      cv.loading && React.createElement("div", {
+        style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.6)", fontSize: 14 }
+      }, "Loading statement periods..."),
+      // Results
+      cv.periods && !cv.loading && React.createElement("div", {
+        style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }
+      },
+        React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 12 } },
+          cv.periods.length + " statement period" + (cv.periods.length !== 1 ? "s" : "") + " found"),
+        // Table header (desktop only)
+        !isMobile && cv.periods.length > 0 && React.createElement("div", {
+          style: { display: "grid", gridTemplateColumns: "1fr 120px 100px", gap: 8, padding: "8px 12px",
+            background: "#f1f5f9", borderRadius: "6px 6px 0 0", fontWeight: 700, fontSize: 12, color: "#64748b" }
+        },
+          React.createElement("div", null, "Period"),
+          React.createElement("div", null, "Date Range"),
+          React.createElement("div", { style: { textAlign: "right" } }, "Amount")
+        ),
+        // Rows
+        ...cv.periods.map((p, i) => {
+          var amtColor = isExpense ? (p.monthAmount > 0 ? "#dc2626" : "#64748b") : (p.monthAmount > 0 ? "#16a34a" : "#64748b");
+          var amtText = formatMoney(isExpense ? -p.monthAmount : p.monthAmount);
+          var clickHandler = () => {
+              const sd = toISO(p.startDate), ed = toISO(p.endDate);
+              setTxBrowserFilters({ category: cv.category, startDate: sd, endDate: ed });
+              setTxBrowserView({ category: cv.category, startDate: sd, endDate: ed,
+                results: null, loading: false, error: null, sortCol: null, sortDir: "asc" });
+              queryTransactions(cv.category, sd, ed);
+          };
+          return isMobile
+          ? React.createElement("div", { key: i, onClick: clickHandler,
+              style: { display: "flex", justifyContent: "space-between", alignItems: "center",
+                padding: "12px 0", borderBottom: "1px solid #f1f5f9", cursor: "pointer" }
+            },
+              React.createElement("div", null,
+                React.createElement("div", { style: { fontWeight: 600, color: "#1e293b", fontSize: 14 } }, monthLabel(p.startDate, p.endDate)),
+                React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2 } }, p.startDate + " \u2013 " + p.endDate)
+              ),
+              React.createElement("div", { style: { fontWeight: 600, fontSize: 15, color: amtColor } }, amtText)
+            )
+          : React.createElement("div", { key: i, onClick: clickHandler,
+              style: { display: "grid", gridTemplateColumns: "1fr 120px 100px", gap: 8, padding: "10px 12px",
+                fontSize: 13, borderBottom: "1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#fafafa",
+                cursor: "pointer", transition: "background 0.1s" }
+            },
+              React.createElement("div", { style: { fontWeight: 600, color: "#1e293b" } }, monthLabel(p.startDate, p.endDate)),
+              React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, p.startDate + " \u2013 " + p.endDate),
+              React.createElement("div", { style: { textAlign: "right", fontWeight: 600, color: amtColor } }, amtText)
+            );
+        }),
+        // Empty
+        cv.periods.length === 0 && React.createElement("div", {
+          style: { textAlign: "center", padding: 30, color: "#94a3b8", fontSize: 13 }
+        }, "No statement periods found."),
+        // Total
+        cv.periods.length > 0 && React.createElement("div", {
+          style: { display: "flex", justifyContent: "space-between", padding: "12px " + (isMobile ? "0" : "12px"),
+            borderTop: "2px solid #e2e8f0", fontWeight: 700, fontSize: 14, marginTop: 4 }
+        },
+          React.createElement("div", null, "Fiscal Year Total"),
+          React.createElement("div", { style: { textAlign: "right",
+            color: isExpense ? "#dc2626" : "#16a34a" } },
+            formatMoney(isExpense ? -total : total))
+        ),
+        // Hint
+        React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", textAlign: "center", marginTop: 10 } },
+          "Click a period to see individual transactions")
+      )
+    );
+  };
+
+  /* ── Transaction Browser renderer ─────────────────────── */
+  const renderTransactionBrowser = () => {
+    const tv = txBrowserView;
+    const sorted = tv.results ? [...tv.results].sort((a, b) => {
+      if (!tv.sortCol) return 0;
+      let va = a[tv.sortCol], vb = b[tv.sortCol];
+      if (tv.sortCol === "amount") return tv.sortDir === "asc" ? va - vb : vb - va;
+      if (tv.sortCol === "date") {
+        const pD = (s) => { const p = s.split("/"); return new Date(+p[2], +p[0]-1, +p[1]); };
+        return tv.sortDir === "asc" ? pD(va) - pD(vb) : pD(vb) - pD(va);
+      }
+      va = String(va).toLowerCase(); vb = String(vb).toLowerCase();
+      return tv.sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+    }) : [];
+    const subtotal = sorted.reduce((s, tx) => s + tx.amount, 0);
+    const toggleSort = (col) => setTxBrowserView(v => ({
+      ...v, sortCol: col, sortDir: v.sortCol === col && v.sortDir === "asc" ? "desc" : "asc"
+    }));
+    const si = (col) => tv.sortCol !== col ? " \u2195" : tv.sortDir === "asc" ? " \u25B2" : " \u25BC";
+    const gc = "70px 88px minmax(70px,1fr) minmax(100px,2fr) 88px 54px";
+
+    return React.createElement("div", null,
+      // Back
+      React.createElement("button", {
+        onClick: () => setTxBrowserView(null),
+        style: { background: "none", border: "none", color: "rgba(255,255,255,0.7)", fontSize: 14, cursor: "pointer", padding: "8px 0", marginBottom: 12 }
+      }, "\u2190 Back"),
+      // Title
+      React.createElement("h2", {
+        style: { color: "white", fontSize: 20, fontWeight: 700, marginBottom: 16, textShadow: "0 1px 4px rgba(0,0,0,0.5)" }
+      }, "\uD83D\uDD0D Transaction Browser"),
+      // Filter card
+      React.createElement("div", {
+        style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", marginBottom: 16 }
+      },
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: 10, marginBottom: 12 } },
+          React.createElement("div", null,
+            React.createElement("label", { style: ls }, "Category"),
+            React.createElement("select", {
+              value: txBrowserFilters.category,
+              onChange: e => setTxBrowserFilters(f => ({...f, category: e.target.value})),
+              style: {...is, background: "white"}
+            },
+              React.createElement("option", { value: "all" }, "All Categories"),
+              ...CATEGORIES.map(c => React.createElement("option", { key: c, value: c }, c))
+            )
+          ),
+          React.createElement("div", null,
+            React.createElement("label", { style: ls }, "Start Date"),
+            React.createElement("input", {
+              type: "date", value: txBrowserFilters.startDate,
+              onChange: e => setTxBrowserFilters(f => ({...f, startDate: e.target.value})),
+              style: is
+            })
+          ),
+          React.createElement("div", null,
+            React.createElement("label", { style: ls }, "End Date"),
+            React.createElement("input", {
+              type: "date", value: txBrowserFilters.endDate,
+              onChange: e => setTxBrowserFilters(f => ({...f, endDate: e.target.value})),
+              style: is
+            })
+          )
+        ),
+        React.createElement("div", { style: { display: "flex", gap: 8, flexDirection: isMobile ? "column" : "row" } },
+          React.createElement("button", {
+            onClick: () => queryTransactions(txBrowserFilters.category, txBrowserFilters.startDate, txBrowserFilters.endDate),
+            disabled: !txBrowserFilters.startDate || !txBrowserFilters.endDate || tv.loading,
+            style: {...bp, flex: 1,
+              background: tv.loading ? "#94a3b8" : (!txBrowserFilters.startDate || !txBrowserFilters.endDate) ? "#cbd5e1" : "#0f766e"}
+          }, tv.loading ? "Searching..." : "\uD83D\uDD0D Search Transactions"),
+          React.createElement("button", {
+            onClick: () => { setTxBrowserView(null); queryCategorySummary(txBrowserFilters.category); },
+            disabled: txBrowserFilters.category === "all" || tv.loading,
+            style: {...bp, flex: 1,
+              background: txBrowserFilters.category === "all" ? "#cbd5e1" : tv.loading ? "#94a3b8" : "#7c3aed"}
+          }, "\uD83D\uDCCA Monthly Summary")
+        )
+      ),
+      // Error
+      tv.error && React.createElement("div", {
+        style: { background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: 14, color: "#dc2626", fontSize: 13, marginBottom: 16 }
+      }, tv.error),
+      // Loading
+      tv.loading && React.createElement("div", {
+        style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.6)", fontSize: 14 }
+      }, "Searching the Main Ledger..."),
+      // Results
+      tv.results && !tv.loading && React.createElement("div", {
+        style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", overflowX: "auto" }
+      },
+        React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 12 } },
+          sorted.length + " transaction" + (sorted.length !== 1 ? "s" : "") + " found" +
+          (tv.category !== "all" ? " for " + tv.category : "")
+        ),
+        // Table header (desktop only)
+        !isMobile && sorted.length > 0 && React.createElement("div", {
+          style: { display: "grid", gridTemplateColumns: gc, gap: 4, padding: "6px 8px", background: "#f1f5f9",
+            borderRadius: "6px 6px 0 0", fontWeight: 700, fontSize: 11, color: "#64748b" }
+        },
+          React.createElement("div", { onClick: () => toggleSort("number"), style: { cursor: "pointer" } }, "#" + si("number")),
+          React.createElement("div", { onClick: () => toggleSort("date"), style: { cursor: "pointer" } }, "Date" + si("date")),
+          React.createElement("div", { onClick: () => toggleSort("type"), style: { cursor: "pointer" } }, "Type" + si("type")),
+          React.createElement("div", { onClick: () => toggleSort("description"), style: { cursor: "pointer" } }, "Description" + si("description")),
+          React.createElement("div", { onClick: () => toggleSort("amount"), style: { cursor: "pointer", textAlign: "right" } }, "Amount" + si("amount")),
+          React.createElement("div", { onClick: () => toggleSort("spender"), style: { cursor: "pointer" } }, "Who" + si("spender"))
+        ),
+        // Mobile sort controls
+        isMobile && sorted.length > 0 && React.createElement("div", {
+          style: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }
+        },
+          React.createElement("span", { style: { fontSize: 11, color: "#94a3b8", lineHeight: "28px" } }, "Sort:"),
+          ...["date", "amount", "type"].map(col =>
+            React.createElement("button", { key: col, onClick: () => toggleSort(col),
+              style: { fontSize: 11, padding: "4px 10px", borderRadius: 14, cursor: "pointer",
+                border: tv.sortCol === col ? "1px solid #2563eb" : "1px solid #d1d5db",
+                background: tv.sortCol === col ? "#eff6ff" : "#f8fafc", color: tv.sortCol === col ? "#2563eb" : "#64748b" }
+            }, col.charAt(0).toUpperCase() + col.slice(1) + (tv.sortCol === col ? (tv.sortDir === "asc" ? " \u25B2" : " \u25BC") : ""))
+          )
+        ),
+        // Rows — desktop grid or mobile cards
+        ...sorted.map((tx, i) =>
+          isMobile
+          ? React.createElement("div", { key: i, style: { padding: "10px 0", borderBottom: "1px solid #f1f5f9" } },
+              React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 2 } },
+                React.createElement("span", { style: { fontSize: 11, color: "#2563eb", fontWeight: 500 } }, tx.number + " \u00B7 " + tx.date),
+                React.createElement("span", { style: { fontWeight: 600, color: tx.amount >= 0 ? "#16a34a" : "#dc2626" } }, formatMoney(tx.amount))
+              ),
+              React.createElement("div", { style: { fontSize: 12, color: "#1e293b", marginBottom: 1 } }, tx.description),
+              React.createElement("div", { style: { fontSize: 11, color: "#94a3b8" } },
+                tx.type + (tx.spender ? " \u00B7 " + tx.spender : ""))
+            )
+          : React.createElement("div", { key: i, style: { display: "grid", gridTemplateColumns: gc, gap: 4,
+              padding: "6px 8px", fontSize: 12, borderBottom: "1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#fafafa" } },
+              React.createElement("div", { style: { fontWeight: 500, color: "#2563eb", fontSize: 11 } }, tx.number),
+              React.createElement("div", null, tx.date),
+              React.createElement("div", { style: { fontSize: 11 } }, tx.type),
+              React.createElement("div", { style: { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, tx.description),
+              React.createElement("div", { style: { textAlign: "right", fontWeight: 600, color: tx.amount >= 0 ? "#16a34a" : "#dc2626" } }, formatMoney(tx.amount)),
+              React.createElement("div", { style: { fontSize: 11, color: "#888" } }, tx.spender || "\u2014")
+            )
+        ),
+        // Empty
+        sorted.length === 0 && React.createElement("div", {
+          style: { textAlign: "center", padding: 30, color: "#94a3b8", fontSize: 13 }
+        }, "No transactions found for the selected filters."),
+        // Subtotal
+        sorted.length > 0 && React.createElement("div", {
+          style: { display: "flex", justifyContent: "space-between", padding: "10px 8px",
+            borderTop: "2px solid #e2e8f0", fontWeight: 700, fontSize: 13, marginTop: 4 }
+        },
+          React.createElement("div", null, "Subtotal:"),
+          React.createElement("div", { style: { color: subtotal >= 0 ? "#16a34a" : "#dc2626" } }, formatMoney(subtotal))
+        )
+      )
+    );
+  };
+
+  /* ══════════════════════════════════════════════════════ */
+  return React.createElement("div", { style: { maxWidth: 700, margin: "0 auto" } },
+
+    // Toast
+    toast && React.createElement("div", { className: "toast " + (toast.warn ? "toast-warn" : "toast-ok") }, toast.msg),
+
+    // Full-page views: Transaction Browser > Category Summary > normal content
+    txBrowserView ? renderTransactionBrowser() :
+    txCatSummaryView ? renderCategorySummary() :
+    React.createElement(React.Fragment, null,
+
+    // Header
+    React.createElement("div", { style: { textAlign: "center", marginBottom: 20 } },
+      React.createElement("div", { style: { fontSize: 28 } }, "\u{1F3E0}"),
+      React.createElement("h1", { style: { fontSize: 22, color: "white", textShadow: "0 1px 4px rgba(0,0,0,0.5)" } }, "Rough River Lake House"),
+      React.createElement("p", { style: { color: "rgba(255,255,255,0.6)", fontSize: 13 } }, "Transaction Entry System"),
+      React.createElement("div", { style: { marginTop: 6, fontSize: 11 } },
+        scriptUrl
+          ? React.createElement("span", { style: { color: syncing ? "#fbbf24" : "#4ade80" } },
+              syncing ? "Syncing with Google Sheet..." : "Connected to Google Sheet")
+          : React.createElement("span", { style: { color: "rgba(255,255,255,0.4)" } }, "Local mode \u2014 set up Google Sheet in Settings"))
+    ),
+
+    // Balances — Grand Total on top, Chase + Acorns below
+    React.createElement("div", { style: { marginBottom: 20 } },
+      // Grand Total (full width, larger)
+      React.createElement("div", {
+        style: { background: "rgba(255,255,255,0.95)", borderRadius: 12, padding: "20px 24px",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.3)", marginBottom: 10, textAlign: "center" }
+      },
+        React.createElement("div", { style: { fontSize: 13, color: "#666", marginBottom: 4 } }, "Grand Total"),
+        React.createElement("div", { style: { fontSize: 28, fontWeight: 700,
+          color: projectedTotal >= 0 ? "#1a7a4c" : "#c0392b" } }, formatMoney(projectedTotal)),
+        React.createElement("div", { style: { fontSize: 11, color: "#999", marginTop: 2 } },
+          queue.length > 0 ? "After " + queue.length + " queued" : "Current")
+      ),
+      // Chase + Acorns side by side
+      React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap" } },
+        // Chase — light blue
+        React.createElement("div", {
+          style: { background: "#eff6ff", borderRadius: 10, padding: "12px 16px",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.25)", flex: 1, minWidth: 150 }
+        },
+          React.createElement("div", { style: { fontSize: 12, color: "#1e40af", fontWeight: 600, marginBottom: 3 } }, "Chase"),
+          React.createElement("div", { style: { fontSize: 18, fontWeight: 700,
+            color: (state.chaseBalance + queue.filter(t => t.account==="Chase").reduce((s,t) => s + (t.isIncome ? Math.abs(parseFloat(t.amount)) : -Math.abs(parseFloat(t.amount))), 0)) >= 0 ? "#1a7a4c" : "#c0392b" } },
+            formatMoney(state.chaseBalance + queue.filter(t => t.account==="Chase").reduce((s,t) => s + (t.isIncome ? Math.abs(parseFloat(t.amount)) : -Math.abs(parseFloat(t.amount))), 0))),
+          React.createElement("div", { style: { fontSize: 10, color: "#6b7280", marginTop: 2 } },
+            "Last: CH" + String(state.lastCH).padStart(3,"0"))
+        ),
+        // Acorns — light green
+        React.createElement("div", {
+          style: { background: "#f0fdf4", borderRadius: 10, padding: "12px 16px",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.25)", flex: 1, minWidth: 150 }
+        },
+          React.createElement("div", { style: { fontSize: 12, color: "#166534", fontWeight: 600, marginBottom: 3 } }, "Acorns"),
+          React.createElement("div", { style: { fontSize: 18, fontWeight: 700,
+            color: (state.acornsBalance + queue.filter(t => t.account==="Acorns").reduce((s,t) => s + (t.isIncome ? Math.abs(parseFloat(t.amount)) : -Math.abs(parseFloat(t.amount))), 0)) >= 0 ? "#1a7a4c" : "#c0392b" } },
+            formatMoney(state.acornsBalance + queue.filter(t => t.account==="Acorns").reduce((s,t) => s + (t.isIncome ? Math.abs(parseFloat(t.amount)) : -Math.abs(parseFloat(t.amount))), 0))),
+          React.createElement("div", { style: { fontSize: 10, color: "#6b7280", marginTop: 2 } },
+            "Investment: " + formatMoney(state.acornsBalance - state.acornsChecking) +
+            "  |  Checking: " + formatMoney(state.acornsChecking))
+        )
+      )
+    ),
+
+    // Settings (collapsible)
+    React.createElement("div", { style: { marginBottom: 12 } },
+      React.createElement("button", {
+        onClick: () => setShowSettings(!showSettings),
+        style: { background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, cursor: "pointer", padding: 0 }
+      }, (showSettings ? "\u25B2 " : "\u2699\uFE0F ") + "Settings"),
+      showSettings && React.createElement("div", {
+        style: { background: "white", borderRadius: 10, padding: 14, marginTop: 8,
+          border: "1px solid #e2e8f0", fontSize: 13 }
+      },
+        // Google Sheet connection
+        React.createElement("label", { style: ls }, "Google Apps Script URL"),
+        React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 4 } },
+          React.createElement("input", { type: "url", value: scriptUrl,
+            onChange: e => setScriptUrl(e.target.value),
+            placeholder: "https://script.google.com/macros/s/.../exec",
+            style: {...is, flex: 1} }),
+          React.createElement("button", {
+            onClick: () => {
+              if (!scriptUrl) { flash("Enter a script URL first", true); return; }
+              setSyncing(true);
+              fetch(scriptUrl).then(r => r.json()).then(data => {
+                if (data.lastRR !== undefined) { setState(data); save(SK.state, data); flash("Synced from Sheet!"); }
+                else { flash("Unexpected response from script", true); }
+              }).catch(() => flash("Could not reach script URL", true)).finally(() => setSyncing(false));
+            },
+            disabled: syncing,
+            style: {...bp, padding: "8px 14px", fontSize: 12, background: syncing ? "#94a3b8" : "#2563eb", whiteSpace: "nowrap" }
+          }, syncing ? "Syncing..." : "Sync")
+        ),
+        React.createElement("p", { style: { fontSize: 11, color: "#94a3b8", marginBottom: 10 } },
+          scriptUrl
+            ? (syncing ? "Syncing balances from your spreadsheet..." : "Connected. Transactions go directly to your Google Sheet.")
+            : "Not connected. See SheetScript.gs for setup instructions. Without this, transactions are local-only."),
+
+        React.createElement("label", { style: ls }, "Reminder email address"),
+        React.createElement("input", { type: "email", value: reminderEmail,
+          onChange: e => setReminderEmail(e.target.value),
+          placeholder: "you@example.com", style: {...is, marginBottom: 10} }),
+        React.createElement("p", { style: { fontSize: 11, color: "#94a3b8" } },
+          "When a transaction has an email reminder, clicking Go will automatically send an email to this address."),
+        React.createElement("div", { style: { borderTop: "1px solid #e2e8f0", marginTop: 12, paddingTop: 12 } },
+          React.createElement("button", {
+            onClick: () => {
+              if (confirm("Reset all data? This clears balances, history, and settings. Cannot be undone.")) {
+                setState(INITIAL_STATE); save(SK.state, INITIAL_STATE);
+                setHistory([]); save(SK.history, []);
+                setReminderEmail(""); setQueue([]); setForm({...emptyForm});
+                flash("All data reset to defaults.");
+              }
+            },
+            style: { background: "none", border: "1px solid #fca5a5", color: "#dc2626",
+              borderRadius: 6, padding: "6px 14px", fontSize: 12, cursor: "pointer" }
+          }, "Reset All Data")
+        )
+      )
+    ),
+
+    // Help
+    React.createElement("div", { style: { marginBottom: 12 } },
+      React.createElement("button", {
+        onClick: () => setShowHelp(!showHelp),
+        style: { background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, cursor: "pointer", padding: 0 }
+      }, showHelp ? "Hide tips \u25B2" : "Show tips \u25BC"),
+      showHelp && React.createElement("div", {
+        style: { background: "#eff6ff", borderRadius: 8, padding: 12, marginTop: 8, fontSize: 12, color: "#1e40af", lineHeight: 1.6 }
+      },
+        React.createElement("b", null, "How it works:"), " Fill in each transaction, click \"Add to Queue\", repeat. When done, hit \"Go\" to process everything at once.",
+        React.createElement("br"), React.createElement("br"),
+        React.createElement("b", null, "Amounts:"), " Always enter positive. The app makes it negative for expenses based on the type.",
+        React.createElement("br"), React.createElement("br"),
+        React.createElement("b", null, "Monthly Contributions:"), " Check \"Split contribution\" to specify cash/Acorns/expense breakdown. Must add up to total.",
+        React.createElement("br"), React.createElement("br"),
+        React.createElement("b", null, "Spender:"), " Leave blank for rental income, interest, and mortgage payments.",
+        React.createElement("br"), React.createElement("br"),
+        React.createElement("b", null, "Email Reminders:"), " Check the email box on a transaction to get a reminder. Set your email in Settings first."
+      )
+    ),
+
+    // ─── Browse Transactions button ─────────────────────────
+    React.createElement("div", { style: { marginBottom: 16 } },
+      React.createElement("button", {
+        onClick: () => {
+          setTxBrowserFilters({ category: "all", startDate: "", endDate: new Date().toISOString().split("T")[0] });
+          setTxBrowserView({ category: "all", startDate: "", endDate: new Date().toISOString().split("T")[0],
+            results: null, loading: false, error: null, sortCol: null, sortDir: "asc" });
+        },
+        style: { ...bp, width: "100%", background: "#0f766e", padding: "12px 24px", borderRadius: 10 }
+      }, "\uD83D\uDD0D Browse Transactions")
+    ),
+
+    // ─── Transaction Form ─────────────────────────────────
+    React.createElement("div", {
+      style: { background: "white", borderRadius: 12, padding: 20, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", marginBottom: 20 }
+    },
+      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 } },
+        React.createElement("h3", { style: { fontSize: 15, color: "#1e293b" } }, "New Transaction"),
+        React.createElement("span", { style: { fontSize: 12, color: "#888" } },
+          form.type === "Transfer" ? "Transfer (no Main Ledger entry)" : "Will be " + currentRR + " / " + currentAcct)
+      ),
+
+      // Quick-Add buttons
+      React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" } },
+        React.createElement("span", { style: { fontSize: 11, color: "#94a3b8", marginRight: 2 } }, "Quick:"),
+        ...QUICK_ADDS.map(qa =>
+          React.createElement("button", { key: qa.label, onClick: () => setForm({
+              ...emptyForm, type: qa.type, amount: qa.amount, account: qa.account,
+              description: qa.description, date: new Date().toISOString().split("T")[0]
+            }), style: { background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 20,
+              padding: isMobile ? "8px 16px" : "5px 12px", fontSize: isMobile ? 13 : 12, cursor: "pointer", color: "#0c4a6e",
+              fontWeight: 500, display: "flex", alignItems: "center", gap: 4 }
+          }, qa.emoji + " " + qa.label)
+        )
+      ),
+
+      // Row 1: Type + Date
+      React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12, marginBottom: 12 } },
+        React.createElement("div", null,
+          React.createElement("label", { style: ls }, "Type *"),
+          React.createElement("select", { value: form.type, onChange: e => { updateForm("type", e.target.value); updateForm("signOverride", null); }, style: {...is, background: "white"} },
+            React.createElement("option", { value: "" }, "Select type..."),
+            ...TYPES.map(t => React.createElement("option", { key: t, value: t }, t))
+          )
+        ),
+        React.createElement("div", null,
+          React.createElement("label", { style: ls }, "Date *"),
+          React.createElement("input", { type: "date", value: form.date, onChange: e => updateForm("date", e.target.value), style: is })
+        )
+      ),
+
+      // Row 2: Account/Spender — OR Transfer Direction
+      form.type === "Transfer"
+      ? React.createElement("div", { style: { marginBottom: 12 } },
+          React.createElement("label", { style: ls }, "Transfer Direction *"),
+          React.createElement("select", { value: form.transferDir, onChange: e => updateForm("transferDir", e.target.value),
+            style: {...is, background: "white"} },
+            ...TRANSFER_DIRS.map(d => React.createElement("option", { key: d.value, value: d.value }, d.label))
+          )
+        )
+      : React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12, marginBottom: 12 } },
+        React.createElement("div", null,
+          React.createElement("label", { style: ls }, "Account *"),
+          React.createElement("select", { value: form.account, onChange: e => updateForm("account", e.target.value), style: {...is, background: "white"} },
+            ...ACCOUNTS.map(a => React.createElement("option", { key: a, value: a }, a))
+          ),
+          form.account === "Acorns" && React.createElement("div", { style: { marginTop: 4 } },
+            React.createElement("label", { style: {...ls, fontSize: 11} }, "Sub-account"),
+            React.createElement("select", { value: form.acornsSub, onChange: e => updateForm("acornsSub", e.target.value),
+              style: {...is, fontSize: 13, padding: "4px 8px", background: "white"} },
+              ...ACORNS_SUBS.map(s => React.createElement("option", { key: s, value: s }, s))
+            )
+          )
+        ),
+        React.createElement("div", null,
+          React.createElement("label", { style: ls }, "Spender"),
+          React.createElement("select", { value: form.spender, onChange: e => updateForm("spender", e.target.value), style: {...is, background: "white"} },
+            ...SPENDERS.map(s => React.createElement("option", { key: s, value: s }, s || "(none)"))
+          )
+        )
+      ),
+
+      // Description
+      React.createElement("div", { style: { marginBottom: 12 } },
+        React.createElement("label", { style: ls }, "Description *"),
+        React.createElement("input", { type: "text", value: form.description, onChange: e => updateForm("description", e.target.value),
+          placeholder: "e.g. Lisa Flood, by Venmo", style: is })
+      ),
+
+      // Amount + Notes
+      React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12, marginBottom: 12 } },
+        React.createElement("div", null,
+          React.createElement("label", { style: ls }, "Amount * (always positive)"),
+          React.createElement("div", { style: { position: "relative" } },
+            React.createElement("span", { style: { position: "absolute", left: 12, top: 9, color: "#888" } }, "$"),
+            React.createElement("input", { type: "number", step: "0.01", min: "0", value: form.amount,
+              onChange: e => updateForm("amount", e.target.value), placeholder: "0.00",
+              style: {...is, paddingLeft: 24} })
+          ),
+          form.type && form.type !== "Transfer" && (() => {
+            const autoIncome = isIncomeType(form.type);
+            const effectiveIncome = form.signOverride ? form.signOverride === "income" : autoIncome;
+            const isOverridden = form.signOverride !== null;
+            return React.createElement("div", { style: { marginTop: 4 } },
+              React.createElement("div", {
+                style: { fontSize: 11, color: effectiveIncome ? "#16a34a" : "#dc2626" }
+              },
+                (effectiveIncome ? "Income (+)" : "Expense (-)"),
+                isOverridden && React.createElement("span", { style: { color: "#d97706", marginLeft: 4 } }, "(overridden)")
+              ),
+              React.createElement("button", {
+                type: "button",
+                onClick: () => {
+                  if (form.signOverride === null) updateForm("signOverride", autoIncome ? "expense" : "income");
+                  else updateForm("signOverride", null);
+                },
+                style: { background: "none", border: "none", color: "#2563eb", fontSize: 11,
+                  cursor: "pointer", padding: 0, marginTop: 2, textDecoration: "underline" }
+              }, form.signOverride === null
+                ? (autoIncome ? "This is actually an expense" : "This is actually income (refund, credit, etc.)")
+                : "Reset to default")
+            );
+          })()
+        ),
+        React.createElement("div", null,
+          React.createElement("label", { style: ls }, "Notes (optional)"),
+          React.createElement("input", { type: "text", value: form.notes, onChange: e => updateForm("notes", e.target.value),
+            placeholder: "Internal notes", style: is })
+        )
+      ),
+
+      // Split contribution
+      form.type === "Monthly Contribution" && React.createElement("div", { style: { marginBottom: 12 } },
+        React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" } },
+          React.createElement("input", { type: "checkbox", checked: form.isSplit, onChange: e => updateForm("isSplit", e.target.checked) }),
+          "Split contribution (cash / Acorns / expenses)"
+        ),
+        form.isSplit && React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: 10, marginTop: 8 } },
+          React.createElement("div", null,
+            React.createElement("label", { style: {...ls, fontSize: 11} }, "Cash to Chase"),
+            React.createElement("input", { type: "number", step: "0.01", value: form.splitCash,
+              onChange: e => updateForm("splitCash", e.target.value), placeholder: "0", style: {...is, fontSize: 13} })
+          ),
+          React.createElement("div", null,
+            React.createElement("label", { style: {...ls, fontSize: 11} }, "To Acorns"),
+            React.createElement("input", { type: "number", step: "0.01", value: form.splitAcorns,
+              onChange: e => updateForm("splitAcorns", e.target.value), placeholder: "0", style: {...is, fontSize: 13} }),
+            React.createElement("select", { value: form.splitAcornsSub, onChange: e => updateForm("splitAcornsSub", e.target.value),
+              style: {...is, fontSize: 11, padding: "3px 6px", marginTop: 4, background: "white"} },
+              ...ACORNS_SUBS.map(s => React.createElement("option", { key: s, value: s }, s))
+            )
+          ),
+          React.createElement("div", null,
+            React.createElement("label", { style: {...ls, fontSize: 11} }, "Unreimbursed Expenses"),
+            React.createElement("input", { type: "number", step: "0.01", value: form.splitExpenses,
+              onChange: e => updateForm("splitExpenses", e.target.value), placeholder: "0", style: {...is, fontSize: 13} })
+          ),
+          form.splitExpenses && parseFloat(form.splitExpenses) > 0 && React.createElement("div", { style: { gridColumn: "1 / -1" } },
+            React.createElement("label", { style: {...ls, fontSize: 11} }, "Which expenses? (CH numbers or description)"),
+            React.createElement("input", { type: "text", value: form.splitExpenseDesc,
+              onChange: e => updateForm("splitExpenseDesc", e.target.value),
+              placeholder: "e.g. CH043 and CH044", style: {...is, fontSize: 13} })
+          )
+        )
+      ),
+
+      // Preview
+      form.type && form.amount && form.description && (() => {
+        const amt = Math.abs(parseFloat(form.amount)||0);
+        if (form.type === "Transfer") {
+          const dir = TRANSFER_DIRS.find(d => d.value === form.transferDir) || TRANSFER_DIRS[0];
+          const involvesChase = form.transferDir !== "acorns-general-to-checking";
+          const involvesAcorns = form.transferDir !== "chase-to-acorns-general" || true; // always true
+          const chaseSign = form.transferDir === "chase-to-acorns-general" ? -1 : 1;
+          return React.createElement("div", {
+            style: { background: "#f8f9fa", borderRadius: 8, padding: 14, marginTop: 10, border: "1px solid #e0e0e0", fontSize: 13 }
+          },
+            React.createElement("div", { style: { fontWeight: 600, marginBottom: 8, color: "#2c3e50" } }, "Preview: " + dir.label),
+            React.createElement("div", { style: { fontSize: 12, color: "#888", marginBottom: 6 } }, "No Main Ledger entry \u2014 balances still update"),
+            involvesChase && React.createElement("div", { style: { marginBottom: 4 } },
+              React.createElement("span", { style: { fontWeight: 600, color: "#1e40af" } }, "Chase: "),
+              "Transfer | " + form.date + " | " + form.description + " | " + formatMoney(chaseSign * amt)
+            ),
+            form.transferDir === "acorns-general-to-checking"
+              ? React.createElement("div", null,
+                  React.createElement("span", { style: { fontWeight: 600, color: "#166534" } }, "Acorns: "),
+                  "2 rows \u2014 General " + formatMoney(-amt) + ", Checking +" + formatMoney(amt) + " (total unchanged)")
+              : React.createElement("div", null,
+                  React.createElement("span", { style: { fontWeight: 600, color: "#166534" } }, "Acorns: "),
+                  "Transfer | " + form.date + " | " + form.description + " | " + formatMoney(-chaseSign * amt))
+          );
+        }
+        const previewIncome = form.signOverride ? form.signOverride === "income" : isIncomeType(form.type);
+        const previewAmt = previewIncome ? amt : -amt;
+        return React.createElement("div", {
+          style: { background: "#f8f9fa", borderRadius: 8, padding: 14, marginTop: 10, border: "1px solid #e0e0e0", fontSize: 13 }
+        },
+          React.createElement("div", { style: { fontWeight: 600, marginBottom: 8, color: "#2c3e50" } }, "Preview of Ledger Entries"),
+          React.createElement("div", { style: { marginBottom: 6 } },
+            React.createElement("span", { style: { fontWeight: 600, color: "#2980b9" } }, "Main Ledger: "),
+            currentRR + " | Pair: " + currentAcct + " | " + form.type + " | " + form.date + " | " + (form.spender || "\u2014") + " | " + form.description + " | " + formatMoney(previewAmt)
+          ),
+          React.createElement("div", null,
+            React.createElement("span", { style: { fontWeight: 600, color: "#27ae60" } }, form.account + " Ledger: "),
+            currentAcct + " | Pair: " + currentRR + " | " + form.type + " | " + form.date + " | " + (form.spender || "\u2014") + " | " + form.description + " | " + formatMoney(previewAmt))
+        );
+      })(),
+
+      // Email reminder
+      React.createElement("div", { style: { marginTop: 12, padding: 12, background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" } },
+        React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" } },
+          React.createElement("input", { type: "checkbox", checked: form.emailReminder,
+            onChange: e => updateForm("emailReminder", e.target.checked) }),
+          React.createElement("span", null, "\u2709\uFE0F Send an email reminder to act on this")
+        ),
+        form.emailReminder && !reminderEmail && React.createElement("div", {
+          style: { marginTop: 6, fontSize: 11, color: "#d97706", fontWeight: 500 }
+        }, "\u26A0 No email set \u2014 open Settings above to add one."),
+        form.emailReminder && React.createElement("div", { style: { marginTop: 8 } },
+          React.createElement("label", { style: {...ls, fontSize: 11} }, "Reminder notes (e.g. transfer funds, reimburse someone)"),
+          React.createElement("textarea", { value: form.emailNotes, onChange: e => updateForm("emailNotes", e.target.value),
+            placeholder: "e.g. Transfer $500 from personal checking to Chase lake house account",
+            rows: 3, style: {...is, resize: "vertical", lineHeight: 1.4} })
+        )
+      ),
+
+      React.createElement("button", { onClick: addToQueue, style: {...bp, width: "100%", marginTop: 14} }, "Add to Queue")
+    ),
+
+    // ─── Queue ────────────────────────────────────────────
+    queue.length > 0 && React.createElement("div", { style: { marginBottom: 20 } },
+      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 } },
+        React.createElement("h3", { style: { fontSize: 15, color: "#1e293b" } }, "Queued (" + queue.length + ")"),
+        React.createElement("button", { onClick: () => setQueue([]),
+          style: { background: "none", border: "none", color: "#dc2626", fontSize: 12, cursor: "pointer" } }, "Clear all")
+      ),
+      ...queue.map((tx, i) => {
+        const isXfer = tx.type === "Transfer";
+        const amt = isXfer ? Math.abs(parseFloat(tx.amount)) : (tx.isIncome ? Math.abs(parseFloat(tx.amount)) : -Math.abs(parseFloat(tx.amount)));
+        const xferLabel = isXfer ? (TRANSFER_DIRS.find(d => d.value === tx.transferDir) || {}).label || "Transfer" : "";
+        return React.createElement("div", {
+          key: i, style: { display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "10px 14px", background: "white", borderRadius: 8, marginBottom: 6, border: "1px solid #e8e8e8" }
+        },
+          React.createElement("div", { style: { flex: 1 } },
+            React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } },
+              isXfer
+              ? React.createElement("span", { style: { fontSize: 11, fontWeight: 600, padding: "2px 6px", borderRadius: 4,
+                  background: "#fef3c7", color: "#92400e" } }, xferLabel)
+              : React.createElement("span", { style: { fontSize: 11, fontWeight: 600, padding: "2px 6px", borderRadius: 4,
+                  background: tx.account==="Chase" ? "#dbeafe" : "#dcfce7",
+                  color: tx.account==="Chase" ? "#1e40af" : "#166534" } },
+                  tx.account === "Acorns" ? "Acorns (" + (tx.acornsSub === "General" ? "Gen" : "Chk") + ")" : tx.account),
+              !isXfer && React.createElement("span", { style: { fontSize: 11, color: "#888" } }, tx.rrNum + " / " + tx.acctNum),
+              React.createElement("span", { style: { fontSize: 13, fontWeight: 500 } }, isXfer ? "Transfer" : tx.type),
+              tx.emailReminder && React.createElement("span", { style: { fontSize: 11, color: "#d97706" }, title: tx.emailNotes || "Email reminder" }, "\u2709\uFE0F")
+            ),
+            React.createElement("div", { style: { fontSize: 12, color: "#666", marginTop: 2 } },
+              tx.date + " \u2014 " + tx.description + (tx.spender ? " (" + tx.spender + ")" : ""))
+          ),
+          React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } },
+            React.createElement("span", { style: { fontSize: 15, fontWeight: 600, color: amt >= 0 ? "#1a7a4c" : "#c0392b" } }, formatMoney(amt)),
+            React.createElement("button", { onClick: () => removeFromQueue(i),
+              style: { background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#999", padding: 4 } }, "\u00D7")
+          )
+        );
+      }),
+
+      // ── The "Go" button ──
+      React.createElement("button", { onClick: processAll, disabled: processing,
+        style: { ...bp, width: "100%", marginTop: 10, background: processing ? "#94a3b8" : "#16a34a", fontSize: 16, padding: "14px 24px",
+          letterSpacing: 0.5 } },
+        processing ? "Saving to Sheet..." : "Go")
+    ),
+
+    // ─── Transaction History ──────────────────────────────
+    React.createElement("div", {
+      style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", marginBottom: 16 }
+    },
+      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+        React.createElement("h3", { style: { fontSize: 14, color: "#1e293b" } },
+          "Transaction History (" + history.length + ")"),
+        React.createElement("div", { style: { display: "flex", gap: 10 } },
+          history.length > 0 && React.createElement("button", {
+            onClick: () => {
+              const csv = "RR#,Acct#,Account,Type,Date,Spender,Description,Amount,Notes\n" +
+                history.map(tx =>
+                  [tx.rrNum, tx.acctNum, tx.account, '"'+tx.type+'"', tx.date, tx.spender||"",
+                   '"'+tx.description+'"', tx.amount.toFixed(2), '"'+(tx.notes||"")+'"'].join(",")
+                ).join("\n");
+              const blob = new Blob([csv], { type: "text/csv" });
+              const a = document.createElement("a");
+              a.href = URL.createObjectURL(blob); a.download = "lakehouse_transactions.csv"; a.click();
+            },
+            style: { background: "none", border: "none", color: "#2563eb", fontSize: 12, cursor: "pointer" }
+          }, "Export CSV"),
+          React.createElement("button", {
+            onClick: () => setShowHistory(!showHistory),
+            style: { background: "none", border: "none", color: "#64748b", fontSize: 12, cursor: "pointer" }
+          }, showHistory ? "Hide \u25B2" : "Show \u25BC")
+        )
+      ),
+      showHistory && history.length === 0 && React.createElement("p", {
+        style: { fontSize: 13, color: "#94a3b8", marginTop: 10, textAlign: "center" }
+      }, "No transactions yet. They'll appear here after you process them."),
+      showHistory && history.length > 0 && React.createElement("div", { style: { marginTop: 10 } },
+        ...[...history].reverse().slice(0, 50).map((tx, i) =>
+          React.createElement("div", {
+            key: i, style: { display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "8px 12px", borderBottom: "1px solid #f1f5f9", fontSize: 13 }
+          },
+            React.createElement("div", null,
+              React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center" } },
+                React.createElement("span", { style: { fontSize: 10, fontWeight: 600, padding: "1px 5px", borderRadius: 3,
+                  background: tx.account==="Chase" ? "#dbeafe" : "#dcfce7",
+                  color: tx.account==="Chase" ? "#1e40af" : "#166534" } }, tx.acctNum),
+                React.createElement("span", { style: { fontSize: 10, color: "#aaa" } }, tx.rrNum),
+                React.createElement("span", null, tx.description)
+              ),
+              React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 1 } },
+                fmtDate(tx.date) + " \u2022 " + tx.type + (tx.spender ? " \u2022 " + tx.spender : ""))
+            ),
+            React.createElement("span", { style: { fontWeight: 600, color: tx.amount >= 0 ? "#1a7a4c" : "#c0392b", whiteSpace: "nowrap" } },
+              formatMoney(tx.amount))
+          )
+        ),
+        history.length > 50 && React.createElement("p", { style: { fontSize: 11, color: "#94a3b8", textAlign: "center", marginTop: 8 } },
+          "Showing 50 of " + history.length + ". Export CSV for full data.")
+      )
+    ),
+
+    // ─── Close Statement ───────────────────────────────────
+    React.createElement("div", {
+      style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }
+    },
+      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 } },
+        React.createElement("h3", { style: { margin: 0, fontSize: 14, color: "#1e293b" } }, "Close Statement"),
+        React.createElement("span", { style: { fontSize: 11, color: "#94a3b8" } }, "Writes to Statements sheet")
+      ),
+      !closeMonthView ? React.createElement("div", null,
+        React.createElement("p", { style: { fontSize: 12, color: "#64748b", marginBottom: 10 } },
+          "Close the current period (from last statement through today) and write it to the Statements sheet."),
+        React.createElement("button", {
+          onClick: closeStatement, disabled: closingStatement || !scriptUrl,
+          style: {...bp, width: "100%", background: closingStatement ? "#94a3b8" : "#7c3aed"}
+        }, closingStatement ? "Writing statement\u2026" : "Close Statement"),
+        !scriptUrl && React.createElement("p", { style: { fontSize: 11, color: "#d97706", marginTop: 6 } },
+          "Set your Script URL in Settings to enable this.")
+      ) : (function() {
+        var cv = closeMonthView;
+        var incomeKeys  = Object.keys(cv.monthIncome  || {});
+        var expenseKeys = Object.keys(cv.monthExpense || {});
+        // Helper: one row in the statement table
+        // Helper to convert statement date MM/DD/YYYY to YYYY-MM-DD for queries
+        var toISO = function(s) { var p = s.split("/"); return p[2] + "-" + p[0] + "-" + p[1]; };
+        var sRow = function(label, thisMonth, fy, opts) {
+          opts = opts || {};
+          var isBold  = opts.bold;
+          var color   = opts.color || "#1e293b";
+          var bg      = opts.bg || "transparent";
+          var indent  = opts.indent;
+          var border  = opts.borderTop;
+          var clickable = !!opts.onClick;
+          return React.createElement("div", {
+            onClick: opts.onClick || undefined,
+            style: { display: "grid", gridTemplateColumns: "1fr 100px 100px", gap: 4, padding: "5px 8px",
+              background: bg, fontWeight: isBold ? 700 : 400, color: color, fontSize: 13,
+              borderTop: border ? "2px solid " + (opts.borderColor || "#e2e8f0") : "none",
+              borderRadius: opts.radiusTop ? "6px 6px 0 0" : opts.radiusBot ? "0 0 6px 6px" : 0,
+              cursor: clickable ? "pointer" : "default" }
+          },
+            React.createElement("div", { style: { paddingLeft: indent ? 16 : 0,
+              textDecoration: clickable ? "underline" : "none",
+              textDecorationColor: clickable ? "#cbd5e1" : "transparent" } }, label),
+            React.createElement("div", { style: { textAlign: "right" } }, thisMonth),
+            React.createElement("div", { style: { textAlign: "right", fontStyle: "italic", color: "#64748b" } }, fy)
+          );
+        };
+
+        return React.createElement("div", null,
+          // ── Header ──
+          React.createElement("div", { style: { textAlign: "center", marginBottom: 14 } },
+            React.createElement("div", { style: { fontSize: 11, color: "#16a34a", fontWeight: 600, marginBottom: 4 } }, "\u2705 Written to Statements sheet"),
+            React.createElement("div", { style: { fontSize: 16, fontWeight: 700, color: "#1e293b" } }, "Monthly Statement"),
+            React.createElement("div", { style: { fontSize: 13, color: "#64748b" } }, cv.startDate + " \u2013 " + cv.endDate)
+          ),
+
+          // ── Starting Balance ──
+          React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center",
+            background: "#f8fafc", borderRadius: 8, padding: "10px 14px", marginBottom: 14,
+            border: "1px solid #e2e8f0" } },
+            React.createElement("div", null,
+              React.createElement("div", { style: { fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 } }, "Starting Balance"),
+              React.createElement("div", { style: { fontSize: 11, color: "#94a3b8" } }, cv.startDate)
+            ),
+            React.createElement("div", { style: { fontSize: 20, fontWeight: 700, color: "#1e293b" } }, formatMoney(cv.startingBalance))
+          ),
+
+          // ── Column headers ──
+          sRow("", "This Month", "Fiscal YTD", { bold: true, color: "#64748b", bg: "#f1f5f9" }),
+
+          // ── Income section ──
+          sRow("Total Income", formatMoney(cv.totalIncome), formatMoney(cv.fyTotalIncome),
+            { bold: true, color: "#16a34a", bg: "#f0fdf4", borderTop: true, borderColor: "#bbf7d0", radiusTop: true }),
+          incomeKeys.map(function(k, i) {
+            return sRow(k, formatMoney(cv.monthIncome[k]), formatMoney(cv.fyIncome[k]),
+              { indent: true, bg: i % 2 === 0 ? "#fafffe" : "#f0fdf4",
+                radiusBot: i === incomeKeys.length - 1,
+                onClick: function() { queryCategorySummary(k); } });
+          }),
+
+          // ── Spacer ──
+          React.createElement("div", { style: { height: 10 } }),
+
+          // ── Expense section ──
+          sRow("Total Expenses", formatMoney(cv.totalExpense), formatMoney(cv.fyTotalExpense),
+            { bold: true, color: "#dc2626", bg: "#fef2f2", borderTop: true, borderColor: "#fecaca", radiusTop: true }),
+          expenseKeys.map(function(k, i) {
+            return sRow(k, formatMoney(Math.abs(cv.monthExpense[k])), formatMoney(Math.abs(cv.fyExpense[k])),
+              { indent: true, bg: i % 2 === 0 ? "#fffafa" : "#fef2f2",
+                radiusBot: i === expenseKeys.length - 1,
+                onClick: function() { queryCategorySummary(k); } });
+          }),
+
+          // ── Net ──
+          React.createElement("div", { style: { height: 10 } }),
+          sRow("TOTAL MONTHLY NET", formatMoney(cv.net), "",
+            { bold: true, color: cv.net >= 0 ? "#16a34a" : "#dc2626", bg: "#f8fafc",
+              borderTop: true, borderColor: "#cbd5e1" }),
+
+          // ── Ending Balance ──
+          React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center",
+            background: cv.endingBalance >= 0 ? "#f0fdf4" : "#fef2f2", borderRadius: 8, padding: "10px 14px", marginTop: 14,
+            border: "1px solid " + (cv.endingBalance >= 0 ? "#bbf7d0" : "#fecaca") } },
+            React.createElement("div", null,
+              React.createElement("div", { style: { fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 } }, "Ending Balance"),
+              React.createElement("div", { style: { fontSize: 11, color: "#94a3b8" } }, cv.endDate)
+            ),
+            React.createElement("div", { style: { fontSize: 20, fontWeight: 700,
+              color: cv.endingBalance >= 0 ? "#16a34a" : "#dc2626" } }, formatMoney(cv.endingBalance))
+          ),
+
+          // ── YTD Actual Profit or Loss ──
+          (function() {
+            var ytdPL = ((cv.fyIncome["Rental Income"] || 0) + (cv.fyIncome["Interest"] || 0) + cv.endingBalance)
+                      - ((cv.fyIncome["Monthly Contribution"] || 0) + Math.abs(cv.fyTotalExpense));
+            var plColor = ytdPL >= 0 ? "#16a34a" : "#dc2626";
+            return React.createElement("div", { style: {
+              background: "linear-gradient(135deg, #fef3c7, #fde68a)", borderRadius: 8,
+              padding: "14px 16px", marginTop: 14, border: "1px solid #f59e0b",
+              boxShadow: "0 2px 8px rgba(245,158,11,0.15)" } },
+              React.createElement("div", { style: { fontSize: 11, color: "#92400e", textTransform: "uppercase",
+                letterSpacing: 0.5, fontWeight: 600, marginBottom: 8 } }, "Year To Date Actual Profit / Loss"),
+              React.createElement("div", { style: { fontSize: 24, fontWeight: 800, color: plColor, textAlign: "center",
+                marginBottom: 8 } }, formatMoney(ytdPL)),
+              React.createElement("div", { style: { fontSize: 10, color: "#92400e", lineHeight: 1.4, opacity: 0.85 } },
+                "(YTD Rental Income + YTD Interest + Ending Balance) \u2212 (YTD Contributions + YTD Expenses)")
+            );
+          })(),
+
+          // ── Footer ──
+          React.createElement("div", { style: { fontSize: 12, color: "#64748b", textAlign: "center", marginTop: 12 } },
+            cv.txCount + " transaction" + (cv.txCount !== 1 ? "s" : "") + " in this period"),
+
+          // ── Action buttons ──
+          React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 12, flexDirection: isMobile ? "column" : "row" } },
+            React.createElement("button", {
+              onClick: handleGeneratePDF, disabled: pdfState === "generating",
+              style: Object.assign({}, bp, { flex: 1, fontSize: 12, padding: "10px 8px",
+                background: pdfState === "generating" ? "#94a3b8" : pdfState === "done" ? "#16a34a" : "#7c3aed" })
+            }, pdfState === "generating" ? "Generating\u2026" : pdfState === "done" ? "\u2705 PDF Ready" : "\uD83D\uDCC4 Generate PDF"),
+            React.createElement("button", {
+              onClick: handleSendEmail, disabled: pdfState !== "done" || emailState === "sending",
+              style: Object.assign({}, bp, { flex: 1, fontSize: 12, padding: "10px 8px",
+                background: emailState === "sending" ? "#94a3b8" : emailState === "sent" ? "#16a34a"
+                  : pdfState !== "done" ? "#cbd5e1" : "#2563eb" })
+            }, emailState === "sending" ? "Sending\u2026" : emailState === "sent" ? "\u2705 Email Sent!" : "\u2709\uFE0F Send Email"),
+            React.createElement("button", {
+              onClick: function() { setCloseMonthView(null); setPdfState("idle"); setEmailState("idle"); setPdfData(null); },
+              style: Object.assign({}, bp, { padding: "10px 14px", background: "#64748b" })
+            }, "Done")
+          ),
+          pdfState === "done" && emailState === "idle" && React.createElement("p", {
+            style: { fontSize: 11, color: "#64748b", textAlign: "center", marginTop: 6 }
+          }, "PDF downloaded. Review it, then click Send Email to send to all recipients."),
+          emailState === "sent" && React.createElement("p", {
+            style: { fontSize: 11, color: "#16a34a", textAlign: "center", marginTop: 6 }
+          }, "Emailed to kasgilbert, gilbertlumber, and mogilbert1")
+        );
+      })()
+    )
+    ) // close React.Fragment
+  );
+}
+
+ReactDOM.render(React.createElement(App), document.getElementById("root"));
+</script>
+</body>
+</html>
