@@ -93,6 +93,20 @@ const QUICK_ADDS = [
   { emoji: "\uD83C\uDFE0", label: "Mortgage",  type: "Mortgage Payment", amount: "3330.11", account: "Chase", description: "Mortgage Payment" },
   { emoji: "\uD83C\uDF10", label: "Internet",  type: "Internet",         amount: "80.00",   account: "Chase", description: "Internet" },
   { emoji: "\uD83D\uDCCA", label: "PriceLabs", type: "Utilities (Electric, Water, Trash)", amount: "22.00", account: "Chase", description: "PriceLabs" },
+  { emoji: "\uD83D\uDDD1\uFE0F", label: "Trash", type: "Utilities (Electric, Water, Trash)", amount: "70.00", account: "Chase", spender: "Mgg",
+    descFn: () => { const m = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+      const now = new Date(); return "Trash for " + m[now.getMonth()] + " and " + m[(now.getMonth()+1) % 12]; },
+    notes: "by venmo, transferred to GDG", emailReminder: true, emailNotes: "Send $70 from Lake House to GDG" },
+  { emoji: "\uD83E\uDDF9", label: "Cleaning", type: "Cleaning", amount: "250.00", account: "Chase", spender: "Mgg",
+    description: "Lisa Flood", notes: "by Venmo",
+    emailReminder: true, emailNotes: "Transfer 250 from Lake House to GDG" },
+  { emoji: "\uD83D\uDCA7", label: "Water", type: "Utilities (Electric, Water, Trash)", amount: "38.23", account: "Chase", description: "Water Bill" },
+  { emoji: "\uD83D\uDC68\u200D\uD83E\uDDB3", label: "DKG Monthly", type: "Monthly Contribution", amount: "2000.00", account: "Chase", spender: "Dkg",
+    description: "DKG Monthly Contribution",
+    dateFn: () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-24"; },
+    emailReminder: true, emailNotes: "Transfer 2000 from GDG to Lake House" },
+  { emoji: "\uD83D\uDC68", label: "MGG Monthly", type: "Monthly Contribution", amount: "2000.00", spender: "Mgg",
+    description: "MGG Monthly Contribution", isSplit: true },
 ];
 
 const INITIAL_STATE = {
@@ -357,6 +371,7 @@ function App() {
   });
   const [syncing, setSyncing] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [expensePicker, setExpensePicker] = useState({ open: false, loading: false, expenses: [], selected: {} });
 
   // Persist settings
   useEffect(() => { try { localStorage.setItem(SK.email, reminderEmail); } catch {} }, [reminderEmail]);
@@ -655,6 +670,42 @@ function App() {
       flash("Could not send email: " + err.message, true);
       setEmailState("idle");
     }
+  };
+
+  /* ── Expense Picker (for split contributions) ─────── */
+  const loadChaseExpenses = async () => {
+    if (!scriptUrl) return;
+    setExpensePicker(p => ({ ...p, open: true, loading: true }));
+    try {
+      const res = await fetch(scriptUrl, {
+        method: "POST", body: JSON.stringify({ action: "recentChaseExpenses" })
+      });
+      const result = await res.json();
+      if (result.success) {
+        setExpensePicker(p => ({ ...p, expenses: result.expenses.reverse(), loading: false }));
+      } else {
+        setExpensePicker(p => ({ ...p, loading: false }));
+      }
+    } catch {
+      setExpensePicker(p => ({ ...p, loading: false }));
+    }
+  };
+
+  const toggleExpenseSelection = (chNum, amount) => {
+    setExpensePicker(p => {
+      const sel = { ...p.selected };
+      if (sel[chNum]) delete sel[chNum]; else sel[chNum] = amount;
+      return { ...p, selected: sel };
+    });
+  };
+
+  const applyExpenseSelection = () => {
+    const sel = expensePicker.selected;
+    const chNums = Object.keys(sel).sort();
+    const total = chNums.reduce((s, k) => s + Math.abs(sel[k]), 0);
+    updateForm("splitExpenses", total.toFixed(2));
+    updateForm("splitExpenseDesc", chNums.join(" and "));
+    setExpensePicker({ open: false, loading: false, expenses: [], selected: {} });
   };
 
   /* ── Transaction Browser query ──────────────────────── */
@@ -1177,8 +1228,11 @@ function App() {
         React.createElement("span", { style: { fontSize: 11, color: "#94a3b8", marginRight: 2 } }, "Quick:"),
         ...QUICK_ADDS.map(qa =>
           React.createElement("button", { key: qa.label, onClick: () => setForm({
-              ...emptyForm, type: qa.type, amount: qa.amount, account: qa.account,
-              description: qa.description, date: new Date().toISOString().split("T")[0]
+              ...emptyForm, type: qa.type, amount: qa.amount, account: qa.account, spender: qa.spender || "",
+              description: qa.descFn ? qa.descFn() : qa.description,
+              date: qa.dateFn ? qa.dateFn() : new Date().toISOString().split("T")[0],
+              notes: qa.notes || "", emailReminder: qa.emailReminder || false, emailNotes: qa.emailNotes || "",
+              isSplit: qa.isSplit || false
             }), style: { background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 20,
               padding: isMobile ? "8px 16px" : "5px 12px", fontSize: isMobile ? 13 : 12, cursor: "pointer", color: "#0c4a6e",
               fontWeight: 500, display: "flex", alignItems: "center", gap: 4 }
@@ -1211,7 +1265,7 @@ function App() {
           )
         )
       : React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12, marginBottom: 12 } },
-        React.createElement("div", null,
+        !form.isSplit && React.createElement("div", null,
           React.createElement("label", { style: ls }, "Account *"),
           React.createElement("select", { value: form.account, onChange: e => updateForm("account", e.target.value), style: {...is, background: "white"} },
             ...ACCOUNTS.map(a => React.createElement("option", { key: a, value: a }, a))
@@ -1304,11 +1358,54 @@ function App() {
           ),
           React.createElement("div", null,
             React.createElement("label", { style: {...ls, fontSize: 11} }, "Unreimbursed Expenses"),
-            React.createElement("input", { type: "number", step: "0.01", value: form.splitExpenses,
-              onChange: e => updateForm("splitExpenses", e.target.value), placeholder: "0", style: {...is, fontSize: 13} })
+            React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center" } },
+              React.createElement("input", { type: "number", step: "0.01", value: form.splitExpenses,
+                onChange: e => updateForm("splitExpenses", e.target.value), placeholder: "0", style: {...is, fontSize: 13, flex: 1} }),
+              React.createElement("button", { type: "button", onClick: loadChaseExpenses,
+                style: { background: "#fef3c7", border: "1px solid #fbbf24", borderRadius: 6,
+                  padding: "6px 10px", fontSize: 11, cursor: "pointer", color: "#92400e", fontWeight: 600, whiteSpace: "nowrap" }
+              }, expensePicker.loading ? "Loading..." : "Pick")
+            )
           ),
-          form.splitExpenses && parseFloat(form.splitExpenses) > 0 && React.createElement("div", { style: { gridColumn: "1 / -1" } },
-            React.createElement("label", { style: {...ls, fontSize: 11} }, "Which expenses? (CH numbers or description)"),
+          // Expense picker results
+          expensePicker.open && React.createElement("div", { style: { gridColumn: "1 / -1", background: "#fffbeb",
+            border: "1px solid #fbbf24", borderRadius: 8, padding: 10, marginTop: 4 } },
+            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 } },
+              React.createElement("span", { style: { fontSize: 12, fontWeight: 600, color: "#92400e" } },
+                "Select expenses to include:"),
+              React.createElement("div", { style: { display: "flex", gap: 6 } },
+                Object.keys(expensePicker.selected).length > 0 && React.createElement("button", { type: "button", onClick: applyExpenseSelection,
+                  style: { background: "#16a34a", color: "white", border: "none", borderRadius: 6,
+                    padding: "4px 12px", fontSize: 11, cursor: "pointer", fontWeight: 600 }
+                }, "Apply (" + Object.keys(expensePicker.selected).length + ")"),
+                React.createElement("button", { type: "button",
+                  onClick: () => setExpensePicker({ open: false, loading: false, expenses: [], selected: {} }),
+                  style: { background: "#e5e7eb", border: "none", borderRadius: 6,
+                    padding: "4px 10px", fontSize: 11, cursor: "pointer" }
+                }, "Cancel")
+              )
+            ),
+            expensePicker.loading ? React.createElement("div", { style: { fontSize: 12, color: "#666", padding: 8 } }, "Loading recent Chase expenses...") :
+            expensePicker.expenses.length === 0 ? React.createElement("div", { style: { fontSize: 12, color: "#666", padding: 8 } }, "No recent expenses found.") :
+            React.createElement("div", { style: { maxHeight: 200, overflowY: "auto" } },
+              ...expensePicker.expenses.map(ex =>
+                React.createElement("label", { key: ex.chNum, style: { display: "flex", alignItems: "center", gap: 8,
+                  padding: "5px 6px", borderRadius: 4, cursor: "pointer", fontSize: 12,
+                  background: expensePicker.selected[ex.chNum] ? "#fef9c3" : "transparent" } },
+                  React.createElement("input", { type: "checkbox",
+                    checked: !!expensePicker.selected[ex.chNum],
+                    onChange: () => toggleExpenseSelection(ex.chNum, ex.amount) }),
+                  React.createElement("span", { style: { fontWeight: 600, color: "#0c4a6e", minWidth: 52 } }, ex.chNum),
+                  React.createElement("span", { style: { flex: 1 } }, ex.description),
+                  React.createElement("span", { style: { color: "#dc2626", fontWeight: 500 } }, "$" + Math.abs(ex.amount).toFixed(2)),
+                  React.createElement("span", { style: { color: "#94a3b8", fontSize: 10 } }, ex.date)
+                )
+              )
+            )
+          ),
+          // Manual fallback: show text input for CH numbers
+          !expensePicker.open && form.splitExpenses && parseFloat(form.splitExpenses) > 0 && React.createElement("div", { style: { gridColumn: "1 / -1" } },
+            React.createElement("label", { style: {...ls, fontSize: 11} }, "Which expenses? (CH numbers)"),
             React.createElement("input", { type: "text", value: form.splitExpenseDesc,
               onChange: e => updateForm("splitExpenseDesc", e.target.value),
               placeholder: "e.g. CH043 and CH044", style: {...is, fontSize: 13} })
@@ -1319,17 +1416,16 @@ function App() {
       // Preview
       form.type && form.amount && form.description && (() => {
         const amt = Math.abs(parseFloat(form.amount)||0);
+        const ps = { background: "#f8f9fa", borderRadius: 8, padding: 14, marginTop: 10, border: "1px solid #e0e0e0", fontSize: 13 };
+        const row = { marginBottom: 6 };
         if (form.type === "Transfer") {
           const dir = TRANSFER_DIRS.find(d => d.value === form.transferDir) || TRANSFER_DIRS[0];
           const involvesChase = form.transferDir !== "acorns-general-to-checking";
-          const involvesAcorns = form.transferDir !== "chase-to-acorns-general" || true; // always true
           const chaseSign = form.transferDir === "chase-to-acorns-general" ? -1 : 1;
-          return React.createElement("div", {
-            style: { background: "#f8f9fa", borderRadius: 8, padding: 14, marginTop: 10, border: "1px solid #e0e0e0", fontSize: 13 }
-          },
+          return React.createElement("div", { style: ps },
             React.createElement("div", { style: { fontWeight: 600, marginBottom: 8, color: "#2c3e50" } }, "Preview: " + dir.label),
             React.createElement("div", { style: { fontSize: 12, color: "#888", marginBottom: 6 } }, "No Main Ledger entry \u2014 balances still update"),
-            involvesChase && React.createElement("div", { style: { marginBottom: 4 } },
+            involvesChase && React.createElement("div", { style: row },
               React.createElement("span", { style: { fontWeight: 600, color: "#1e40af" } }, "Chase: "),
               "Transfer | " + form.date + " | " + form.description + " | " + formatMoney(chaseSign * amt)
             ),
@@ -1344,16 +1440,57 @@ function App() {
         }
         const previewIncome = form.signOverride ? form.signOverride === "income" : isIncomeType(form.type);
         const previewAmt = previewIncome ? amt : -amt;
-        return React.createElement("div", {
-          style: { background: "#f8f9fa", borderRadius: 8, padding: 14, marginTop: 10, border: "1px solid #e0e0e0", fontSize: 13 }
-        },
+
+        // Split contribution preview
+        if (form.type === "Monthly Contribution" && form.isSplit) {
+          const cash = parseFloat(form.splitCash)||0;
+          const acorns = parseFloat(form.splitAcorns)||0;
+          const expenses = parseFloat(form.splitExpenses)||0;
+          const total = cash + acorns + expenses;
+          const balanced = Math.abs(total - amt) < 0.01;
+          const parts = [];
+          let chCount = 0;
+          if (cash > 0) { chCount++; parts.push("CH (cash): +" + formatMoney(cash)); }
+          if (expenses > 0) { chCount++; parts.push("CH (expenses): +" + formatMoney(expenses)); }
+          if (acorns > 0) parts.push("AC: +" + formatMoney(acorns));
+          const pairParts = [];
+          if (chCount > 0) pairParts.push(chCount > 1 ? chCount + " CH entries" : "CH");
+          if (acorns > 0) pairParts.push("AC");
+          const expDesc = form.splitExpenseDesc ? " (" + form.splitExpenseDesc + ")" : "";
+          const entries = [];
+          entries.push(React.createElement("div", { key: "main", style: row },
+            React.createElement("span", { style: { fontWeight: 600, color: "#2980b9" } }, "Main Ledger: "),
+            currentRR + " | Pair: " + pairParts.join(", ") + " | " + form.type + " | " + form.date + " | " + (form.spender || "\u2014") + " | " + form.description + " | +" + formatMoney(amt)
+          ));
+          if (cash > 0) entries.push(React.createElement("div", { key: "chase-cash", style: row },
+            React.createElement("span", { style: { fontWeight: 600, color: "#1e40af" } }, "Chase Ledger: "),
+            "Cash | " + form.type + " | " + form.date + " | " + form.description + " | +" + formatMoney(cash)
+          ));
+          if (expenses > 0) entries.push(React.createElement("div", { key: "chase-exp", style: row },
+            React.createElement("span", { style: { fontWeight: 600, color: "#1e40af" } }, "Chase Ledger: "),
+            "Unreimbursed Expenses" + expDesc + " | " + form.type + " | " + form.date + " | +" + formatMoney(expenses)
+          ));
+          if (acorns > 0) entries.push(React.createElement("div", { key: "acorns", style: row },
+            React.createElement("span", { style: { fontWeight: 600, color: "#166534" } }, "Acorns Ledger: "),
+            form.type + " | " + form.date + " | " + form.description + " | +" + formatMoney(acorns)
+          ));
+          return React.createElement("div", { style: ps },
+            React.createElement("div", { style: { fontWeight: 600, marginBottom: 8, color: "#2c3e50" } },
+              "Preview of Ledger Entries (" + entries.length + " rows)"),
+            !balanced && React.createElement("div", { style: { color: "#dc2626", fontSize: 12, marginBottom: 6, fontWeight: 600 } },
+              "\u26A0 Split total (" + formatMoney(total) + ") \u2260 amount (" + formatMoney(amt) + ")"),
+            ...entries
+          );
+        }
+
+        return React.createElement("div", { style: ps },
           React.createElement("div", { style: { fontWeight: 600, marginBottom: 8, color: "#2c3e50" } }, "Preview of Ledger Entries"),
-          React.createElement("div", { style: { marginBottom: 6 } },
+          React.createElement("div", { style: row },
             React.createElement("span", { style: { fontWeight: 600, color: "#2980b9" } }, "Main Ledger: "),
             currentRR + " | Pair: " + currentAcct + " | " + form.type + " | " + form.date + " | " + (form.spender || "\u2014") + " | " + form.description + " | " + formatMoney(previewAmt)
           ),
           React.createElement("div", null,
-            React.createElement("span", { style: { fontWeight: 600, color: "#27ae60" } }, form.account + " Ledger: "),
+            React.createElement("span", { style: { fontWeight: 600, color: form.account === "Chase" ? "#1e40af" : "#166534" } }, (form.account || "Chase") + " Ledger: "),
             currentAcct + " | Pair: " + currentRR + " | " + form.type + " | " + form.date + " | " + (form.spender || "\u2014") + " | " + form.description + " | " + formatMoney(previewAmt))
         );
       })(),
@@ -1408,7 +1545,16 @@ function App() {
               tx.emailReminder && React.createElement("span", { style: { fontSize: 11, color: "#d97706" }, title: tx.emailNotes || "Email reminder" }, "\u2709\uFE0F")
             ),
             React.createElement("div", { style: { fontSize: 12, color: "#666", marginTop: 2 } },
-              tx.date + " \u2014 " + tx.description + (tx.spender ? " (" + tx.spender + ")" : ""))
+              tx.date + " \u2014 " + tx.description + (tx.spender ? " (" + tx.spender + ")" : "")),
+            tx.isSplit && (() => {
+              const parts = [];
+              const sc = parseFloat(tx.splitCash)||0, sa = parseFloat(tx.splitAcorns)||0, se = parseFloat(tx.splitExpenses)||0;
+              if (sc > 0) parts.push("$" + sc.toFixed(2) + " cash to Chase");
+              if (sa > 0) parts.push("$" + sa.toFixed(2) + " to Acorns");
+              if (se > 0) parts.push("$" + se.toFixed(2) + " unreimbursed" + (tx.splitExpenseDesc ? " (" + tx.splitExpenseDesc + ")" : ""));
+              return parts.length > 0 && React.createElement("div", { style: { fontSize: 11, color: "#0c4a6e", marginTop: 2 } },
+                "\u21B3 " + parts.join(" \u00B7 "));
+            })()
           ),
           React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } },
             React.createElement("span", { style: { fontSize: 15, fontWeight: 600, color: amt >= 0 ? "#1a7a4c" : "#c0392b" } }, formatMoney(amt)),
