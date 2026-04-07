@@ -102,6 +102,9 @@ const QUICK_ADDS = [
     description: "Lisa Flood", notes: "by Venmo",
     emailReminder: true, emailNotes: "Transfer 250 from Lake House to GDG" },
   { emoji: "\uD83D\uDCA7", label: "Water", type: "Utilities (Electric, Water, Trash)", amount: "38.23", account: "Chase", description: "Water Bill" },
+  { emoji: "\uD83C\uDF3F", label: "Lawncare", type: "General Expense", amount: "40.00", account: "Chase", spender: "Mgg",
+    description: "Hack Bros Lawncare", notes: "by Venmo",
+    emailReminder: true, emailNotes: "Transfer $40 from Lake House to GDG" },
   { emoji: "\uD83D\uDC68\u200D\uD83E\uDDB3", label: "DKG Monthly", type: "Monthly Contribution", amount: "2000.00", account: "Chase", spender: "Dkg",
     description: "DKG Monthly Contribution",
     dateFn: () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-24"; },
@@ -668,7 +671,7 @@ function App() {
   const [pdfData, setPdfData] = useState(null);
   const [txBrowserView, setTxBrowserView] = useState(null);
   const [txBrowserFilters, setTxBrowserFilters] = useState({
-    categories: ["all"], startDate: "", endDate: new Date().toISOString().split("T")[0]
+    categories: ["all"], startDate: "", endDate: new Date().toISOString().split("T")[0], allTime: false
   });
   const [catMenuOpen, setCatMenuOpen] = useState(false);
   const [txCatSummaryView, setTxCatSummaryView] = useState(null);
@@ -1167,8 +1170,21 @@ function App() {
             )
           )
         ),
+        // All Time checkbox
+        React.createElement("label", {
+          style: { display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#475569",
+            cursor: "pointer", marginBottom: 8 }
+        },
+          React.createElement("input", { type: "checkbox", checked: txBrowserFilters.allTime,
+            onChange: () => setTxBrowserFilters(f => ({
+              ...f, allTime: !f.allTime,
+              startDate: !f.allTime ? "" : f.startDate,
+              endDate: !f.allTime ? "" : f.endDate
+            }))
+          }), "All Time"
+        ),
         // Date range
-        React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 12 } },
+        !txBrowserFilters.allTime && React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 12 } },
           React.createElement("div", null,
             React.createElement("label", { style: ls }, "Start Date"),
             React.createElement("input", {
@@ -1189,9 +1205,9 @@ function App() {
         React.createElement("div", { style: { display: "flex", gap: 8, flexDirection: isMobile ? "column" : "row" } },
           React.createElement("button", {
             onClick: () => { setCatMenuOpen(false); setTxBrowserView(v => ({ ...v, viewMode: null })); queryTransactions(txBrowserFilters.categories, txBrowserFilters.startDate, txBrowserFilters.endDate); },
-            disabled: !txBrowserFilters.startDate || !txBrowserFilters.endDate || tv.loading,
+            disabled: (!txBrowserFilters.allTime && (!txBrowserFilters.startDate || !txBrowserFilters.endDate)) || tv.loading,
             style: {...bp, flex: 1,
-              background: tv.loading ? "#94a3b8" : (!txBrowserFilters.startDate || !txBrowserFilters.endDate) ? "#cbd5e1" : "#0f766e"}
+              background: tv.loading ? "#94a3b8" : (!txBrowserFilters.allTime && (!txBrowserFilters.startDate || !txBrowserFilters.endDate)) ? "#cbd5e1" : "#0f766e"}
           }, tv.loading ? "Searching..." : "\uD83D\uDD0D Search Transactions"),
           React.createElement("button", {
             onClick: () => {
@@ -1199,9 +1215,9 @@ function App() {
               setTxBrowserView(v => ({ ...v, viewMode: "monthly", results: null, loading: true, error: null }));
               queryTransactions(txBrowserFilters.categories, txBrowserFilters.startDate, txBrowserFilters.endDate);
             },
-            disabled: !txBrowserFilters.startDate || !txBrowserFilters.endDate || tv.loading,
+            disabled: (!txBrowserFilters.allTime && (!txBrowserFilters.startDate || !txBrowserFilters.endDate)) || tv.loading,
             style: {...bp, flex: 1,
-              background: tv.loading ? "#94a3b8" : (!txBrowserFilters.startDate || !txBrowserFilters.endDate) ? "#cbd5e1" : "#7c3aed"}
+              background: tv.loading ? "#94a3b8" : (!txBrowserFilters.allTime && (!txBrowserFilters.startDate || !txBrowserFilters.endDate)) ? "#cbd5e1" : "#7c3aed"}
           }, "\uD83D\uDCCA Monthly Summary")
         )
       ),
