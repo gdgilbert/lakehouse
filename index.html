@@ -1188,16 +1188,20 @@ function App() {
         ),
         React.createElement("div", { style: { display: "flex", gap: 8, flexDirection: isMobile ? "column" : "row" } },
           React.createElement("button", {
-            onClick: () => { setCatMenuOpen(false); queryTransactions(txBrowserFilters.categories, txBrowserFilters.startDate, txBrowserFilters.endDate); },
+            onClick: () => { setCatMenuOpen(false); setTxBrowserView(v => ({ ...v, viewMode: null })); queryTransactions(txBrowserFilters.categories, txBrowserFilters.startDate, txBrowserFilters.endDate); },
             disabled: !txBrowserFilters.startDate || !txBrowserFilters.endDate || tv.loading,
             style: {...bp, flex: 1,
               background: tv.loading ? "#94a3b8" : (!txBrowserFilters.startDate || !txBrowserFilters.endDate) ? "#cbd5e1" : "#0f766e"}
           }, tv.loading ? "Searching..." : "\uD83D\uDD0D Search Transactions"),
           React.createElement("button", {
-            onClick: () => { setCatMenuOpen(false); setTxBrowserView(null); queryCategorySummary(txBrowserFilters.categories.length === 1 && !txBrowserFilters.categories.includes("all") ? txBrowserFilters.categories[0] : txBrowserFilters.categories[0]); },
-            disabled: txBrowserFilters.categories.includes("all") || txBrowserFilters.categories.length !== 1 || tv.loading,
+            onClick: () => {
+              setCatMenuOpen(false);
+              setTxBrowserView(v => ({ ...v, viewMode: "monthly", results: null, loading: true, error: null }));
+              queryTransactions(txBrowserFilters.categories, txBrowserFilters.startDate, txBrowserFilters.endDate);
+            },
+            disabled: !txBrowserFilters.startDate || !txBrowserFilters.endDate || tv.loading,
             style: {...bp, flex: 1,
-              background: (txBrowserFilters.categories.includes("all") || txBrowserFilters.categories.length !== 1) ? "#cbd5e1" : tv.loading ? "#94a3b8" : "#7c3aed"}
+              background: tv.loading ? "#94a3b8" : (!txBrowserFilters.startDate || !txBrowserFilters.endDate) ? "#cbd5e1" : "#7c3aed"}
           }, "\uD83D\uDCCA Monthly Summary")
         )
       ),
@@ -1209,8 +1213,8 @@ function App() {
       tv.loading && React.createElement("div", {
         style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.6)", fontSize: 14 }
       }, "Searching the Main Ledger..."),
-      // Results — grouped by category
-      tv.results && !tv.loading && (() => {
+      // Results — grouped by category (Search mode)
+      tv.results && !tv.loading && tv.viewMode !== "monthly" && (() => {
         // Build groups
         const groupMap = {};
         sorted.forEach(tx => {
@@ -1359,6 +1363,213 @@ function App() {
                 style: { padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13,
                   color: "white", background: reportEmailState !== "idle" ? "#94a3b8" : "#2563eb", whiteSpace: "nowrap" }
               }, reportEmailState === "generating" ? "Generating PDF..." : reportEmailState === "sending" ? "Sending..." : "\uD83D\uDCE4 Send Report")
+            )
+          )
+        );
+      })(),
+      // Results — Monthly Summary view (month → categories)
+      tv.results && !tv.loading && tv.viewMode === "monthly" && (() => {
+        const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+        // Group transactions by month (from tx date), then by category within each month
+        const monthMap = {};
+        sorted.forEach(tx => {
+          const dp = tx.date.split("/");
+          const mo = parseInt(dp[0]) - 1, yr = parseInt(dp[2]);
+          const key = yr + "-" + String(mo).padStart(2, "0");
+          const label = monthNames[mo] + " " + yr;
+          if (!monthMap[key]) monthMap[key] = { label, categories: {}, total: 0 };
+          const cat = tx.type || "Other";
+          if (!monthMap[key].categories[cat]) monthMap[key].categories[cat] = 0;
+          monthMap[key].categories[cat] += tx.amount;
+          monthMap[key].total += tx.amount;
+        });
+        const monthKeys = Object.keys(monthMap).sort();
+        const months = monthKeys.map(k => monthMap[k]);
+        // Collect all unique categories across all months for consistent display
+        const allCats = [...new Set(sorted.map(tx => tx.type || "Other"))].sort();
+        const grandTotal = sorted.reduce((s, tx) => s + tx.amount, 0);
+        // Category totals across all months
+        const catTotals = {};
+        allCats.forEach(c => { catTotals[c] = sorted.filter(tx => (tx.type || "Other") === c).reduce((s, tx) => s + tx.amount, 0); });
+
+        const filterDesc = (txBrowserFilters.startDate || "?") + " to " + (txBrowserFilters.endDate || "?") +
+          (allCats.length === 1 ? " - " + allCats[0] : " (" + allCats.length + " categories)");
+
+        // PDF generator for monthly summary
+        const generateMonthlySummaryPDF = () => {
+          var jsPDF = window.jspdf.jsPDF;
+          var doc = new jsPDF({ unit: "mm", format: "letter" });
+          var W = 215.9, mL = 14, mR = 14, cW = W - mL - mR;
+          var y = 18, pageH = 279.4;
+          var fmtM = formatMoney;
+          var checkPage = function(n) { if (y + n > pageH - 15) { doc.addPage(); y = 18; } };
+
+          doc.setTextColor(26, 26, 46);
+          doc.setFontSize(18); doc.setFont("helvetica", "bold");
+          doc.text("Rough River Lake House", W / 2, y, { align: "center" }); y += 7;
+          doc.setFontSize(13);
+          doc.text("Monthly Summary", W / 2, y, { align: "center" }); y += 5;
+          doc.setTextColor(100, 116, 139); doc.setFontSize(10); doc.setFont("helvetica", "normal");
+          doc.text(filterDesc, W / 2, y, { align: "center" }); y += 10;
+
+          var catX = mL + 3, amtX = W - mR - 3;
+
+          months.forEach(function(m) {
+            checkPage(12 + allCats.length * 6);
+            doc.setFillColor(30, 58, 95); doc.rect(mL, y - 4, cW, 8, "F");
+            doc.setTextColor(255, 255, 255); doc.setFontSize(11); doc.setFont("helvetica", "bold");
+            doc.text(m.label, mL + 3, y);
+            doc.text(fmtM(m.total), amtX, y, { align: "right" });
+            y += 8;
+            allCats.forEach(function(cat) {
+              var amt = m.categories[cat] || 0;
+              if (amt === 0) return;
+              doc.setTextColor(80, 80, 80); doc.setFontSize(9); doc.setFont("helvetica", "normal");
+              doc.text("   " + cat, catX, y);
+              doc.setTextColor(amt >= 0 ? 22 : 220, amt >= 0 ? 163 : 38, amt >= 0 ? 74 : 38);
+              doc.setFont("helvetica", "bold");
+              doc.text(fmtM(amt), amtX, y, { align: "right" });
+              y += 5.5;
+            });
+            y += 4;
+          });
+
+          // Category totals
+          checkPage(10 + allCats.length * 6);
+          y += 2;
+          doc.setDrawColor(200); doc.line(mL, y, W - mR, y); y += 6;
+          doc.setTextColor(30, 30, 30); doc.setFontSize(10); doc.setFont("helvetica", "bold");
+          doc.text("Category Totals:", catX, y); y += 6;
+          allCats.forEach(function(cat) {
+            var t = catTotals[cat];
+            doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+            doc.setTextColor(80, 80, 80); doc.text("   " + cat, catX, y);
+            doc.setTextColor(t >= 0 ? 22 : 220, t >= 0 ? 163 : 38, t >= 0 ? 74 : 38);
+            doc.setFont("helvetica", "bold");
+            doc.text(fmtM(t), amtX, y, { align: "right" });
+            y += 5.5;
+          });
+          y += 4;
+
+          // Grand total
+          doc.setFillColor(30, 41, 59); doc.rect(mL, y - 4, cW, 10, "F");
+          doc.setTextColor(255, 255, 255); doc.setFontSize(11); doc.setFont("helvetica", "bold");
+          doc.text("Grand Total:", mL + 3, y + 2);
+          doc.text(fmtM(grandTotal), amtX, y + 2, { align: "right" });
+          y += 16;
+
+          doc.setTextColor(148, 163, 184); doc.setFontSize(8); doc.setFont("helvetica", "normal");
+          doc.text(sorted.length + " transactions across " + months.length + " month" + (months.length !== 1 ? "s" : ""), W / 2, y, { align: "center" });
+          y += 4;
+          doc.text("Generated: " + new Date().toLocaleString(), W / 2, y, { align: "center" });
+
+          var filename = "LakeHouse_MonthlySummary_" + new Date().toISOString().split("T")[0] + ".pdf";
+          return { base64: doc.output("datauristring").split(",")[1], filename: filename };
+        };
+
+        const sendSummaryEmail = async () => {
+          if (!scriptUrl) { flash("Set your Script URL in Settings first.", true); return; }
+          if (!reportEmails.trim()) { flash("Enter at least one email address.", true); return; }
+          setReportEmailState("generating");
+          try {
+            const pdf = generateMonthlySummaryPDF();
+            setReportEmailState("sending");
+            const res = await fetch(scriptUrl, {
+              method: "POST",
+              body: JSON.stringify({
+                action: "sendStatement",
+                pdfBase64: pdf.base64,
+                pdfFilename: pdf.filename,
+                recipients: reportEmails.trim(),
+                subject: "Lake House - Monthly Summary (" + filterDesc + ")",
+                htmlBody: "<p>Attached is a monthly summary for: <strong>" + filterDesc + "</strong></p>" +
+                  "<p>" + months.length + " months, " + sorted.length + " transactions, Grand Total: " + formatMoney(grandTotal) + "</p>" +
+                  "<p style='color:#94a3b8;font-size:12px;'>Generated by Rough River Lake House Transaction System</p>"
+              })
+            });
+            const result = await res.json();
+            if (result.success) { flash("Summary emailed to " + reportEmails.trim()); }
+            else { flash("Email failed: " + (result.error || "Unknown error"), true); }
+          } catch (err) { flash("Email error: " + err.message, true); }
+          setReportEmailState("idle");
+        };
+
+        return React.createElement("div", null,
+          React.createElement("div", {
+            style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }
+          },
+            React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 12 } },
+              months.length + " month" + (months.length !== 1 ? "s" : "") + ", " +
+              sorted.length + " transaction" + (sorted.length !== 1 ? "s" : "") +
+              " (" + allCats.join(", ") + ")"
+            ),
+            // Empty
+            sorted.length === 0 && React.createElement("div", {
+              style: { textAlign: "center", padding: 30, color: "#94a3b8", fontSize: 13 }
+            }, "No transactions found for the selected filters."),
+            // Month blocks
+            ...months.map((m, mi) => React.createElement("div", { key: mi, style: { marginBottom: 12 } },
+              // Month header
+              React.createElement("div", {
+                style: { background: "#1e3a5f", color: "white", padding: "10px 14px", borderRadius: "8px 8px 0 0",
+                  fontWeight: 700, fontSize: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }
+              },
+                React.createElement("span", null, m.label),
+                React.createElement("span", { style: { color: m.total >= 0 ? "#4ade80" : "#f87171" } }, formatMoney(m.total))
+              ),
+              // Category rows within this month
+              ...allCats.filter(cat => m.categories[cat] && m.categories[cat] !== 0).map((cat, ci) => {
+                const amt = m.categories[cat];
+                return React.createElement("div", { key: ci,
+                  style: { display: "flex", justifyContent: "space-between", padding: isMobile ? "8px 14px" : "7px 14px",
+                    fontSize: 13, borderBottom: "1px solid #f1f5f9", background: ci % 2 === 0 ? "#fff" : "#fafafa" }
+                },
+                  React.createElement("div", { style: { color: "#475569" } }, cat),
+                  React.createElement("div", { style: { fontWeight: 600, color: amt >= 0 ? "#16a34a" : "#dc2626" } }, formatMoney(amt))
+                );
+              })
+            )),
+            // Category totals section
+            sorted.length > 0 && React.createElement("div", { style: { marginTop: 8, marginBottom: 8 } },
+              React.createElement("div", {
+                style: { background: "#475569", color: "white", padding: "8px 14px", borderRadius: "8px 8px 0 0",
+                  fontWeight: 700, fontSize: 13 }
+              }, "Category Totals"),
+              ...allCats.map((cat, ci) => React.createElement("div", { key: ci,
+                style: { display: "flex", justifyContent: "space-between", padding: isMobile ? "8px 14px" : "7px 14px",
+                  fontSize: 13, borderBottom: "1px solid #f1f5f9", background: ci % 2 === 0 ? "#fff" : "#fafafa" }
+              },
+                React.createElement("div", { style: { color: "#1e293b", fontWeight: 600 } }, cat),
+                React.createElement("div", { style: { fontWeight: 700, color: catTotals[cat] >= 0 ? "#16a34a" : "#dc2626" } }, formatMoney(catTotals[cat]))
+              ))
+            ),
+            // Grand total
+            sorted.length > 0 && React.createElement("div", {
+              style: { display: "flex", justifyContent: "space-between", padding: "12px 16px",
+                background: "#1e293b", borderRadius: 8, fontWeight: 700, fontSize: 14, marginTop: 8, color: "white" }
+            },
+              React.createElement("div", null, "Grand Total:"),
+              React.createElement("div", { style: { color: grandTotal >= 0 ? "#4ade80" : "#f87171" } }, formatMoney(grandTotal))
+            )
+          ),
+          // Email section
+          sorted.length > 0 && React.createElement("div", {
+            style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", marginTop: 12 }
+          },
+            React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 8 } }, "\uD83D\uDCE7 Email This Summary"),
+            React.createElement("div", { style: { display: "flex", gap: 8, flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center" } },
+              React.createElement("input", {
+                type: "text", value: reportEmails,
+                onChange: (e) => setReportEmails(e.target.value),
+                placeholder: "email@example.com, another@example.com",
+                style: { flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid #d1d5db", fontSize: 13, outline: "none" }
+              }),
+              React.createElement("button", {
+                onClick: sendSummaryEmail,
+                disabled: reportEmailState !== "idle",
+                style: { padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13,
+                  color: "white", background: reportEmailState !== "idle" ? "#94a3b8" : "#7c3aed", whiteSpace: "nowrap" }
+              }, reportEmailState === "generating" ? "Generating PDF..." : reportEmailState === "sending" ? "Sending..." : "\uD83D\uDCE4 Send Summary")
             )
           )
         );
