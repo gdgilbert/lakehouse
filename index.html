@@ -583,8 +583,9 @@ function App() {
   const [pdfData, setPdfData] = useState(null);
   const [txBrowserView, setTxBrowserView] = useState(null);
   const [txBrowserFilters, setTxBrowserFilters] = useState({
-    category: "all", startDate: "", endDate: new Date().toISOString().split("T")[0]
+    categories: ["all"], startDate: "", endDate: new Date().toISOString().split("T")[0]
   });
+  const [catMenuOpen, setCatMenuOpen] = useState(false);
   const [txCatSummaryView, setTxCatSummaryView] = useState(null);
 
   const closeStatement = async () => {
@@ -710,7 +711,7 @@ function App() {
   };
 
   /* ── Transaction Browser query ──────────────────────── */
-  const queryTransactions = async (category, startDate, endDate) => {
+  const queryTransactions = async (categories, startDate, endDate) => {
     if (!scriptUrl) {
       setTxBrowserView(v => ({ ...v, results: null, loading: false,
         error: "Set your Script URL in Settings to use the Transaction Browser." }));
@@ -720,7 +721,7 @@ function App() {
     try {
       const res = await fetch(scriptUrl, {
         method: "POST",
-        body: JSON.stringify({ action: "queryTransactions", category, startDate, endDate })
+        body: JSON.stringify({ action: "queryTransactions", categories, startDate, endDate })
       });
       const result = await res.json();
       if (result.success) {
@@ -852,10 +853,10 @@ function App() {
           var amtText = formatMoney(isExpense ? -p.monthAmount : p.monthAmount);
           var clickHandler = () => {
               const sd = toISO(p.startDate), ed = toISO(p.endDate);
-              setTxBrowserFilters({ category: cv.category, startDate: sd, endDate: ed });
-              setTxBrowserView({ category: cv.category, startDate: sd, endDate: ed,
+              setTxBrowserFilters({ categories: [cv.category], startDate: sd, endDate: ed });
+              setTxBrowserView({ categories: [cv.category], startDate: sd, endDate: ed,
                 results: null, loading: false, error: null, sortCol: null, sortDir: "asc" });
-              queryTransactions(cv.category, sd, ed);
+              queryTransactions([cv.category], sd, ed);
           };
           return isMobile
           ? React.createElement("div", { key: i, onClick: clickHandler,
@@ -934,18 +935,49 @@ function App() {
       React.createElement("div", {
         style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", marginBottom: 16 }
       },
-        React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: 10, marginBottom: 12 } },
-          React.createElement("div", null,
-            React.createElement("label", { style: ls }, "Category"),
-            React.createElement("select", {
-              value: txBrowserFilters.category,
-              onChange: e => setTxBrowserFilters(f => ({...f, category: e.target.value})),
-              style: {...is, background: "white"}
-            },
-              React.createElement("option", { value: "all" }, "All Categories"),
-              ...CATEGORIES.map(c => React.createElement("option", { key: c, value: c }, c))
-            )
+        // Category checkboxes
+        React.createElement("div", { style: { marginBottom: 12 } },
+          React.createElement("label", { style: ls }, "Categories"),
+          React.createElement("button", {
+            onClick: () => setCatMenuOpen(v => !v),
+            style: {...is, background: "white", cursor: "pointer", textAlign: "left",
+              display: "flex", justifyContent: "space-between", alignItems: "center" }
+          },
+            React.createElement("span", { style: { color: txBrowserFilters.categories.includes("all") ? "#888" : "#1e293b" } },
+              txBrowserFilters.categories.includes("all") ? "All Categories"
+              : txBrowserFilters.categories.length + " selected"),
+            React.createElement("span", { style: { fontSize: 10 } }, catMenuOpen ? "\u25B2" : "\u25BC")
           ),
+          catMenuOpen && React.createElement("div", {
+            style: { border: "1px solid #d1d5db", borderRadius: 8, marginTop: 4, padding: 8, background: "white",
+              maxHeight: 200, overflowY: "auto" }
+          },
+            // All toggle
+            React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 8, padding: "4px 0",
+              fontSize: 13, fontWeight: 600, borderBottom: "1px solid #f1f5f9", marginBottom: 4, cursor: "pointer" } },
+              React.createElement("input", { type: "checkbox",
+                checked: txBrowserFilters.categories.includes("all"),
+                onChange: () => setTxBrowserFilters(f => ({ ...f, categories: ["all"] }))
+              }), "All Categories"
+            ),
+            ...CATEGORIES.map(c =>
+              React.createElement("label", { key: c, style: { display: "flex", alignItems: "center", gap: 8,
+                padding: "3px 0", fontSize: 12, cursor: "pointer" } },
+                React.createElement("input", { type: "checkbox",
+                  checked: txBrowserFilters.categories.includes("all") || txBrowserFilters.categories.includes(c),
+                  onChange: () => setTxBrowserFilters(f => {
+                    let cats = f.categories.filter(x => x !== "all");
+                    if (cats.includes(c)) cats = cats.filter(x => x !== c);
+                    else cats = [...cats, c];
+                    return { ...f, categories: cats.length === 0 || cats.length === CATEGORIES.length ? ["all"] : cats };
+                  })
+                }), c
+              )
+            )
+          )
+        ),
+        // Date range
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 12 } },
           React.createElement("div", null,
             React.createElement("label", { style: ls }, "Start Date"),
             React.createElement("input", {
@@ -965,16 +997,16 @@ function App() {
         ),
         React.createElement("div", { style: { display: "flex", gap: 8, flexDirection: isMobile ? "column" : "row" } },
           React.createElement("button", {
-            onClick: () => queryTransactions(txBrowserFilters.category, txBrowserFilters.startDate, txBrowserFilters.endDate),
+            onClick: () => { setCatMenuOpen(false); queryTransactions(txBrowserFilters.categories, txBrowserFilters.startDate, txBrowserFilters.endDate); },
             disabled: !txBrowserFilters.startDate || !txBrowserFilters.endDate || tv.loading,
             style: {...bp, flex: 1,
               background: tv.loading ? "#94a3b8" : (!txBrowserFilters.startDate || !txBrowserFilters.endDate) ? "#cbd5e1" : "#0f766e"}
           }, tv.loading ? "Searching..." : "\uD83D\uDD0D Search Transactions"),
           React.createElement("button", {
-            onClick: () => { setTxBrowserView(null); queryCategorySummary(txBrowserFilters.category); },
-            disabled: txBrowserFilters.category === "all" || tv.loading,
+            onClick: () => { setCatMenuOpen(false); setTxBrowserView(null); queryCategorySummary(txBrowserFilters.categories.length === 1 && !txBrowserFilters.categories.includes("all") ? txBrowserFilters.categories[0] : txBrowserFilters.categories[0]); },
+            disabled: txBrowserFilters.categories.includes("all") || txBrowserFilters.categories.length !== 1 || tv.loading,
             style: {...bp, flex: 1,
-              background: txBrowserFilters.category === "all" ? "#cbd5e1" : tv.loading ? "#94a3b8" : "#7c3aed"}
+              background: (txBrowserFilters.categories.includes("all") || txBrowserFilters.categories.length !== 1) ? "#cbd5e1" : tv.loading ? "#94a3b8" : "#7c3aed"}
           }, "\uD83D\uDCCA Monthly Summary")
         )
       ),
@@ -992,7 +1024,7 @@ function App() {
       },
         React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 12 } },
           sorted.length + " transaction" + (sorted.length !== 1 ? "s" : "") + " found" +
-          (tv.category !== "all" ? " for " + tv.category : "")
+          (!tv.categories || tv.categories.includes("all") ? "" : " for " + tv.categories.join(", "))
         ),
         // Table header (desktop only)
         !isMobile && sorted.length > 0 && React.createElement("div", {
@@ -1206,8 +1238,8 @@ function App() {
     React.createElement("div", { style: { marginBottom: 16 } },
       React.createElement("button", {
         onClick: () => {
-          setTxBrowserFilters({ category: "all", startDate: "", endDate: new Date().toISOString().split("T")[0] });
-          setTxBrowserView({ category: "all", startDate: "", endDate: new Date().toISOString().split("T")[0],
+          setTxBrowserFilters({ categories: ["all"], startDate: "", endDate: new Date().toISOString().split("T")[0] });
+          setTxBrowserView({ categories: ["all"], startDate: "", endDate: new Date().toISOString().split("T")[0],
             results: null, loading: false, error: null, sortCol: null, sortDir: "asc" });
         },
         style: { ...bp, width: "100%", background: "#0f766e", padding: "12px 24px", borderRadius: 10 }
