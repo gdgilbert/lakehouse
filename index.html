@@ -352,6 +352,91 @@ function generateStatementEmailHTML(cv) {
   '</div>';
 }
 
+/* ── PDF generator for Transaction Browser report ────────── */
+
+function generateReportPDF(groups, grandTotal, filterInfo) {
+  var jsPDF = window.jspdf.jsPDF;
+  var doc = new jsPDF({ unit: "mm", format: "letter" });
+  var W = 215.9, mL = 14, mR = 14, cW = W - mL - mR;
+  var y = 18;
+  var fmtM = formatMoney;
+  var pageH = 279.4;
+
+  var checkPage = function(needed) {
+    if (y + needed > pageH - 15) { doc.addPage(); y = 18; }
+  };
+
+  // Title
+  doc.setTextColor(26, 26, 46);
+  doc.setFontSize(18); doc.setFont("helvetica", "bold");
+  doc.text("Rough River Lake House", W / 2, y, { align: "center" }); y += 7;
+  doc.setFontSize(13); doc.setFont("helvetica", "bold");
+  doc.text("Transaction Report", W / 2, y, { align: "center" }); y += 5;
+  doc.setTextColor(100, 116, 139); doc.setFontSize(10); doc.setFont("helvetica", "normal");
+  doc.text(filterInfo, W / 2, y, { align: "center" }); y += 8;
+
+  // Column positions
+  var numX = mL + 2, dateX = mL + 20, descX = mL + 48, whoX = W - mR - 28, amtX = W - mR - 2;
+
+  groups.forEach(function(group) {
+    checkPage(20);
+    // Category header
+    doc.setFillColor(241, 245, 249); doc.rect(mL, y - 4, cW, 8, "F");
+    doc.setTextColor(30, 64, 175); doc.setFontSize(11); doc.setFont("helvetica", "bold");
+    doc.text(group.category + " (" + group.transactions.length + ")", mL + 3, y);
+    y += 8;
+
+    // Column headers
+    doc.setTextColor(100, 116, 139); doc.setFontSize(7); doc.setFont("helvetica", "bold");
+    doc.text("#", numX, y); doc.text("Date", dateX, y); doc.text("Description", descX, y);
+    doc.text("Who", whoX, y); doc.text("Amount", amtX, y, { align: "right" });
+    y += 5;
+
+    // Rows
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+    group.transactions.forEach(function(tx, i) {
+      checkPage(6);
+      if (i % 2 === 0) { doc.setFillColor(250, 250, 252); doc.rect(mL, y - 3.5, cW, 5, "F"); }
+      doc.setTextColor(37, 99, 235); doc.text(tx.number, numX, y);
+      doc.setTextColor(50, 50, 50); doc.text(tx.date, dateX, y);
+      var desc = tx.description.length > 40 ? tx.description.substring(0, 37) + "..." : tx.description;
+      doc.text(desc, descX, y);
+      doc.text(tx.spender || "-", whoX, y);
+      doc.setTextColor(tx.amount >= 0 ? 22 : 220, tx.amount >= 0 ? 163 : 38, tx.amount >= 0 ? 74 : 38);
+      doc.text(fmtM(tx.amount), amtX, y, { align: "right" });
+      y += 5;
+    });
+
+    // Category subtotal
+    checkPage(8);
+    doc.setDrawColor(200); doc.line(mL, y, W - mR, y); y += 4;
+    doc.setTextColor(50, 50, 50); doc.setFontSize(9); doc.setFont("helvetica", "bold");
+    doc.text(group.category + " Subtotal:", mL + 3, y);
+    var st = group.subtotal;
+    doc.setTextColor(st >= 0 ? 22 : 220, st >= 0 ? 163 : 38, st >= 0 ? 74 : 38);
+    doc.text(fmtM(st), amtX, y, { align: "right" });
+    y += 10;
+  });
+
+  // Grand total
+  checkPage(12);
+  doc.setFillColor(30, 41, 59); doc.rect(mL, y - 4, cW, 10, "F");
+  doc.setTextColor(255, 255, 255); doc.setFontSize(11); doc.setFont("helvetica", "bold");
+  doc.text("Grand Total:", mL + 3, y + 2);
+  doc.text(fmtM(grandTotal), amtX, y + 2, { align: "right" });
+  y += 16;
+
+  // Footer
+  doc.setTextColor(148, 163, 184); doc.setFontSize(8); doc.setFont("helvetica", "normal");
+  var totalTx = groups.reduce(function(s, g) { return s + g.transactions.length; }, 0);
+  doc.text(totalTx + " transaction" + (totalTx !== 1 ? "s" : "") + " across " + groups.length + " categor" + (groups.length !== 1 ? "ies" : "y"), W / 2, y, { align: "center" });
+  y += 4;
+  doc.text("Generated: " + new Date().toLocaleString(), W / 2, y, { align: "center" });
+
+  var filename = "LakeHouse_Report_" + new Date().toISOString().split("T")[0] + ".pdf";
+  return { base64: doc.output("datauristring").split(",")[1], filename: filename, doc: doc };
+}
+
 /* ══════════════════════════════════════════════════════════ */
 function App() {
   const isMobile = useIsMobile();
@@ -587,6 +672,8 @@ function App() {
   });
   const [catMenuOpen, setCatMenuOpen] = useState(false);
   const [txCatSummaryView, setTxCatSummaryView] = useState(null);
+  const [reportEmails, setReportEmails] = useState("gdgilbert@gmail.com");
+  const [reportEmailState, setReportEmailState] = useState("idle");
 
   const closeStatement = async () => {
     if (!scriptUrl) { flash("Set your Script URL in Settings first.", true); return; }
@@ -833,70 +920,174 @@ function App() {
         style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.6)", fontSize: 14 }
       }, "Loading statement periods..."),
       // Results
-      cv.periods && !cv.loading && React.createElement("div", {
-        style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }
-      },
-        React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 12 } },
-          cv.periods.length + " statement period" + (cv.periods.length !== 1 ? "s" : "") + " found"),
-        // Table header (desktop only)
-        !isMobile && cv.periods.length > 0 && React.createElement("div", {
-          style: { display: "grid", gridTemplateColumns: "1fr 120px 100px", gap: 8, padding: "8px 12px",
-            background: "#f1f5f9", borderRadius: "6px 6px 0 0", fontWeight: 700, fontSize: 12, color: "#64748b" }
-        },
-          React.createElement("div", null, "Period"),
-          React.createElement("div", null, "Date Range"),
-          React.createElement("div", { style: { textAlign: "right" } }, "Amount")
-        ),
-        // Rows
-        ...cv.periods.map((p, i) => {
-          var amtColor = isExpense ? (p.monthAmount > 0 ? "#dc2626" : "#64748b") : (p.monthAmount > 0 ? "#16a34a" : "#64748b");
-          var amtText = formatMoney(isExpense ? -p.monthAmount : p.monthAmount);
-          var clickHandler = () => {
-              const sd = toISO(p.startDate), ed = toISO(p.endDate);
-              setTxBrowserFilters({ categories: [cv.category], startDate: sd, endDate: ed });
-              setTxBrowserView({ categories: [cv.category], startDate: sd, endDate: ed,
-                results: null, loading: false, error: null, sortCol: null, sortDir: "asc" });
-              queryTransactions([cv.category], sd, ed);
-          };
-          return isMobile
-          ? React.createElement("div", { key: i, onClick: clickHandler,
-              style: { display: "flex", justifyContent: "space-between", alignItems: "center",
-                padding: "12px 0", borderBottom: "1px solid #f1f5f9", cursor: "pointer" }
+      cv.periods && !cv.loading && (() => {
+        const summaryTitle = cv.category + " - Fiscal Year Summary";
+
+        const generateSummaryPDF = () => {
+          var jsPDF = window.jspdf.jsPDF;
+          var doc = new jsPDF({ unit: "mm", format: "letter" });
+          var W = 215.9, mL = 18, mR = 18, cW = W - mL - mR;
+          var y = 20;
+          var fmtM = formatMoney;
+
+          doc.setTextColor(26, 26, 46);
+          doc.setFontSize(18); doc.setFont("helvetica", "bold");
+          doc.text("Rough River Lake House", W / 2, y, { align: "center" }); y += 7;
+          doc.setFontSize(14); doc.setFont("helvetica", "bold");
+          doc.text(summaryTitle, W / 2, y, { align: "center" }); y += 10;
+
+          // Column headers
+          doc.setFillColor(241, 245, 249); doc.rect(mL, y - 4, cW, 8, "F");
+          doc.setTextColor(100, 116, 139); doc.setFontSize(10); doc.setFont("helvetica", "bold");
+          doc.text("Period", mL + 3, y); doc.text("Date Range", mL + 60, y);
+          doc.text("Amount", W - mR - 3, y, { align: "right" }); y += 8;
+
+          cv.periods.forEach(function(p, i) {
+            if (i % 2 === 0) { doc.setFillColor(250, 250, 252); doc.rect(mL, y - 3.5, cW, 7, "F"); }
+            doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+            doc.setTextColor(30, 41, 59); doc.text(monthLabel(p.startDate, p.endDate), mL + 3, y);
+            doc.setTextColor(100, 116, 139); doc.setFontSize(9);
+            doc.text(p.startDate + " - " + p.endDate, mL + 60, y);
+            var amt = isExpense ? -p.monthAmount : p.monthAmount;
+            doc.setTextColor(amt >= 0 ? 22 : 220, amt >= 0 ? 163 : 38, amt >= 0 ? 74 : 38);
+            doc.setFontSize(10); doc.setFont("helvetica", "bold");
+            doc.text(fmtM(amt), W - mR - 3, y, { align: "right" });
+            y += 7;
+          });
+
+          // Total
+          y += 2;
+          doc.setDrawColor(200); doc.line(mL, y, W - mR, y); y += 5;
+          doc.setFillColor(30, 41, 59); doc.rect(mL, y - 4, cW, 10, "F");
+          doc.setTextColor(255, 255, 255); doc.setFontSize(12); doc.setFont("helvetica", "bold");
+          doc.text("Fiscal Year Total:", mL + 3, y + 2);
+          doc.text(fmtM(isExpense ? -total : total), W - mR - 3, y + 2, { align: "right" });
+          y += 16;
+
+          // Footer
+          doc.setTextColor(148, 163, 184); doc.setFontSize(8); doc.setFont("helvetica", "normal");
+          doc.text(cv.periods.length + " statement period" + (cv.periods.length !== 1 ? "s" : ""), W / 2, y, { align: "center" });
+          y += 4;
+          doc.text("Generated: " + new Date().toLocaleString(), W / 2, y, { align: "center" });
+
+          var filename = "LakeHouse_" + cv.category.replace(/[^a-zA-Z0-9]/g, "_") + "_Summary_" + new Date().toISOString().split("T")[0] + ".pdf";
+          return { base64: doc.output("datauristring").split(",")[1], filename: filename };
+        };
+
+        const sendSummaryEmail = async () => {
+          if (!scriptUrl) { flash("Set your Script URL in Settings first.", true); return; }
+          if (!reportEmails.trim()) { flash("Enter at least one email address.", true); return; }
+          setReportEmailState("generating");
+          try {
+            const pdf = generateSummaryPDF();
+            setReportEmailState("sending");
+            const res = await fetch(scriptUrl, {
+              method: "POST",
+              body: JSON.stringify({
+                action: "sendStatement",
+                pdfBase64: pdf.base64,
+                pdfFilename: pdf.filename,
+                recipients: reportEmails.trim(),
+                subject: "Lake House - " + summaryTitle,
+                htmlBody: "<p>Attached is the fiscal year summary for: <strong>" + cv.category + "</strong></p>" +
+                  "<p>" + cv.periods.length + " periods, Fiscal Year Total: " + formatMoney(isExpense ? -total : total) + "</p>" +
+                  "<p style='color:#94a3b8;font-size:12px;'>Generated by Rough River Lake House Transaction System</p>"
+              })
+            });
+            const result = await res.json();
+            if (result.success) { flash("Summary emailed to " + reportEmails.trim()); }
+            else { flash("Email failed: " + (result.error || "Unknown error"), true); }
+          } catch (err) { flash("Email error: " + err.message, true); }
+          setReportEmailState("idle");
+        };
+
+        return React.createElement("div", null,
+          React.createElement("div", {
+            style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }
+          },
+            React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 12 } },
+              cv.periods.length + " statement period" + (cv.periods.length !== 1 ? "s" : "") + " found"),
+            // Table header (desktop only)
+            !isMobile && cv.periods.length > 0 && React.createElement("div", {
+              style: { display: "grid", gridTemplateColumns: "1fr 120px 100px", gap: 8, padding: "8px 12px",
+                background: "#f1f5f9", borderRadius: "6px 6px 0 0", fontWeight: 700, fontSize: 12, color: "#64748b" }
             },
-              React.createElement("div", null,
-                React.createElement("div", { style: { fontWeight: 600, color: "#1e293b", fontSize: 14 } }, monthLabel(p.startDate, p.endDate)),
-                React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2 } }, p.startDate + " \u2013 " + p.endDate)
-              ),
-              React.createElement("div", { style: { fontWeight: 600, fontSize: 15, color: amtColor } }, amtText)
+              React.createElement("div", null, "Period"),
+              React.createElement("div", null, "Date Range"),
+              React.createElement("div", { style: { textAlign: "right" } }, "Amount")
+            ),
+            // Rows
+            ...cv.periods.map((p, i) => {
+              var amtColor = isExpense ? (p.monthAmount > 0 ? "#dc2626" : "#64748b") : (p.monthAmount > 0 ? "#16a34a" : "#64748b");
+              var amtText = formatMoney(isExpense ? -p.monthAmount : p.monthAmount);
+              var clickHandler = () => {
+                  const sd = toISO(p.startDate), ed = toISO(p.endDate);
+                  setTxBrowserFilters({ categories: [cv.category], startDate: sd, endDate: ed });
+                  setTxBrowserView({ categories: [cv.category], startDate: sd, endDate: ed,
+                    results: null, loading: false, error: null, sortCol: null, sortDir: "asc" });
+                  queryTransactions([cv.category], sd, ed);
+              };
+              return isMobile
+              ? React.createElement("div", { key: i, onClick: clickHandler,
+                  style: { display: "flex", justifyContent: "space-between", alignItems: "center",
+                    padding: "12px 0", borderBottom: "1px solid #f1f5f9", cursor: "pointer" }
+                },
+                  React.createElement("div", null,
+                    React.createElement("div", { style: { fontWeight: 600, color: "#1e293b", fontSize: 14 } }, monthLabel(p.startDate, p.endDate)),
+                    React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2 } }, p.startDate + " \u2013 " + p.endDate)
+                  ),
+                  React.createElement("div", { style: { fontWeight: 600, fontSize: 15, color: amtColor } }, amtText)
+                )
+              : React.createElement("div", { key: i, onClick: clickHandler,
+                  style: { display: "grid", gridTemplateColumns: "1fr 120px 100px", gap: 8, padding: "10px 12px",
+                    fontSize: 13, borderBottom: "1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#fafafa",
+                    cursor: "pointer", transition: "background 0.1s" }
+                },
+                  React.createElement("div", { style: { fontWeight: 600, color: "#1e293b" } }, monthLabel(p.startDate, p.endDate)),
+                  React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, p.startDate + " \u2013 " + p.endDate),
+                  React.createElement("div", { style: { textAlign: "right", fontWeight: 600, color: amtColor } }, amtText)
+                );
+            }),
+            // Empty
+            cv.periods.length === 0 && React.createElement("div", {
+              style: { textAlign: "center", padding: 30, color: "#94a3b8", fontSize: 13 }
+            }, "No statement periods found."),
+            // Total
+            cv.periods.length > 0 && React.createElement("div", {
+              style: { display: "flex", justifyContent: "space-between", padding: "12px " + (isMobile ? "0" : "12px"),
+                background: "#1e293b", borderRadius: 8, fontWeight: 700, fontSize: 14, marginTop: 8, color: "white" }
+            },
+              React.createElement("div", null, "Fiscal Year Total"),
+              React.createElement("div", { style: { textAlign: "right",
+                color: isExpense ? "#f87171" : "#4ade80" } },
+                formatMoney(isExpense ? -total : total))
+            ),
+            // Hint
+            React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", textAlign: "center", marginTop: 10 } },
+              "Click a period to see individual transactions")
+          ),
+          // Email summary section
+          cv.periods.length > 0 && React.createElement("div", {
+            style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", marginTop: 12 }
+          },
+            React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 8 } }, "\uD83D\uDCE7 Email This Summary"),
+            React.createElement("div", { style: { display: "flex", gap: 8, flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center" } },
+              React.createElement("input", {
+                type: "text", value: reportEmails,
+                onChange: (e) => setReportEmails(e.target.value),
+                placeholder: "email@example.com, another@example.com",
+                style: { flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid #d1d5db", fontSize: 13, outline: "none" }
+              }),
+              React.createElement("button", {
+                onClick: sendSummaryEmail,
+                disabled: reportEmailState !== "idle",
+                style: { padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13,
+                  color: "white", background: reportEmailState !== "idle" ? "#94a3b8" : "#7c3aed", whiteSpace: "nowrap" }
+              }, reportEmailState === "generating" ? "Generating PDF..." : reportEmailState === "sending" ? "Sending..." : "\uD83D\uDCE4 Send Summary")
             )
-          : React.createElement("div", { key: i, onClick: clickHandler,
-              style: { display: "grid", gridTemplateColumns: "1fr 120px 100px", gap: 8, padding: "10px 12px",
-                fontSize: 13, borderBottom: "1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#fafafa",
-                cursor: "pointer", transition: "background 0.1s" }
-            },
-              React.createElement("div", { style: { fontWeight: 600, color: "#1e293b" } }, monthLabel(p.startDate, p.endDate)),
-              React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, p.startDate + " \u2013 " + p.endDate),
-              React.createElement("div", { style: { textAlign: "right", fontWeight: 600, color: amtColor } }, amtText)
-            );
-        }),
-        // Empty
-        cv.periods.length === 0 && React.createElement("div", {
-          style: { textAlign: "center", padding: 30, color: "#94a3b8", fontSize: 13 }
-        }, "No statement periods found."),
-        // Total
-        cv.periods.length > 0 && React.createElement("div", {
-          style: { display: "flex", justifyContent: "space-between", padding: "12px " + (isMobile ? "0" : "12px"),
-            borderTop: "2px solid #e2e8f0", fontWeight: 700, fontSize: 14, marginTop: 4 }
-        },
-          React.createElement("div", null, "Fiscal Year Total"),
-          React.createElement("div", { style: { textAlign: "right",
-            color: isExpense ? "#dc2626" : "#16a34a" } },
-            formatMoney(isExpense ? -total : total))
-        ),
-        // Hint
-        React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", textAlign: "center", marginTop: 10 } },
-          "Click a period to see individual transactions")
-      )
+          )
+        );
+      })()
     );
   };
 
@@ -1018,74 +1209,160 @@ function App() {
       tv.loading && React.createElement("div", {
         style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.6)", fontSize: 14 }
       }, "Searching the Main Ledger..."),
-      // Results
-      tv.results && !tv.loading && React.createElement("div", {
-        style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", overflowX: "auto" }
-      },
-        React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 12 } },
-          sorted.length + " transaction" + (sorted.length !== 1 ? "s" : "") + " found" +
-          (!tv.categories || tv.categories.includes("all") ? "" : " for " + tv.categories.join(", "))
-        ),
-        // Table header (desktop only)
-        !isMobile && sorted.length > 0 && React.createElement("div", {
-          style: { display: "grid", gridTemplateColumns: gc, gap: 4, padding: "6px 8px", background: "#f1f5f9",
-            borderRadius: "6px 6px 0 0", fontWeight: 700, fontSize: 11, color: "#64748b" }
-        },
-          React.createElement("div", { onClick: () => toggleSort("number"), style: { cursor: "pointer" } }, "#" + si("number")),
-          React.createElement("div", { onClick: () => toggleSort("date"), style: { cursor: "pointer" } }, "Date" + si("date")),
-          React.createElement("div", { onClick: () => toggleSort("type"), style: { cursor: "pointer" } }, "Type" + si("type")),
-          React.createElement("div", { onClick: () => toggleSort("description"), style: { cursor: "pointer" } }, "Description" + si("description")),
-          React.createElement("div", { onClick: () => toggleSort("amount"), style: { cursor: "pointer", textAlign: "right" } }, "Amount" + si("amount")),
-          React.createElement("div", { onClick: () => toggleSort("spender"), style: { cursor: "pointer" } }, "Who" + si("spender"))
-        ),
-        // Mobile sort controls
-        isMobile && sorted.length > 0 && React.createElement("div", {
-          style: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }
-        },
-          React.createElement("span", { style: { fontSize: 11, color: "#94a3b8", lineHeight: "28px" } }, "Sort:"),
-          ...["date", "amount", "type"].map(col =>
-            React.createElement("button", { key: col, onClick: () => toggleSort(col),
-              style: { fontSize: 11, padding: "4px 10px", borderRadius: 14, cursor: "pointer",
-                border: tv.sortCol === col ? "1px solid #2563eb" : "1px solid #d1d5db",
-                background: tv.sortCol === col ? "#eff6ff" : "#f8fafc", color: tv.sortCol === col ? "#2563eb" : "#64748b" }
-            }, col.charAt(0).toUpperCase() + col.slice(1) + (tv.sortCol === col ? (tv.sortDir === "asc" ? " \u25B2" : " \u25BC") : ""))
-          )
-        ),
-        // Rows — desktop grid or mobile cards
-        ...sorted.map((tx, i) =>
-          isMobile
-          ? React.createElement("div", { key: i, style: { padding: "10px 0", borderBottom: "1px solid #f1f5f9" } },
-              React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 2 } },
-                React.createElement("span", { style: { fontSize: 11, color: "#2563eb", fontWeight: 500 } }, tx.number + " \u00B7 " + tx.date),
-                React.createElement("span", { style: { fontWeight: 600, color: tx.amount >= 0 ? "#16a34a" : "#dc2626" } }, formatMoney(tx.amount))
+      // Results — grouped by category
+      tv.results && !tv.loading && (() => {
+        // Build groups
+        const groupMap = {};
+        sorted.forEach(tx => {
+          const cat = tx.type || "Other";
+          if (!groupMap[cat]) groupMap[cat] = [];
+          groupMap[cat].push(tx);
+        });
+        const groupKeys = Object.keys(groupMap).sort();
+        const groups = groupKeys.map(cat => ({
+          category: cat,
+          transactions: groupMap[cat],
+          subtotal: groupMap[cat].reduce((s, tx) => s + tx.amount, 0)
+        }));
+        const filterDesc = (txBrowserFilters.startDate || "?") + " to " + (txBrowserFilters.endDate || "?") +
+          (!tv.categories || tv.categories.includes("all") ? " (All Categories)" : " - " + tv.categories.join(", "));
+
+        const sendReportEmail = async () => {
+          if (!scriptUrl) { flash("Set your Script URL in Settings first.", true); return; }
+          if (!reportEmails.trim()) { flash("Enter at least one email address.", true); return; }
+          setReportEmailState("generating");
+          try {
+            const pdf = generateReportPDF(groups, subtotal, filterDesc);
+            setReportEmailState("sending");
+            const res = await fetch(scriptUrl, {
+              method: "POST",
+              body: JSON.stringify({
+                action: "sendStatement",
+                pdfBase64: pdf.base64,
+                pdfFilename: pdf.filename,
+                recipients: reportEmails.trim(),
+                subject: "Lake House - Transaction Report (" + filterDesc + ")",
+                htmlBody: "<p>Attached is a transaction report for: <strong>" + filterDesc + "</strong></p>" +
+                  "<p>" + sorted.length + " transactions, Grand Total: " + formatMoney(subtotal) + "</p>" +
+                  "<p style='color:#94a3b8;font-size:12px;'>Generated by Rough River Lake House Transaction System</p>"
+              })
+            });
+            const result = await res.json();
+            if (result.success) { flash("Report emailed to " + reportEmails.trim()); }
+            else { flash("Email failed: " + (result.error || "Unknown error"), true); }
+          } catch (err) { flash("Email error: " + err.message, true); }
+          setReportEmailState("idle");
+        };
+
+        return React.createElement("div", null,
+          React.createElement("div", {
+            style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", overflowX: "auto" }
+          },
+            React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 12 } },
+              sorted.length + " transaction" + (sorted.length !== 1 ? "s" : "") + " found" +
+              (!tv.categories || tv.categories.includes("all") ? "" : " for " + tv.categories.join(", "))
+            ),
+            // Mobile sort controls
+            isMobile && sorted.length > 0 && React.createElement("div", {
+              style: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }
+            },
+              React.createElement("span", { style: { fontSize: 11, color: "#94a3b8", lineHeight: "28px" } }, "Sort:"),
+              ...["date", "amount"].map(col =>
+                React.createElement("button", { key: col, onClick: () => toggleSort(col),
+                  style: { fontSize: 11, padding: "4px 10px", borderRadius: 14, cursor: "pointer",
+                    border: tv.sortCol === col ? "1px solid #2563eb" : "1px solid #d1d5db",
+                    background: tv.sortCol === col ? "#eff6ff" : "#f8fafc", color: tv.sortCol === col ? "#2563eb" : "#64748b" }
+                }, col.charAt(0).toUpperCase() + col.slice(1) + (tv.sortCol === col ? (tv.sortDir === "asc" ? " \u25B2" : " \u25BC") : ""))
+              )
+            ),
+            // Empty
+            sorted.length === 0 && React.createElement("div", {
+              style: { textAlign: "center", padding: 30, color: "#94a3b8", fontSize: 13 }
+            }, "No transactions found for the selected filters."),
+            // Grouped results
+            ...groups.map((group, gi) => React.createElement("div", { key: gi, style: { marginBottom: 16 } },
+              // Category header
+              React.createElement("div", {
+                style: { background: "#1e3a5f", color: "white", padding: "8px 12px", borderRadius: "8px 8px 0 0",
+                  fontWeight: 700, fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center" }
+              },
+                React.createElement("span", null, group.category),
+                React.createElement("span", { style: { fontSize: 11, opacity: 0.8 } }, group.transactions.length + " transaction" + (group.transactions.length !== 1 ? "s" : ""))
               ),
-              React.createElement("div", { style: { fontSize: 12, color: "#1e293b", marginBottom: 1 } }, tx.description),
-              React.createElement("div", { style: { fontSize: 11, color: "#94a3b8" } },
-                tx.type + (tx.spender ? " \u00B7 " + tx.spender : ""))
+              // Column header (desktop)
+              !isMobile && React.createElement("div", {
+                style: { display: "grid", gridTemplateColumns: gc, gap: 4, padding: "6px 8px", background: "#f1f5f9",
+                  fontWeight: 700, fontSize: 11, color: "#64748b" }
+              },
+                React.createElement("div", { onClick: () => toggleSort("number"), style: { cursor: "pointer" } }, "#" + si("number")),
+                React.createElement("div", { onClick: () => toggleSort("date"), style: { cursor: "pointer" } }, "Date" + si("date")),
+                React.createElement("div", null, "Type"),
+                React.createElement("div", { onClick: () => toggleSort("description"), style: { cursor: "pointer" } }, "Description" + si("description")),
+                React.createElement("div", { onClick: () => toggleSort("amount"), style: { cursor: "pointer", textAlign: "right" } }, "Amount" + si("amount")),
+                React.createElement("div", { onClick: () => toggleSort("spender"), style: { cursor: "pointer" } }, "Who" + si("spender"))
+              ),
+              // Transaction rows
+              ...group.transactions.map((tx, i) =>
+                isMobile
+                ? React.createElement("div", { key: i, style: { padding: "10px 0", borderBottom: "1px solid #f1f5f9" } },
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 2 } },
+                      React.createElement("span", { style: { fontSize: 11, color: "#2563eb", fontWeight: 500 } }, tx.number + " \u00B7 " + tx.date),
+                      React.createElement("span", { style: { fontWeight: 600, color: tx.amount >= 0 ? "#16a34a" : "#dc2626" } }, formatMoney(tx.amount))
+                    ),
+                    React.createElement("div", { style: { fontSize: 12, color: "#1e293b", marginBottom: 1 } }, tx.description),
+                    React.createElement("div", { style: { fontSize: 11, color: "#94a3b8" } }, tx.spender || "")
+                  )
+                : React.createElement("div", { key: i, style: { display: "grid", gridTemplateColumns: gc, gap: 4,
+                    padding: "6px 8px", fontSize: 12, borderBottom: "1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#fafafa" } },
+                    React.createElement("div", { style: { fontWeight: 500, color: "#2563eb", fontSize: 11 } }, tx.number),
+                    React.createElement("div", null, tx.date),
+                    React.createElement("div", { style: { fontSize: 11 } }, tx.type),
+                    React.createElement("div", { style: { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, tx.description),
+                    React.createElement("div", { style: { textAlign: "right", fontWeight: 600, color: tx.amount >= 0 ? "#16a34a" : "#dc2626" } }, formatMoney(tx.amount)),
+                    React.createElement("div", { style: { fontSize: 11, color: "#888" } }, tx.spender || "\u2014")
+                  )
+              ),
+              // Category subtotal
+              React.createElement("div", {
+                style: { display: "flex", justifyContent: "space-between", padding: "8px 12px",
+                  background: "#f8fafc", borderRadius: "0 0 8px 8px", borderTop: "2px solid #e2e8f0",
+                  fontWeight: 700, fontSize: 12 }
+              },
+                React.createElement("div", { style: { color: "#475569" } }, group.category + " Subtotal:"),
+                React.createElement("div", { style: { color: group.subtotal >= 0 ? "#16a34a" : "#dc2626" } }, formatMoney(group.subtotal))
+              )
+            )),
+            // Grand total
+            sorted.length > 0 && React.createElement("div", {
+              style: { display: "flex", justifyContent: "space-between", padding: "12px 16px",
+                background: "#1e293b", borderRadius: 8, fontWeight: 700, fontSize: 14, marginTop: 8, color: "white" }
+            },
+              React.createElement("div", null, "Grand Total:"),
+              React.createElement("div", { style: { color: subtotal >= 0 ? "#4ade80" : "#f87171" } }, formatMoney(subtotal))
             )
-          : React.createElement("div", { key: i, style: { display: "grid", gridTemplateColumns: gc, gap: 4,
-              padding: "6px 8px", fontSize: 12, borderBottom: "1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#fafafa" } },
-              React.createElement("div", { style: { fontWeight: 500, color: "#2563eb", fontSize: 11 } }, tx.number),
-              React.createElement("div", null, tx.date),
-              React.createElement("div", { style: { fontSize: 11 } }, tx.type),
-              React.createElement("div", { style: { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, tx.description),
-              React.createElement("div", { style: { textAlign: "right", fontWeight: 600, color: tx.amount >= 0 ? "#16a34a" : "#dc2626" } }, formatMoney(tx.amount)),
-              React.createElement("div", { style: { fontSize: 11, color: "#888" } }, tx.spender || "\u2014")
+          ),
+          // Email report section
+          sorted.length > 0 && React.createElement("div", {
+            style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", marginTop: 12 }
+          },
+            React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 8 } }, "\uD83D\uDCE7 Email This Report"),
+            React.createElement("div", { style: { display: "flex", gap: 8, flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center" } },
+              React.createElement("input", {
+                type: "text", value: reportEmails,
+                onChange: (e) => setReportEmails(e.target.value),
+                placeholder: "email@example.com, another@example.com",
+                style: { flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid #d1d5db", fontSize: 13, outline: "none" }
+              }),
+              React.createElement("button", {
+                onClick: sendReportEmail,
+                disabled: reportEmailState !== "idle",
+                style: { padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13,
+                  color: "white", background: reportEmailState !== "idle" ? "#94a3b8" : "#2563eb", whiteSpace: "nowrap" }
+              }, reportEmailState === "generating" ? "Generating PDF..." : reportEmailState === "sending" ? "Sending..." : "\uD83D\uDCE4 Send Report")
             )
-        ),
-        // Empty
-        sorted.length === 0 && React.createElement("div", {
-          style: { textAlign: "center", padding: 30, color: "#94a3b8", fontSize: 13 }
-        }, "No transactions found for the selected filters."),
-        // Subtotal
-        sorted.length > 0 && React.createElement("div", {
-          style: { display: "flex", justifyContent: "space-between", padding: "10px 8px",
-            borderTop: "2px solid #e2e8f0", fontWeight: 700, fontSize: 13, marginTop: 4 }
-        },
-          React.createElement("div", null, "Subtotal:"),
-          React.createElement("div", { style: { color: subtotal >= 0 ? "#16a34a" : "#dc2626" } }, formatMoney(subtotal))
-        )
-      )
+          )
+        );
+      })()
     );
   };
 
