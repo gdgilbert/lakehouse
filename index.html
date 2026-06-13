@@ -710,7 +710,7 @@ function App() {
   const [emailState, setEmailState] = useState("idle");
   const [pdfData, setPdfData] = useState(null);
   const [txBrowserView, setTxBrowserView] = useState(null);
-  const [monthlyGroup, setMonthlyGroup] = useState("calendar"); // "calendar" | "statement"
+  const [monthlyGroup, setMonthlyGroup] = useState("statement"); // "calendar" | "statement"
   const [txBrowserFilters, setTxBrowserFilters] = useState({
     categories: ["all"], startDate: "", endDate: new Date().toISOString().split("T")[0], allTime: false
   });
