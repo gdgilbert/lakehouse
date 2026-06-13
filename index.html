@@ -1436,7 +1436,7 @@ function App() {
                     React.createElement("div", { style: { fontWeight: 500, color: "#2563eb", fontSize: 11 } }, tx.number),
                     React.createElement("div", null, tx.date),
                     React.createElement("div", { style: { fontSize: 11 } }, tx.type),
-                    React.createElement("div", { style: { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, tx.description),
+                    React.createElement("div", { title: tx.description, style: { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: "help" } }, tx.description),
                     React.createElement("div", { style: { textAlign: "right", fontWeight: 600, color: tx.amount >= 0 ? "#16a34a" : "#dc2626" } }, formatMoney(tx.amount)),
                     React.createElement("div", { style: { fontSize: 11, color: "#888" } }, tx.spender || "\u2014")
                   )
