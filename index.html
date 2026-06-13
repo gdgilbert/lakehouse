@@ -73,7 +73,7 @@ function useIsMobile(breakpoint = 600) {
 const TYPES = [
   "Rental Income", "Cleaning", "General Expense", "Internet",
   "Utilities (Electric, Water, Trash)", "Mortgage Payment",
-  "Monthly Contribution", "Interest", "Projects", "Transfer",
+  "Monthly Contribution", "Interest", "Projects", "Loan Repayment", "Transfer",
 ];
 const SPENDERS = ["", "Mgg", "Dkg", "Acns"];
 const ACCOUNTS = ["Chase", "Acorns"];
@@ -88,7 +88,7 @@ const CATEGORIES = [
   "Rental Income", "Interest", "Monthly Contribution",
   "Startup Costs", "Cleaning", "Internet",
   "Utilities (Electric, Water, Trash)", "Mortgage Payment", "General Expense",
-  "Projects", "Transfer",
+  "Projects", "Loan Repayment", "Transfer",
 ];
 const QUICK_ADDS = [
   { emoji: "\uD83C\uDFE0", label: "Mortgage",  type: "Mortgage Payment", amount: "3330.11", account: "Chase", description: "Mortgage Payment" },
@@ -111,6 +111,7 @@ const QUICK_ADDS = [
     emailReminder: true, emailNotes: "Transfer 2000 from GDG to Lake House" },
   { emoji: "\uD83D\uDC68", label: "MGG Monthly", type: "Monthly Contribution", amount: "2000.00", spender: "Mgg",
     description: "MGG Monthly Contribution", isSplit: true },
+  { emoji: "\uD83C\uDFE6", label: "Loan Repay", type: "Loan Repayment", amount: "200.00", account: "Chase", description: "Edward Jones payment (steps)" },
 ];
 
 const INITIAL_STATE = {
