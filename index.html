@@ -138,6 +138,13 @@ const fmtDate = (d) => { const p = d.split("-"); return p[1] + "/" + p[2] + "/" 
 
 // M/D/YYYY (or MM/DD/YYYY) -> sortable/comparable integer YYYYMMDD
 const dateToNum = (mdy) => { const p = String(mdy).split("/"); return p.length < 3 ? 0 : (+p[2]) * 10000 + (+p[0]) * 100 + (+p[1]); };
+// "MM/DD/YYYY" (or M/D/YY) -> "YYYY-MM-DD" for <input type="date">
+const isoFromMDY = (mdy) => {
+  const p = String(mdy).split("/");
+  if (p.length < 3) return "";
+  let y = p[2]; if (y.length === 2) y = "20" + y;
+  return y + "-" + String(+p[0]).padStart(2, "0") + "-" + String(+p[1]).padStart(2, "0");
+};
 // The calendar month with the most days inside [startDate, endDate], e.g. "June 2026"
 const dominantMonth = (startDate, endDate) => {
   try {
@@ -1224,6 +1231,52 @@ function App() {
             }))
           }), "All Time"
         ),
+        // Quick-pick: jump to a calendar month or a statement period (fills the date range below)
+        !txBrowserFilters.allTime && (() => {
+          const names = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+          const stmtPeriods = (state.statementPeriods || []);
+          // Calendar months from the earliest statement start (or 12 months back) through the current month
+          let earliest = null;
+          stmtPeriods.forEach(p => { const iso = isoFromMDY(p.startDate); if (iso && (!earliest || iso < earliest)) earliest = iso; });
+          const now = new Date();
+          let cy, cm;
+          if (earliest) { const ep = earliest.split("-"); cy = +ep[0]; cm = +ep[1] - 1; }
+          else { cy = now.getFullYear(); cm = now.getMonth() - 11; while (cm < 0) { cm += 12; cy--; } }
+          const monthOpts = [];
+          const endY = now.getFullYear(), endM = now.getMonth();
+          while (cy < endY || (cy === endY && cm <= endM)) {
+            const mm = String(cm + 1).padStart(2, "0");
+            const lastDay = new Date(cy, cm + 1, 0).getDate();
+            monthOpts.push({ label: names[cm] + " " + cy, start: cy + "-" + mm + "-01", end: cy + "-" + mm + "-" + String(lastDay).padStart(2, "0") });
+            cm++; if (cm > 11) { cm = 0; cy++; }
+          }
+          monthOpts.reverse();
+          return React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 10 } },
+            React.createElement("div", null,
+              React.createElement("label", { style: ls }, "Jump to calendar month"),
+              React.createElement("select", {
+                value: "",
+                onChange: e => { const o = monthOpts.find(x => x.label === e.target.value); if (o) setTxBrowserFilters(f => ({ ...f, allTime: false, startDate: o.start, endDate: o.end })); },
+                style: { ...is, background: "white" }
+              },
+                React.createElement("option", { value: "" }, "— pick a month —"),
+                ...monthOpts.map(o => React.createElement("option", { key: o.label, value: o.label }, o.label))
+              )
+            ),
+            React.createElement("div", null,
+              React.createElement("label", { style: ls }, "Jump to statement period"),
+              React.createElement("select", {
+                value: "",
+                onChange: e => { const o = stmtPeriods.find(x => (x.startDate + "|" + x.endDate) === e.target.value); if (o) setTxBrowserFilters(f => ({ ...f, allTime: false, startDate: isoFromMDY(o.startDate), endDate: isoFromMDY(o.endDate) })); },
+                style: { ...is, background: "white" }
+              },
+                React.createElement("option", { value: "" }, stmtPeriods.length ? "— pick a statement —" : "(no statements yet)"),
+                ...stmtPeriods.slice().reverse().map(o => React.createElement("option", { key: o.startDate + "|" + o.endDate, value: o.startDate + "|" + o.endDate },
+                  dominantMonth(o.startDate, o.endDate) + " (" + o.startDate + " – " + o.endDate + ")"))
+              )
+            )
+          );
+        })(),
         // Date range
         !txBrowserFilters.allTime && React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 12 } },
           React.createElement("div", null,
