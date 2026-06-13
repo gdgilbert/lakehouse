@@ -321,7 +321,7 @@ function generateStatementPDF(cv) {
   doc.setTextColor(plColor[0], plColor[1], plColor[2]); doc.setFontSize(18); doc.setFont("helvetica", "bold");
   doc.text(fmtM(ytdPL), W / 2, y + 13, { align: "center" });
   doc.setTextColor(146, 64, 14); doc.setFontSize(7); doc.setFont("helvetica", "normal");
-  doc.text("(YTD Rental + Interest + Ending Balance) - (Contributions + Expenses); loan-funded Projects net to $0", W / 2, y + 18, { align: "center" });
+  doc.text("(YTD Rental + Interest + Ending Balance) - (Contributions + Expenses); Projects (loan-funded steps) excluded, counted as the loan is repaid", W / 2, y + 18, { align: "center" });
   y += 26;
 
   // ── Footer ──
@@ -410,7 +410,7 @@ function generateStatementEmailHTML(cv) {
     '<div style="background:linear-gradient(135deg,#fef3c7,#fde68a);padding:16px;margin:16px;border:1px solid #f59e0b;border-radius:8px;text-align:center;">' +
       '<div style="font-size:11px;color:#92400e;text-transform:uppercase;font-weight:600;">Year To Date Actual Profit / Loss</div>' +
       '<div style="font-size:24px;font-weight:800;color:' + plColor + ';margin:8px 0;">' + fmtM(ytdPL) + '</div>' +
-      '<div style="font-size:10px;color:#92400e;">(YTD Rental + Interest + Ending Balance) \u2212 (Contributions + Expenses); loan-funded Projects net to $0</div>' +
+      '<div style="font-size:10px;color:#92400e;">(YTD Rental + Interest + Ending Balance) \u2212 (Contributions + Expenses); Projects (loan-funded steps) excluded, counted as the loan is repaid</div>' +
     '</div>' +
     // Footer
     '<div style="text-align:center;padding:16px;font-size:11px;color:#94a3b8;">' +
@@ -2508,7 +2508,7 @@ function App() {
               React.createElement("div", { style: { fontSize: 24, fontWeight: 800, color: plColor, textAlign: "center",
                 marginBottom: 8 } }, formatMoney(ytdPL)),
               React.createElement("div", { style: { fontSize: 10, color: "#92400e", lineHeight: 1.4, opacity: 0.85 } },
-                "(YTD Rental + Interest + Ending Balance) \u2212 (Contributions + Expenses); loan-funded Projects net to $0")
+                "(YTD Rental + Interest + Ending Balance) \u2212 (Contributions + Expenses); Projects (loan-funded steps) excluded, counted as the loan is repaid")
             );
           })(),
 
