@@ -145,6 +145,25 @@ const isoFromMDY = (mdy) => {
   let y = p[2]; if (y.length === 2) y = "20" + y;
   return y + "-" + String(+p[0]).padStart(2, "0") + "-" + String(+p[1]).padStart(2, "0");
 };
+// Calendar-month options (label + ISO start/end) from the earliest statement (or 12 mo back) through now
+const monthOptionsFor = (stmtPeriods) => {
+  const names = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  let earliest = null;
+  (stmtPeriods || []).forEach(p => { const iso = isoFromMDY(p.startDate); if (iso && (!earliest || iso < earliest)) earliest = iso; });
+  const now = new Date();
+  let cy, cm;
+  if (earliest) { const ep = earliest.split("-"); cy = +ep[0]; cm = +ep[1] - 1; }
+  else { cy = now.getFullYear(); cm = now.getMonth() - 11; while (cm < 0) { cm += 12; cy--; } }
+  const out = []; const endY = now.getFullYear(), endM = now.getMonth();
+  while (cy < endY || (cy === endY && cm <= endM)) {
+    const mm = String(cm + 1).padStart(2, "0");
+    const lastDay = new Date(cy, cm + 1, 0).getDate();
+    out.push({ label: names[cm] + " " + cy, start: cy + "-" + mm + "-01", end: cy + "-" + mm + "-" + String(lastDay).padStart(2, "0") });
+    cm++; if (cm > 11) { cm = 0; cy++; }
+  }
+  out.reverse();
+  return out;
+};
 // The calendar month with the most days inside [startDate, endDate], e.g. "June 2026"
 const dominantMonth = (startDate, endDate) => {
   try {
@@ -502,6 +521,8 @@ function App() {
     try { return localStorage.getItem(SK.email) || ""; } catch { return ""; }
   });
   const [closeMonthView, setCloseMonthView] = useState(null);
+  const [previewRange, setPreviewRange] = useState({ startDate: "", endDate: "" });
+  const [previewing, setPreviewing] = useState(false);
   const [scriptUrl, setScriptUrl] = useState(() => {
     try { return localStorage.getItem(SK.script) || ""; } catch { return ""; }
   });
@@ -763,6 +784,37 @@ function App() {
       flash("Could not reach Google Sheet: " + err.message, true);
     }
     setClosingStatement(false);
+  };
+
+  // Read-only: compute and show a statement for any period, without writing to the sheet
+  const previewStatement = async (startISO, endISO) => {
+    if (!scriptUrl) { flash("Set your Script URL in Settings first.", true); return; }
+    if (!startISO || !endISO) { flash("Pick a start and end date.", true); return; }
+    setPreviewing(true);
+    try {
+      const res = await fetch(scriptUrl, {
+        method: "POST",
+        body: JSON.stringify({ action: "previewStatement", startDate: startISO, endDate: endISO })
+      });
+      const result = await res.json();
+      if (result.success && result.statement) {
+        const s = result.statement;
+        setCloseMonthView({
+          startDate: s.startDate, endDate: s.endDate, label: s.startDate + " – " + s.endDate,
+          totalIncome: s.totalIncome, totalExpense: s.totalExpense, net: s.net,
+          startingBalance: s.startingBalance, endingBalance: s.endingBalance, txCount: s.txCount,
+          fyTotalIncome: s.fyTotalIncome, fyTotalExpense: s.fyTotalExpense,
+          monthIncome: s.monthIncome || {}, monthExpense: s.monthExpense || {},
+          fyIncome: s.fyIncome || {}, fyExpense: s.fyExpense || {},
+          preview: true
+        });
+      } else {
+        flash(result.error || "Unknown error.", true);
+      }
+    } catch (err) {
+      flash("Could not reach Google Sheet: " + err.message, true);
+    }
+    setPreviewing(false);
   };
 
   const handleGeneratePDF = () => {
@@ -2297,8 +2349,8 @@ function App() {
       style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }
     },
       React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 } },
-        React.createElement("h3", { style: { margin: 0, fontSize: 14, color: "#1e293b" } }, "Close Statement"),
-        React.createElement("span", { style: { fontSize: 11, color: "#94a3b8" } }, "Writes to Statements sheet")
+        React.createElement("h3", { style: { margin: 0, fontSize: 14, color: "#1e293b" } }, closeMonthView && closeMonthView.preview ? "Statement Preview" : "Close Statement"),
+        React.createElement("span", { style: { fontSize: 11, color: "#94a3b8" } }, closeMonthView && closeMonthView.preview ? "Read-only — not saved" : "Writes to Statements sheet")
       ),
       !closeMonthView ? React.createElement("div", null,
         React.createElement("p", { style: { fontSize: 12, color: "#64748b", marginBottom: 10 } },
@@ -2308,7 +2360,47 @@ function App() {
           style: {...bp, width: "100%", background: closingStatement ? "#94a3b8" : "#7c3aed"}
         }, closingStatement ? "Writing statement\u2026" : "Close Statement"),
         !scriptUrl && React.createElement("p", { style: { fontSize: 11, color: "#d97706", marginTop: 6 } },
-          "Set your Script URL in Settings to enable this.")
+          "Set your Script URL in Settings to enable this."),
+        // ── View a statement for any period (read-only) ──
+        React.createElement("div", { style: { marginTop: 14, paddingTop: 14, borderTop: "1px solid #e2e8f0" } },
+          React.createElement("div", { style: { fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 8 } },
+            "Or view any period (read-only — nothing is saved)"),
+          (function() {
+            var stmtPeriods = (state.statementPeriods || []);
+            var monthOpts = monthOptionsFor(stmtPeriods);
+            var curMonth = monthOpts.find(function(o) { return o.start === previewRange.startDate && o.end === previewRange.endDate; });
+            var curStmt = stmtPeriods.find(function(o) { return isoFromMDY(o.startDate) === previewRange.startDate && isoFromMDY(o.endDate) === previewRange.endDate; });
+            return React.createElement("div", null,
+              React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 8, marginBottom: 8 } },
+                React.createElement("select", {
+                  value: curMonth ? curMonth.label : "",
+                  onChange: function(e) { var o = monthOpts.find(function(x){ return x.label === e.target.value; }); if (o) setPreviewRange({ startDate: o.start, endDate: o.end }); },
+                  style: { ...is, background: "white", fontSize: 12 }
+                },
+                  React.createElement("option", { value: "" }, "— calendar month —"),
+                  ...monthOpts.map(function(o) { return React.createElement("option", { key: o.label, value: o.label }, o.label); })
+                ),
+                React.createElement("select", {
+                  value: curStmt ? (curStmt.startDate + "|" + curStmt.endDate) : "",
+                  onChange: function(e) { var o = stmtPeriods.find(function(x){ return (x.startDate + "|" + x.endDate) === e.target.value; }); if (o) setPreviewRange({ startDate: isoFromMDY(o.startDate), endDate: isoFromMDY(o.endDate) }); },
+                  style: { ...is, background: "white", fontSize: 12 }
+                },
+                  React.createElement("option", { value: "" }, stmtPeriods.length ? "— statement period —" : "(no statements yet)"),
+                  ...stmtPeriods.slice().reverse().map(function(o) { return React.createElement("option", { key: o.startDate + "|" + o.endDate, value: o.startDate + "|" + o.endDate }, dominantMonth(o.startDate, o.endDate) + " (" + o.startDate + " – " + o.endDate + ")"); })
+                )
+              ),
+              React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 } },
+                React.createElement("input", { type: "date", value: previewRange.startDate, onChange: function(e) { var v = e.target.value; setPreviewRange(function(rr){ return { startDate: v, endDate: rr.endDate }; }); }, style: { ...is, fontSize: 12 } }),
+                React.createElement("input", { type: "date", value: previewRange.endDate, onChange: function(e) { var v = e.target.value; setPreviewRange(function(rr){ return { startDate: rr.startDate, endDate: v }; }); }, style: { ...is, fontSize: 12 } })
+              ),
+              React.createElement("button", {
+                onClick: function() { previewStatement(previewRange.startDate, previewRange.endDate); },
+                disabled: previewing || !scriptUrl || !previewRange.startDate || !previewRange.endDate,
+                style: { ...bp, width: "100%", background: (previewing || !previewRange.startDate || !previewRange.endDate) ? "#94a3b8" : "#0f766e" }
+              }, previewing ? "Loading…" : "📄 View Statement")
+            );
+          })()
+        )
       ) : (function() {
         var cv = closeMonthView;
         var incomeKeys  = Object.keys(cv.monthIncome  || {});
@@ -2343,7 +2435,7 @@ function App() {
         return React.createElement("div", null,
           // ── Header ──
           React.createElement("div", { style: { textAlign: "center", marginBottom: 14 } },
-            React.createElement("div", { style: { fontSize: 11, color: "#16a34a", fontWeight: 600, marginBottom: 4 } }, "\u2705 Written to Statements sheet"),
+            React.createElement("div", { style: { fontSize: 11, color: cv.preview ? "#7c3aed" : "#16a34a", fontWeight: 600, marginBottom: 4 } }, cv.preview ? "\ud83d\udc41\ufe0f Preview \u2014 not saved to the sheet" : "\u2705 Written to Statements sheet"),
             React.createElement("div", { style: { fontSize: 16, fontWeight: 700, color: "#1e293b" } }, "Monthly Statement"),
             React.createElement("div", { style: { fontSize: 13, color: "#64748b" } }, cv.startDate + " \u2013 " + cv.endDate)
           ),
