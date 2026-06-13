@@ -73,7 +73,7 @@ function useIsMobile(breakpoint = 600) {
 const TYPES = [
   "Rental Income", "Cleaning", "General Expense", "Internet",
   "Utilities (Electric, Water, Trash)", "Mortgage Payment",
-  "Monthly Contribution", "Interest", "Transfer",
+  "Monthly Contribution", "Interest", "Projects", "Transfer",
 ];
 const SPENDERS = ["", "Mgg", "Dkg", "Acns"];
 const ACCOUNTS = ["Chase", "Acorns"];
@@ -88,7 +88,7 @@ const CATEGORIES = [
   "Rental Income", "Interest", "Monthly Contribution",
   "Startup Costs", "Cleaning", "Internet",
   "Utilities (Electric, Water, Trash)", "Mortgage Payment", "General Expense",
-  "Transfer",
+  "Projects", "Transfer",
 ];
 const QUICK_ADDS = [
   { emoji: "\uD83C\uDFE0", label: "Mortgage",  type: "Mortgage Payment", amount: "3330.11", account: "Chase", description: "Mortgage Payment" },
@@ -135,6 +135,27 @@ const formatMoney = (n) => {
 };
 const padNum = (prefix, num) => prefix + String(num).padStart(3, "0");
 const fmtDate = (d) => { const p = d.split("-"); return p[1] + "/" + p[2] + "/" + p[0]; };
+
+// Categories treated as financing/capital: they net to $0 in the YTD P&L, because a
+// loan inflow cancels the spending it funds. The loan *repayments* are a separate
+// expense category (NOT listed here), so those still count against profit as normal.
+const PL_EXCLUDE = ["Projects"];
+
+// Year-to-date "actual" profit/loss, with financing categories stripped from both the
+// cash (ending balance) and the expense side, so a loan never looks like profit and the
+// matching spend never looks like a loss. Contributes exactly $0 regardless of timing.
+const computeYtdPL = (cv) => {
+  const fyIncome = cv.fyIncome || {}, fyExpense = cv.fyExpense || {};
+  let exclNet = 0, exclExp = 0;
+  PL_EXCLUDE.forEach((k) => {
+    exclNet += (fyIncome[k] || 0) + (fyExpense[k] || 0);   // income + (negative) expense = net effect on cash
+    exclExp += Math.abs(fyExpense[k] || 0);
+  });
+  return (fyIncome["Rental Income"] || 0) + (fyIncome["Interest"] || 0)
+       + (cv.endingBalance - exclNet)
+       - (fyIncome["Monthly Contribution"] || 0)
+       - (Math.abs(cv.fyTotalExpense) - exclExp);
+};
 
 const emptyForm = {
   type: "", date: new Date().toISOString().split("T")[0],
@@ -244,8 +265,7 @@ function generateStatementPDF(cv) {
   y += 16;
 
   // ── YTD Profit / Loss ──
-  var ytdPL = ((cv.fyIncome["Rental Income"] || 0) + (cv.fyIncome["Interest"] || 0) + cv.endingBalance)
-            - ((cv.fyIncome["Monthly Contribution"] || 0) + Math.abs(cv.fyTotalExpense));
+  var ytdPL = computeYtdPL(cv);
   var plColor = ytdPL >= 0 ? [22, 163, 74] : [220, 38, 38];
   doc.setFillColor(254, 243, 199); doc.rect(mL, y, cW, 20, "F");
   doc.setDrawColor(245, 158, 11); doc.rect(mL, y, cW, 20, "S");
@@ -254,7 +274,7 @@ function generateStatementPDF(cv) {
   doc.setTextColor(plColor[0], plColor[1], plColor[2]); doc.setFontSize(18); doc.setFont("helvetica", "bold");
   doc.text(fmtM(ytdPL), W / 2, y + 13, { align: "center" });
   doc.setTextColor(146, 64, 14); doc.setFontSize(7); doc.setFont("helvetica", "normal");
-  doc.text("(YTD Rental Income + YTD Interest + Ending Balance) - (YTD Contributions + YTD Expenses)", W / 2, y + 18, { align: "center" });
+  doc.text("(YTD Rental + Interest + Ending Balance) - (Contributions + Expenses); loan-funded Projects net to $0", W / 2, y + 18, { align: "center" });
   y += 26;
 
   // ── Footer ──
@@ -272,8 +292,7 @@ function generateStatementPDF(cv) {
 
 function generateStatementEmailHTML(cv) {
   var fmtM = formatMoney;
-  var ytdPL = ((cv.fyIncome["Rental Income"] || 0) + (cv.fyIncome["Interest"] || 0) + cv.endingBalance)
-            - ((cv.fyIncome["Monthly Contribution"] || 0) + Math.abs(cv.fyTotalExpense));
+  var ytdPL = computeYtdPL(cv);
   var plColor = ytdPL >= 0 ? "#16a34a" : "#dc2626";
   var netColor = cv.net >= 0 ? "#16a34a" : "#dc2626";
   var ebColor = cv.endingBalance >= 0 ? "#16a34a" : "#dc2626";
@@ -344,7 +363,7 @@ function generateStatementEmailHTML(cv) {
     '<div style="background:linear-gradient(135deg,#fef3c7,#fde68a);padding:16px;margin:16px;border:1px solid #f59e0b;border-radius:8px;text-align:center;">' +
       '<div style="font-size:11px;color:#92400e;text-transform:uppercase;font-weight:600;">Year To Date Actual Profit / Loss</div>' +
       '<div style="font-size:24px;font-weight:800;color:' + plColor + ';margin:8px 0;">' + fmtM(ytdPL) + '</div>' +
-      '<div style="font-size:10px;color:#92400e;">(YTD Rental Income + YTD Interest + Ending Balance) \u2212 (YTD Contributions + YTD Expenses)</div>' +
+      '<div style="font-size:10px;color:#92400e;">(YTD Rental + Interest + Ending Balance) \u2212 (Contributions + Expenses); loan-funded Projects net to $0</div>' +
     '</div>' +
     // Footer
     '<div style="text-align:center;padding:16px;font-size:11px;color:#94a3b8;">' +
@@ -825,17 +844,17 @@ function App() {
   };
 
   /* ── Category Summary query ───────────────────────────── */
-  const queryCategorySummary = async (category) => {
+  const queryCategorySummary = async (category, side) => {
     if (!scriptUrl) {
-      setTxCatSummaryView({ category, periods: null, loading: false,
+      setTxCatSummaryView({ category, side, periods: null, loading: false,
         error: "Set your Script URL in Settings to use this feature." });
       return;
     }
-    setTxCatSummaryView({ category, periods: null, loading: true, error: null });
+    setTxCatSummaryView({ category, side, periods: null, loading: true, error: null });
     try {
       const res = await fetch(scriptUrl, {
         method: "POST",
-        body: JSON.stringify({ action: "categorySummary", category })
+        body: JSON.stringify({ action: "categorySummary", category, side })
       });
       const result = await res.json();
       if (result.success) {
@@ -877,7 +896,7 @@ function App() {
   /* ── Category Summary renderer ────────────────────────── */
   const renderCategorySummary = () => {
     const cv = txCatSummaryView;
-    const isExpense = !["Rental Income", "Interest", "Monthly Contribution"].includes(cv.category);
+    const isExpense = cv.side ? cv.side === "expense" : !["Rental Income", "Interest", "Monthly Contribution"].includes(cv.category);
     const total = cv.periods ? cv.periods.reduce((s, p) => s + p.monthAmount, 0) : 0;
 
     // Convert statement date MM/DD/YYYY to YYYY-MM-DD for queries
@@ -1837,7 +1856,7 @@ function App() {
           React.createElement("div", { style: { position: "relative" } },
             React.createElement("span", { style: { position: "absolute", left: 12, top: 9, color: "#888" } }, "$"),
             React.createElement("input", { type: "number", step: "0.01", min: "0", value: form.amount,
-              onChange: e => updateForm("amount", e.target.value), placeholder: "0.00",
+              onChange: e => updateForm("amount", e.target.value), onWheel: e => e.currentTarget.blur(), placeholder: "0.00",
               style: {...is, paddingLeft: 24} })
           ),
           form.type && form.type !== "Transfer" && (() => {
@@ -1882,12 +1901,12 @@ function App() {
           React.createElement("div", null,
             React.createElement("label", { style: {...ls, fontSize: 11} }, "Cash to Chase"),
             React.createElement("input", { type: "number", step: "0.01", value: form.splitCash,
-              onChange: e => updateForm("splitCash", e.target.value), placeholder: "0", style: {...is, fontSize: 13} })
+              onChange: e => updateForm("splitCash", e.target.value), onWheel: e => e.currentTarget.blur(), placeholder: "0", style: {...is, fontSize: 13} })
           ),
           React.createElement("div", null,
             React.createElement("label", { style: {...ls, fontSize: 11} }, "To Acorns"),
             React.createElement("input", { type: "number", step: "0.01", value: form.splitAcorns,
-              onChange: e => updateForm("splitAcorns", e.target.value), placeholder: "0", style: {...is, fontSize: 13} }),
+              onChange: e => updateForm("splitAcorns", e.target.value), onWheel: e => e.currentTarget.blur(), placeholder: "0", style: {...is, fontSize: 13} }),
             React.createElement("select", { value: form.splitAcornsSub, onChange: e => updateForm("splitAcornsSub", e.target.value),
               style: {...is, fontSize: 11, padding: "3px 6px", marginTop: 4, background: "white"} },
               ...ACORNS_SUBS.map(s => React.createElement("option", { key: s, value: s }, s))
@@ -1897,7 +1916,7 @@ function App() {
             React.createElement("label", { style: {...ls, fontSize: 11} }, "Unreimbursed Expenses"),
             React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center" } },
               React.createElement("input", { type: "number", step: "0.01", value: form.splitExpenses,
-                onChange: e => updateForm("splitExpenses", e.target.value), placeholder: "0", style: {...is, fontSize: 13, flex: 1} }),
+                onChange: e => updateForm("splitExpenses", e.target.value), onWheel: e => e.currentTarget.blur(), placeholder: "0", style: {...is, fontSize: 13, flex: 1} }),
               React.createElement("button", { type: "button", onClick: loadChaseExpenses,
                 style: { background: "#fef3c7", border: "1px solid #fbbf24", borderRadius: 6,
                   padding: "6px 10px", fontSize: 11, cursor: "pointer", color: "#92400e", fontWeight: 600, whiteSpace: "nowrap" }
@@ -2241,7 +2260,7 @@ function App() {
             return sRow(k, formatMoney(cv.monthIncome[k]), formatMoney(cv.fyIncome[k]),
               { indent: true, bg: i % 2 === 0 ? "#fafffe" : "#f0fdf4",
                 radiusBot: i === incomeKeys.length - 1,
-                onClick: function() { queryCategorySummary(k); } });
+                onClick: function() { queryCategorySummary(k, "income"); } });
           }),
 
           // ── Spacer ──
@@ -2254,7 +2273,7 @@ function App() {
             return sRow(k, formatMoney(Math.abs(cv.monthExpense[k])), formatMoney(Math.abs(cv.fyExpense[k])),
               { indent: true, bg: i % 2 === 0 ? "#fffafa" : "#fef2f2",
                 radiusBot: i === expenseKeys.length - 1,
-                onClick: function() { queryCategorySummary(k); } });
+                onClick: function() { queryCategorySummary(k, "expense"); } });
           }),
 
           // ── Net ──
@@ -2277,8 +2296,7 @@ function App() {
 
           // ── YTD Actual Profit or Loss ──
           (function() {
-            var ytdPL = ((cv.fyIncome["Rental Income"] || 0) + (cv.fyIncome["Interest"] || 0) + cv.endingBalance)
-                      - ((cv.fyIncome["Monthly Contribution"] || 0) + Math.abs(cv.fyTotalExpense));
+            var ytdPL = computeYtdPL(cv);
             var plColor = ytdPL >= 0 ? "#16a34a" : "#dc2626";
             return React.createElement("div", { style: {
               background: "linear-gradient(135deg, #fef3c7, #fde68a)", borderRadius: 8,
@@ -2289,7 +2307,7 @@ function App() {
               React.createElement("div", { style: { fontSize: 24, fontWeight: 800, color: plColor, textAlign: "center",
                 marginBottom: 8 } }, formatMoney(ytdPL)),
               React.createElement("div", { style: { fontSize: 10, color: "#92400e", lineHeight: 1.4, opacity: 0.85 } },
-                "(YTD Rental Income + YTD Interest + Ending Balance) \u2212 (YTD Contributions + YTD Expenses)")
+                "(YTD Rental + Interest + Ending Balance) \u2212 (Contributions + Expenses); loan-funded Projects net to $0")
             );
           })(),
 
