@@ -136,6 +136,27 @@ const formatMoney = (n) => {
 const padNum = (prefix, num) => prefix + String(num).padStart(3, "0");
 const fmtDate = (d) => { const p = d.split("-"); return p[1] + "/" + p[2] + "/" + p[0]; };
 
+// M/D/YYYY (or MM/DD/YYYY) -> sortable/comparable integer YYYYMMDD
+const dateToNum = (mdy) => { const p = String(mdy).split("/"); return p.length < 3 ? 0 : (+p[2]) * 10000 + (+p[0]) * 100 + (+p[1]); };
+// The calendar month with the most days inside [startDate, endDate], e.g. "June 2026"
+const dominantMonth = (startDate, endDate) => {
+  try {
+    const names = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const sp = startDate.split("/"), ep = endDate.split("/");
+    const s = new Date(+sp[2], +sp[0] - 1, +sp[1]);
+    const e = new Date(+ep[2], +ep[0] - 1, +ep[1]);
+    const counts = {};
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+      const key = d.getFullYear() + "-" + d.getMonth();
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    let best = "", max = 0;
+    for (const k in counts) { if (counts[k] > max) { max = counts[k]; best = k; } }
+    const parts = best.split("-");
+    return names[+parts[1]] + " " + parts[0];
+  } catch (e) { return endDate; }
+};
+
 // Categories treated as financing/capital: they net to $0 in the YTD P&L, because a
 // loan inflow cancels the spending it funds. The loan *repayments* are a separate
 // expense category (NOT listed here), so those still count against profit as normal.
@@ -689,6 +710,7 @@ function App() {
   const [emailState, setEmailState] = useState("idle");
   const [pdfData, setPdfData] = useState(null);
   const [txBrowserView, setTxBrowserView] = useState(null);
+  const [monthlyGroup, setMonthlyGroup] = useState("calendar"); // "calendar" | "statement"
   const [txBrowserFilters, setTxBrowserFilters] = useState({
     categories: ["all"], startDate: "", endDate: new Date().toISOString().split("T")[0], allTime: false
   });
@@ -834,7 +856,7 @@ function App() {
       });
       const result = await res.json();
       if (result.success) {
-        setTxBrowserView(v => ({ ...v, results: result.transactions, loading: false }));
+        setTxBrowserView(v => ({ ...v, results: result.transactions, statementPeriods: result.statementPeriods || [], loading: false }));
       } else {
         setTxBrowserView(v => ({ ...v, error: result.error || "Unknown error", loading: false }));
       }
@@ -1405,20 +1427,36 @@ function App() {
       // Results — Monthly Summary view (month → categories)
       tv.results && !tv.loading && tv.viewMode === "monthly" && (() => {
         const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-        // Group transactions by month (from tx date), then by category within each month
+        // Group transactions either by calendar month or by statement period.
         const monthMap = {};
+        const stmtPeriods = tv.statementPeriods || [];
         sorted.forEach(tx => {
-          const dp = tx.date.split("/");
-          const mo = parseInt(dp[0]) - 1, yr = parseInt(dp[2]);
-          const key = yr + "-" + String(mo).padStart(2, "0");
-          const label = monthNames[mo] + " " + yr;
-          if (!monthMap[key]) monthMap[key] = { label, categories: {}, total: 0 };
+          let key, label, sortKey;
+          if (monthlyGroup === "statement") {
+            const n = dateToNum(tx.date);
+            const per = stmtPeriods.find(p => n >= dateToNum(p.startDate) && n <= dateToNum(p.endDate));
+            if (per) {
+              key = "s:" + per.startDate;
+              label = dominantMonth(per.startDate, per.endDate) + " (" + per.startDate + " – " + per.endDate + ")";
+              sortKey = String(dateToNum(per.startDate)).padStart(8, "0");
+            } else {
+              key = "pending"; label = "Not yet in a closed statement"; sortKey = "99999999";
+            }
+          } else {
+            const dp = tx.date.split("/");
+            const mo = parseInt(dp[0]) - 1, yr = parseInt(dp[2]);
+            key = yr + "-" + String(mo).padStart(2, "0");
+            label = monthNames[mo] + " " + yr;
+            sortKey = yr + String(mo).padStart(2, "0");
+          }
+          if (!monthMap[key]) monthMap[key] = { label, categories: {}, total: 0, sortKey };
           const cat = tx.type || "Other";
           if (!monthMap[key].categories[cat]) monthMap[key].categories[cat] = 0;
           monthMap[key].categories[cat] += tx.amount;
           monthMap[key].total += tx.amount;
         });
-        const monthKeys = Object.keys(monthMap).sort();
+        const monthKeys = Object.keys(monthMap).sort((a, b) =>
+          monthMap[a].sortKey < monthMap[b].sortKey ? -1 : monthMap[a].sortKey > monthMap[b].sortKey ? 1 : 0);
         const months = monthKeys.map(k => monthMap[k]);
         // Collect all unique categories across all months for consistent display
         const allCats = [...new Set(sorted.map(tx => tx.type || "Other"))].sort();
@@ -1534,9 +1572,22 @@ function App() {
             style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }
           },
             React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 12 } },
-              months.length + " month" + (months.length !== 1 ? "s" : "") + ", " +
+              months.length + " " + (monthlyGroup === "statement" ? "statement period" : "month") + (months.length !== 1 ? "s" : "") + ", " +
               sorted.length + " transaction" + (sorted.length !== 1 ? "s" : "") +
               " (" + allCats.join(", ") + ")"
+            ),
+            // Grouping toggle: calendar month vs statement period
+            React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 14 } },
+              ["calendar", "statement"].map(function(mode) {
+                return React.createElement("button", {
+                  key: mode,
+                  onClick: function() { setMonthlyGroup(mode); },
+                  style: { flex: 1, padding: "8px 10px", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600,
+                    border: monthlyGroup === mode ? "1px solid #7c3aed" : "1px solid #cbd5e1",
+                    background: monthlyGroup === mode ? "#7c3aed" : "white",
+                    color: monthlyGroup === mode ? "white" : "#475569" }
+                }, mode === "calendar" ? "By calendar month" : "By statement period");
+              })
             ),
             // Empty
             sorted.length === 0 && React.createElement("div", {
