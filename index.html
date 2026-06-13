@@ -2077,13 +2077,14 @@ function App() {
         const monthMap = {};
         const stmtPeriods = tv.statementPeriods || [];
         sorted.forEach(tx => {
-          let key, label, sortKey;
+          let key, label, sortKey, sDate = null, eDate = null;
           if (monthlyGroup === "statement") {
             const n = dateToNum(tx.date);
             const per = stmtPeriods.find(p => n >= dateToNum(p.startDate) && n <= dateToNum(p.endDate));
             if (per) {
               key = "s:" + per.startDate;
-              label = dominantMonth(per.startDate, per.endDate) + " (" + per.startDate + " – " + per.endDate + ")";
+              label = dominantMonth(per.startDate, per.endDate);
+              sDate = per.startDate; eDate = per.endDate;
               sortKey = String(dateToNum(per.startDate)).padStart(8, "0");
             } else {
               key = "pending"; label = "Not yet in a closed statement"; sortKey = "99999999";
@@ -2093,9 +2094,11 @@ function App() {
             const mo = parseInt(dp[0]) - 1, yr = parseInt(dp[2]);
             key = yr + "-" + String(mo).padStart(2, "0");
             label = monthNames[mo] + " " + yr;
+            const mm = String(mo + 1).padStart(2, "0"), ld = new Date(yr, mo + 1, 0).getDate();
+            sDate = mm + "/01/" + yr; eDate = mm + "/" + String(ld).padStart(2, "0") + "/" + yr;
             sortKey = yr + String(mo).padStart(2, "0");
           }
-          if (!monthMap[key]) monthMap[key] = { label, categories: {}, total: 0, sortKey };
+          if (!monthMap[key]) monthMap[key] = { label, categories: {}, total: 0, sortKey, startDate: sDate, endDate: eDate };
           const cat = tx.type || "Other";
           if (!monthMap[key].categories[cat]) monthMap[key].categories[cat] = 0;
           monthMap[key].categories[cat] += tx.amount;
@@ -2239,28 +2242,50 @@ function App() {
             sorted.length === 0 && React.createElement("div", {
               style: { textAlign: "center", padding: 30, color: "#94a3b8", fontSize: 13 }
             }, "No transactions found for the selected filters."),
-            // Month blocks
-            ...months.map((m, mi) => React.createElement("div", { key: mi, style: { marginBottom: 12 } },
-              // Month header
-              React.createElement("div", {
-                style: { background: "#1e3a5f", color: "white", padding: "10px 14px", borderRadius: "8px 8px 0 0",
-                  fontWeight: 700, fontSize: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }
-              },
-                React.createElement("span", null, m.label),
-                React.createElement("span", { style: { color: m.total >= 0 ? "#4ade80" : "#f87171" } }, formatMoney(m.total))
-              ),
-              // Category rows within this month
-              ...allCats.filter(cat => m.categories[cat] && m.categories[cat] !== 0).map((cat, ci) => {
-                const amt = m.categories[cat];
-                return React.createElement("div", { key: ci,
-                  style: { display: "flex", justifyContent: "space-between", padding: isMobile ? "8px 14px" : "7px 14px",
-                    fontSize: 13, borderBottom: "1px solid #f1f5f9", background: ci % 2 === 0 ? "#fff" : "#fafafa" }
-                },
-                  React.createElement("div", { style: { color: "#475569" } }, cat),
-                  React.createElement("div", { style: { fontWeight: 600, color: amt >= 0 ? "#16a34a" : "#dc2626" } }, formatMoney(amt))
-                );
-              })
-            )),
+            // Period table header (desktop) — matches the category-summary format
+            !isMobile && months.length > 0 && React.createElement("div", {
+              style: { display: "grid", gridTemplateColumns: "1fr 150px 110px", gap: 8, padding: "8px 12px",
+                background: "#f1f5f9", borderRadius: "6px 6px 0 0", fontWeight: 700, fontSize: 12, color: "#64748b" }
+            },
+              React.createElement("div", null, monthlyGroup === "statement" ? "Statement Period" : "Month"),
+              React.createElement("div", null, "Date Range"),
+              React.createElement("div", { style: { textAlign: "right" } }, "Net")
+            ),
+            // One clean row per period (click → that period's transactions)
+            ...months.map((m, mi) => {
+              const clickable = !!(m.startDate && m.endDate);
+              const drill = () => {
+                if (!clickable) return;
+                const toISO = s => { const p = s.split("/"); return p[2] + "-" + p[0] + "-" + p[1]; };
+                const sd = toISO(m.startDate), ed = toISO(m.endDate);
+                const cats = tv.categories || txBrowserFilters.categories || ["all"];
+                setTxBrowserFilters({ categories: cats, startDate: sd, endDate: ed });
+                setTxBrowserView({ categories: cats, startDate: sd, endDate: ed, results: null, loading: false, error: null, sortCol: null, sortDir: "asc" });
+                queryTransactions(cats, sd, ed);
+              };
+              const netColor = m.total >= 0 ? "#16a34a" : "#dc2626";
+              const range = m.startDate ? (m.startDate + " – " + m.endDate) : "—";
+              return isMobile
+                ? React.createElement("div", { key: mi, onClick: clickable ? drill : undefined,
+                    style: { display: "flex", justifyContent: "space-between", alignItems: "center",
+                      padding: "12px 0", borderBottom: "1px solid #f1f5f9", cursor: clickable ? "pointer" : "default" } },
+                    React.createElement("div", null,
+                      React.createElement("div", { style: { fontWeight: 600, color: "#1e293b", fontSize: 14 } }, m.label),
+                      React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2 } }, range)
+                    ),
+                    React.createElement("div", { style: { fontWeight: 600, fontSize: 15, color: netColor } }, formatMoney(m.total))
+                  )
+                : React.createElement("div", { key: mi, onClick: clickable ? drill : undefined,
+                    style: { display: "grid", gridTemplateColumns: "1fr 150px 110px", gap: 8, padding: "10px 12px",
+                      fontSize: 13, borderBottom: "1px solid #f1f5f9", background: mi % 2 === 0 ? "#fff" : "#fafafa",
+                      cursor: clickable ? "pointer" : "default" } },
+                    React.createElement("div", { style: { fontWeight: 600, color: "#1e293b" } }, m.label),
+                    React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, range),
+                    React.createElement("div", { style: { textAlign: "right", fontWeight: 600, color: netColor } }, formatMoney(m.total))
+                  );
+            }),
+            months.length > 0 && React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", textAlign: "center", margin: "10px 0 4px" } },
+              "Click a " + (monthlyGroup === "statement" ? "period" : "month") + " to see its transactions"),
             // Category totals section
             sorted.length > 0 && React.createElement("div", { style: { marginTop: 8, marginBottom: 8 } },
               React.createElement("div", {
