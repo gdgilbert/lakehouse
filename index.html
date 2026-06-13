@@ -188,19 +188,16 @@ const dominantMonth = (startDate, endDate) => {
 // expense category (NOT listed here), so those still count against profit as normal.
 const PL_EXCLUDE = ["Projects"];
 
-// Year-to-date "actual" profit/loss, with financing categories stripped from both the
-// cash (ending balance) and the expense side, so a loan never looks like profit and the
-// matching spend never looks like a loss. Contributes exactly $0 regardless of timing.
+// Year-to-date operating profit/loss: what the rental EARNED (Rental + Interest) minus
+// what it SPENT (Expenses). Owner contributions are capital, not income, so they're left
+// out entirely. Loan-funded Projects spend is excluded too — it counts later, as the loan
+// is repaid. (We deliberately do NOT add the ending balance: it already reflects income
+// and expenses, so adding it on top would double-count them.)
 const computeYtdPL = (cv) => {
   const fyIncome = cv.fyIncome || {}, fyExpense = cv.fyExpense || {};
-  let exclNet = 0, exclExp = 0;
-  PL_EXCLUDE.forEach((k) => {
-    exclNet += (fyIncome[k] || 0) + (fyExpense[k] || 0);   // income + (negative) expense = net effect on cash
-    exclExp += Math.abs(fyExpense[k] || 0);
-  });
+  let exclExp = 0;
+  PL_EXCLUDE.forEach((k) => { exclExp += Math.abs(fyExpense[k] || 0); });
   return (fyIncome["Rental Income"] || 0) + (fyIncome["Interest"] || 0)
-       + (cv.endingBalance - exclNet)
-       - (fyIncome["Monthly Contribution"] || 0)
        - (Math.abs(cv.fyTotalExpense) - exclExp);
 };
 
@@ -321,7 +318,7 @@ function generateStatementPDF(cv) {
   doc.setTextColor(plColor[0], plColor[1], plColor[2]); doc.setFontSize(18); doc.setFont("helvetica", "bold");
   doc.text(fmtM(ytdPL), W / 2, y + 13, { align: "center" });
   doc.setTextColor(146, 64, 14); doc.setFontSize(7); doc.setFont("helvetica", "normal");
-  doc.text("(YTD Rental + Interest + Ending Balance) - (Contributions + Expenses); Projects (loan-funded steps) excluded, counted as the loan is repaid", W / 2, y + 18, { align: "center" });
+  doc.text("Year-to-date Rental + Interest - Expenses (contributions are capital, not income; Projects excluded until the loan is repaid)", W / 2, y + 18, { align: "center" });
   y += 26;
 
   // ── Footer ──
@@ -410,7 +407,7 @@ function generateStatementEmailHTML(cv) {
     '<div style="background:linear-gradient(135deg,#fef3c7,#fde68a);padding:16px;margin:16px;border:1px solid #f59e0b;border-radius:8px;text-align:center;">' +
       '<div style="font-size:11px;color:#92400e;text-transform:uppercase;font-weight:600;">Year To Date Actual Profit / Loss</div>' +
       '<div style="font-size:24px;font-weight:800;color:' + plColor + ';margin:8px 0;">' + fmtM(ytdPL) + '</div>' +
-      '<div style="font-size:10px;color:#92400e;">(YTD Rental + Interest + Ending Balance) \u2212 (Contributions + Expenses); Projects (loan-funded steps) excluded, counted as the loan is repaid</div>' +
+      '<div style="font-size:10px;color:#92400e;">Year-to-date Rental + Interest \u2212 Expenses (contributions are capital, not income; Projects excluded until the loan is repaid)</div>' +
     '</div>' +
     // Footer
     '<div style="text-align:center;padding:16px;font-size:11px;color:#94a3b8;">' +
@@ -2508,7 +2505,7 @@ function App() {
               React.createElement("div", { style: { fontSize: 24, fontWeight: 800, color: plColor, textAlign: "center",
                 marginBottom: 8 } }, formatMoney(ytdPL)),
               React.createElement("div", { style: { fontSize: 10, color: "#92400e", lineHeight: 1.4, opacity: 0.85 } },
-                "(YTD Rental + Interest + Ending Balance) \u2212 (Contributions + Expenses); Projects (loan-funded steps) excluded, counted as the loan is repaid")
+                "Year-to-date Rental + Interest \u2212 Expenses (contributions are capital, not income; Projects excluded until the loan is repaid)")
             );
           })(),
 
