@@ -1251,11 +1251,16 @@ function App() {
             cm++; if (cm > 11) { cm = 0; cy++; }
           }
           monthOpts.reverse();
+          // Reflect the current date range back into whichever dropdown matches it
+          const curMonth = monthOpts.find(o => o.start === txBrowserFilters.startDate && o.end === txBrowserFilters.endDate);
+          const monthVal = curMonth ? curMonth.label : "";
+          const curStmt = stmtPeriods.find(o => isoFromMDY(o.startDate) === txBrowserFilters.startDate && isoFromMDY(o.endDate) === txBrowserFilters.endDate);
+          const stmtVal = curStmt ? (curStmt.startDate + "|" + curStmt.endDate) : "";
           return React.createElement("div", { style: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 10 } },
             React.createElement("div", null,
               React.createElement("label", { style: ls }, "Jump to calendar month"),
               React.createElement("select", {
-                value: "",
+                value: monthVal,
                 onChange: e => { const o = monthOpts.find(x => x.label === e.target.value); if (o) setTxBrowserFilters(f => ({ ...f, allTime: false, startDate: o.start, endDate: o.end })); },
                 style: { ...is, background: "white" }
               },
@@ -1266,7 +1271,7 @@ function App() {
             React.createElement("div", null,
               React.createElement("label", { style: ls }, "Jump to statement period"),
               React.createElement("select", {
-                value: "",
+                value: stmtVal,
                 onChange: e => { const o = stmtPeriods.find(x => (x.startDate + "|" + x.endDate) === e.target.value); if (o) setTxBrowserFilters(f => ({ ...f, allTime: false, startDate: isoFromMDY(o.startDate), endDate: isoFromMDY(o.endDate) })); },
                 style: { ...is, background: "white" }
               },
