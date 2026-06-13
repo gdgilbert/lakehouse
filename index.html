@@ -1214,6 +1214,7 @@ function App() {
   const [pdfData, setPdfData] = useState(null);
   const [txBrowserView, setTxBrowserView] = useState(null);
   const [monthlyGroup, setMonthlyGroup] = useState("statement"); // "calendar" | "statement"
+  const [expandedPeriods, setExpandedPeriods] = useState({}); // Monthly Summary: which period rows are expanded
   const [txBrowserFilters, setTxBrowserFilters] = useState({
     categories: ["all"], startDate: "", endDate: new Date().toISOString().split("T")[0], allTime: false
   });
@@ -2106,7 +2107,7 @@ function App() {
         });
         const monthKeys = Object.keys(monthMap).sort((a, b) =>
           monthMap[a].sortKey < monthMap[b].sortKey ? -1 : monthMap[a].sortKey > monthMap[b].sortKey ? 1 : 0);
-        const months = monthKeys.map(k => monthMap[k]);
+        const months = monthKeys.map(k => { monthMap[k].key = k; return monthMap[k]; });
         // Collect all unique categories across all months for consistent display
         const allCats = [...new Set(sorted.map(tx => tx.type || "Other"))].sort();
         const grandTotal = sorted.reduce((s, tx) => s + tx.amount, 0);
@@ -2251,10 +2252,13 @@ function App() {
               React.createElement("div", null, "Date Range"),
               React.createElement("div", { style: { textAlign: "right" } }, "Net")
             ),
-            // One clean row per period (click → that period's transactions)
+            // One row per period — tap to expand its category breakdown inline
             ...months.map((m, mi) => {
+              const expanded = !!expandedPeriods[m.key];
+              const toggle = () => setExpandedPeriods(prev => Object.assign({}, prev, { [m.key]: !prev[m.key] }));
               const clickable = !!(m.startDate && m.endDate);
-              const drill = () => {
+              const drill = (e) => {
+                if (e && e.stopPropagation) e.stopPropagation();
                 if (!clickable) return;
                 const toISO = s => { const p = s.split("/"); return p[2] + "-" + p[0] + "-" + p[1]; };
                 const sd = toISO(m.startDate), ed = toISO(m.endDate);
@@ -2265,27 +2269,42 @@ function App() {
               };
               const netColor = m.total >= 0 ? "#16a34a" : "#dc2626";
               const range = m.startDate ? (m.startDate + " – " + m.endDate) : "—";
-              return isMobile
-                ? React.createElement("div", { key: mi, onClick: clickable ? drill : undefined,
+              const caret = expanded ? "▾ " : "▸ ";
+              const catRows = allCats.filter(c => m.categories[c] && m.categories[c] !== 0);
+              const breakdown = expanded && React.createElement("div", { key: "x",
+                style: { background: "#f8fafc", borderBottom: "1px solid #e2e8f0", padding: "4px 0", animation: "slideInRow .2s var(--ease) both" } },
+                ...catRows.map((c, ci) => React.createElement("div", { key: ci,
+                    style: { display: "flex", justifyContent: "space-between", padding: isMobile ? "6px 14px 6px 24px" : "5px 12px 5px 28px", fontSize: 12 } },
+                    React.createElement("div", { style: { color: "#475569" } }, c),
+                    React.createElement("div", { style: { fontWeight: 600, color: m.categories[c] >= 0 ? "#16a34a" : "#dc2626" } }, formatMoney(m.categories[c]))
+                  )),
+                clickable && React.createElement("div", { style: { textAlign: "right", padding: isMobile ? "2px 14px 6px" : "2px 12px 6px" } },
+                  React.createElement("button", { onClick: drill,
+                    style: { background: "none", border: "none", color: "#2563eb", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 } },
+                    "See all transactions →"))
+              );
+              const row = isMobile
+                ? React.createElement("div", { key: "r", onClick: toggle,
                     style: { display: "flex", justifyContent: "space-between", alignItems: "center",
-                      padding: "12px 0", borderBottom: "1px solid #f1f5f9", cursor: clickable ? "pointer" : "default" } },
+                      padding: "12px 0", borderBottom: expanded ? "none" : "1px solid #f1f5f9", cursor: "pointer" } },
                     React.createElement("div", null,
-                      React.createElement("div", { style: { fontWeight: 600, color: "#1e293b", fontSize: 14 } }, m.label),
-                      React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2 } }, range)
+                      React.createElement("div", { style: { fontWeight: 600, color: "#1e293b", fontSize: 14 } }, caret + m.label),
+                      React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, paddingLeft: 16 } }, range)
                     ),
                     React.createElement("div", { style: { fontWeight: 600, fontSize: 15, color: netColor } }, formatMoney(m.total))
                   )
-                : React.createElement("div", { key: mi, onClick: clickable ? drill : undefined,
+                : React.createElement("div", { key: "r", onClick: toggle,
                     style: { display: "grid", gridTemplateColumns: "1fr 150px 110px", gap: 8, padding: "10px 12px",
-                      fontSize: 13, borderBottom: "1px solid #f1f5f9", background: mi % 2 === 0 ? "#fff" : "#fafafa",
-                      cursor: clickable ? "pointer" : "default" } },
-                    React.createElement("div", { style: { fontWeight: 600, color: "#1e293b" } }, m.label),
+                      fontSize: 13, borderBottom: expanded ? "none" : "1px solid #f1f5f9", background: mi % 2 === 0 ? "#fff" : "#fafafa",
+                      cursor: "pointer" } },
+                    React.createElement("div", { style: { fontWeight: 600, color: "#1e293b" } }, caret + m.label),
                     React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, range),
                     React.createElement("div", { style: { textAlign: "right", fontWeight: 600, color: netColor } }, formatMoney(m.total))
                   );
+              return React.createElement(React.Fragment, { key: m.key }, row, breakdown);
             }),
             months.length > 0 && React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", textAlign: "center", margin: "10px 0 4px" } },
-              "Click a " + (monthlyGroup === "statement" ? "period" : "month") + " to see its transactions"),
+              "Tap a " + (monthlyGroup === "statement" ? "period" : "month") + " to see its category breakdown"),
             // Category totals section
             sorted.length > 0 && React.createElement("div", { style: { marginTop: 8, marginBottom: 8 } },
               React.createElement("div", {
@@ -3295,14 +3314,12 @@ function App() {
     ),
 
     // ─── Close Statement ───────────────────────────────────
-    React.createElement("div", {
-      style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }
-    },
-      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 } },
-        React.createElement("h3", { style: { margin: 0, fontSize: 14, color: "#1e293b" } }, closeMonthView && closeMonthView.preview ? "Statement Preview" : "Close Statement"),
-        React.createElement("span", { style: { fontSize: 11, color: "#94a3b8" } }, closeMonthView && closeMonthView.preview ? "Read-only — not saved" : "Writes to Statements sheet")
-      ),
-      !closeMonthView ? React.createElement("div", null,
+    !closeMonthView ? React.createElement(React.Fragment, null,
+      React.createElement("div", { style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", marginBottom: 16 } },
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 } },
+          React.createElement("h3", { style: { margin: 0, fontSize: 14, color: "#1e293b" } }, "Close Statement"),
+          React.createElement("span", { style: { fontSize: 11, color: "#94a3b8" } }, "Writes to Statements sheet")
+        ),
         React.createElement("p", { style: { fontSize: 12, color: "#64748b", marginBottom: 10 } },
           "Close the current period (from last statement through today) and write it to the Statements sheet."),
         React.createElement("button", {
@@ -3310,11 +3327,13 @@ function App() {
           style: {...bp, width: "100%", background: closingStatement ? "#94a3b8" : "#2563eb"}
         }, closingStatement ? "Writing statement\u2026" : "Close Statement"),
         !scriptUrl && React.createElement("p", { style: { fontSize: 11, color: "#d97706", marginTop: 6 } },
-          "Set your Script URL in Settings to enable this."),
-        // ── View a statement for any period (read-only) ──
-        React.createElement("div", { style: { marginTop: 14, paddingTop: 14, borderTop: "1px solid #e2e8f0" } },
-          React.createElement("div", { style: { fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 8 } },
-            "Or view any period (read-only — nothing is saved)"),
+          "Set your Script URL in Settings to enable this.")
+      ),
+      React.createElement("div", { style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", marginBottom: 16 } },
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 } },
+          React.createElement("h3", { style: { margin: 0, fontSize: 14, color: "#1e293b" } }, "View a Statement"),
+          React.createElement("span", { style: { fontSize: 11, color: "#94a3b8" } }, "Read-only — nothing is saved")
+        ),
           (function() {
             var stmtPeriods = (state.statementPeriods || []);
             var monthOpts = monthOptionsFor(stmtPeriods);
@@ -3350,10 +3369,12 @@ function App() {
               }, previewing ? "Loading…" : "📄 View Statement")
             );
           })()
+      ),
+      React.createElement("div", { style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", marginBottom: 16 } },
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 } },
+          React.createElement("h3", { style: { margin: 0, fontSize: 14, color: "#1e293b" } }, "Year-End Tax Organizer"),
+          React.createElement("span", { style: { fontSize: 11, color: "#94a3b8" } }, "Schedule E")
         ),
-        // ── Year-end: Schedule E Tax Pack ──
-        React.createElement("div", { style: { marginTop: 14, paddingTop: 14, borderTop: "1px solid #e2e8f0" } },
-          React.createElement("div", { style: { fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 8 } }, "Year-end tax organizer"),
           React.createElement("button", {
             onClick: function() { var dy = new Date(); var ty = dy.getMonth() <= 2 ? dy.getFullYear() - 1 : dy.getFullYear(); loadTaxPack(ty); },
             style: { ...bp, width: "100%", background: "#2563eb" }
@@ -3361,7 +3382,12 @@ function App() {
           React.createElement("p", { style: { fontSize: 11, color: "#94a3b8", marginTop: 6 } },
             "Groups one calendar year onto IRS Schedule E lines (PDF + CSV). Organizing aid, not tax advice.")
         )
-      ) : (function() {
+      ) : React.createElement("div", { style: { background: "white", borderRadius: 12, padding: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", marginBottom: 16 } },
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 } },
+          React.createElement("h3", { style: { margin: 0, fontSize: 14, color: "#1e293b" } }, closeMonthView.preview ? "Statement Preview" : "Closed Statement"),
+          React.createElement("span", { style: { fontSize: 11, color: "#94a3b8" } }, closeMonthView.preview ? "Read-only — not saved" : "Saved to Statements sheet")
+        ),
+        (function() {
         var cv = closeMonthView;
         var incomeKeys  = Object.keys(cv.monthIncome  || {});
         var expenseKeys = Object.keys(cv.monthExpense || {});
