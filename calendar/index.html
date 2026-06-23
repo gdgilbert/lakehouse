@@ -85,8 +85,9 @@
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); height: 100%; position: absolute; inset: 0; }
   .cal-cell { border: 1px solid var(--line); border-right: 0; background: #fff; position: relative; }
   .cal-cell:last-child { border-right: 1px solid var(--line); }
-  .cal-cell.today { background: #eff6ff; }
+  .cal-cell.today { background: #dbeafe; box-shadow: inset 0 0 0 2px var(--primary); }
   .cal-cell.out-month { background: #fbfcfe; }
+  .today-pill { background: var(--primary); color: #fff; font-size: 9px; font-weight: 800; padding: 1px 6px; border-radius: 8px; letter-spacing: .04em; margin-left: 5px; vertical-align: 1px; }
   .cal-spacer { display: grid; grid-template-columns: repeat(7, 1fr); position: relative; }
   .cal-spacer > div { } /* sets the week height via content */
   .dn { font-size: 12px; font-weight: 600; color: var(--muted); padding: 3px 0 0 6px; position: relative; z-index: 2; }
@@ -208,12 +209,30 @@ function fmtLong(s) { const d = parseISO(s); return DOW[d.getDay()]+" "+MONTHS[d
 function fmtFull(s) { const d = parseISO(s); return DOW[d.getDay()]+", "+MONTHS[d.getMonth()]+" "+d.getDate()+", "+d.getFullYear(); }
 const todayISO = toISO(new Date());
 
+const DOWFULL = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 function nightsOf(s) { if (!s.checkIn || !s.checkOut) return 0; return Math.round((parseISO(s.checkOut)-parseISO(s.checkIn))/86400000); }
-function guestName(s) { if (!s || !s.summary) return "";
-  var n = s.summary.replace(/reserved/i,"").replace(/^[\s:\-–—]+/,"").trim();
-  if (!n || /not available|blocked|airbnb|vrbo|closed/i.test(n)) return ""; return n; }
-function inTimeOf(s) { return (s.early && s.earlyTime) ? s.earlyTime : DEFAULT_IN; }
-function outTimeOf(s) { return (s.late && s.lateTime) ? s.lateTime : DEFAULT_OUT; }
+// Owner-set name wins; else VRBO's summary name; else a friendly fallback by platform.
+function guestName(s) {
+  if (!s) return "";
+  if (s.name) return s.name;
+  if (s.summary) {
+    var n = s.summary.replace(/reserved/i,"").replace(/^[\s:\-–—]+/,"").trim();
+    if (n && !/not available|blocked|airbnb|vrbo|closed/i.test(n)) return n;
+  }
+  return s.platform === "Airbnb" ? "Airbnb guest" : "Guest";
+}
+function inTimeOf(s) { return s.inTime ? s.inTime : ((s.early && s.earlyTime) ? s.earlyTime : DEFAULT_IN); }
+function outTimeOf(s) { return s.outTime ? s.outTime : ((s.late && s.lateTime) ? s.lateTime : DEFAULT_OUT); }
+// "3 nights: Friday, Saturday, and Sunday nights"
+function nightPhrase(s) {
+  var days = [], d = parseISO(s.checkIn), end = parseISO(s.checkOut);
+  while (d < end) { days.push(DOWFULL[d.getDay()]); d.setDate(d.getDate()+1); }
+  var n = days.length;
+  if (n === 0) return "0 nights";
+  if (n === 1) return "1 night: " + days[0] + " night";
+  if (n === 2) return "2 nights: " + days[0] + " and " + days[1] + " nights";
+  return n + " nights: " + days.slice(0,-1).join(", ") + ", and " + days[n-1] + " nights";
+}
 
 /* ── Toast hook ── */
 function useToast() {
@@ -290,9 +309,32 @@ function App() {
   };
 
   const saveStayFlag = async (stay, patch) => {
-    const next = { early:!!stay.early, earlyTime:stay.earlyTime||"", late:!!stay.late, lateTime:stay.lateTime||"", note:stay.note||"", ...patch };
+    const next = { name:stay.name||"", note:stay.note||"", early:!!stay.early, earlyTime:stay.earlyTime||"",
+      late:!!stay.late, lateTime:stay.lateTime||"", inTime:stay.inTime||"", outTime:stay.outTime||"",
+      asReservation:!!stay.asReservation, ...patch };
     setData(d => ({ ...d, stays: d.stays.map(s => s.uid===stay.uid ? { ...s, ...next } : s) }));
     try { const r = await post({ action:"setFlag", uid:stay.uid, ...next }); if (r && r.ok===false) throw new Error(r.error); toast("Saved"); }
+    catch (e) { toast("Couldn't save: "+(e.message||e), "err"); }
+  };
+  // Convert a feed-blocked range into a normal-looking reservation.
+  const convertBlock = async (block) => {
+    const stay = { uid:block.uid, platform:block.platform, checkIn:block.checkIn, checkOut:block.checkOut,
+      nights:block.nights||nightsOf(block), isBlock:false, asReservation:true,
+      name:"", note:block.note||"", inTime:"", outTime:"", early:false, late:false };
+    setData(d => ({ ...d, blocks: d.blocks.filter(b=>b.uid!==block.uid),
+      stays: [...d.stays, stay].sort((a,b)=>a.checkIn<b.checkIn?-1:1) }));
+    setSelected({ type:"stay", uid:block.uid });
+    try { const r = await post({ action:"setFlag", uid:block.uid, asReservation:true, note:block.note||"" }); if (r && r.ok===false) throw new Error(r.error); toast("Converted to reservation"); }
+    catch (e) { toast("Couldn't save: "+(e.message||e), "err"); }
+  };
+  // Turn a converted reservation back into a plain blocked range.
+  const revertToBlock = async (stay) => {
+    const block = { uid:stay.uid, platform:stay.platform, checkIn:stay.checkIn, checkOut:stay.checkOut,
+      nights:stay.nights||nightsOf(stay), isBlock:true, note:stay.note||"" };
+    setData(d => ({ ...d, stays: d.stays.filter(s=>s.uid!==stay.uid),
+      blocks: [...d.blocks, block].sort((a,b)=>a.checkIn<b.checkIn?-1:1) }));
+    setSelected({ type:"block", uid:stay.uid });
+    try { const r = await post({ action:"setFlag", uid:stay.uid, note:stay.note||"" }); if (r && r.ok===false) throw new Error(r.error); toast("Reverted to blocked"); }
     catch (e) { toast("Couldn't save: "+(e.message||e), "err"); }
   };
   const saveBlockNote = async (block, note) => {
@@ -342,7 +384,8 @@ function App() {
 
       {selected && <DetailSheet selected={selected} stays={stays} blocks={blocks} dateFlags={dateFlags}
         turnDates={turnDates} ownerMode={ownerMode}
-        onClose={()=>setSelected(null)} saveStayFlag={saveStayFlag} saveBlockNote={saveBlockNote} saveDateClean={saveDateClean} />}
+        onClose={()=>setSelected(null)} saveStayFlag={saveStayFlag} saveBlockNote={saveBlockNote}
+        saveDateClean={saveDateClean} convertBlock={convertBlock} revertToBlock={revertToBlock} />}
 
       {showSettings && <SettingsSheet backend={backend} ownerCode={ownerCode} onClose={()=>setShowSettings(false)} onSave={saveSettings} />}
     </div>
@@ -422,7 +465,7 @@ function CalendarView({ month, setMonth, stays, blocks, turnDates, dateFlags, on
                 const isClean = dateFlags[iso] && dateFlags[iso].clean;
                 return (
                   <div key={di} className={cls.join(" ")} onClick={()=>onPick({ type:"day", iso })}>
-                    <div className="dn">{d.getDate()}</div>
+                    <div className="dn">{d.getDate()}{iso===todayISO && <span className="today-pill">TODAY</span>}</div>
                     {(isTurn || isClean) &&
                       <div className="marks">
                         {isTurn && <span title="Same-day turnaround">♻️</span>}
@@ -460,7 +503,7 @@ function CalendarView({ month, setMonth, stays, blocks, turnDates, dateFlags, on
       })}
 
       <div className="legend">
-        <span><i className="sw" style={{background:"var(--primary)"}}></i> Reservation (IN one end, OUT the other)</span>
+        <span><i className="sw" style={{background:"var(--primary)"}}></i> Reservation — green = check-in, orange = check-out</span>
         <span><i className="sw" style={{background:"#64748b"}}></i> Blocked</span>
         <span>♻️ Same-day turnaround</span>
         <span>🧹 Extra cleaning</span>
@@ -488,10 +531,10 @@ function ListView({ stays, turnDates, onPick }) {
             {isPast && <span className="tag past">PAST</span>}
           </div>
           <div className="times">IN {inTimeOf(s)} · OUT {outTimeOf(s)}</div>
+          <div className="times">🌙 {nightPhrase(s)}</div>
           <div className="meta">
             <span className="tag plat">{s.platform}</span>
-            {guestName(s) && <span>👤 {guestName(s)}</span>}
-            <span>🌙 {s.nights || nightsOf(s)} night{(s.nights||nightsOf(s))===1?"":"s"}</span>
+            <span>👤 {guestName(s)}</span>
             {s.phone4 && <span>📞 ····{s.phone4}</span>}
           </div>
         </div>
@@ -509,16 +552,16 @@ function ListView({ stays, turnDates, onPick }) {
 }
 
 /* ── Detail sheet (stay / block / day) ── */
-function DetailSheet({ selected, stays, blocks, dateFlags, turnDates, ownerMode, onClose, saveStayFlag, saveBlockNote, saveDateClean }) {
+function DetailSheet({ selected, stays, blocks, dateFlags, turnDates, ownerMode, onClose, saveStayFlag, saveBlockNote, saveDateClean, convertBlock, revertToBlock }) {
   let content = null, title = "Booking";
   if (selected.type === "stay") {
     const s = stays.find(x => x.uid === selected.uid);
-    title = guestName(s) || "Reservation";
-    content = s ? <StayDetail s={s} turn={!!turnDates[s.checkOut]} ownerMode={ownerMode} save={saveStayFlag} /> : <p>Not found.</p>;
+    title = s ? guestName(s) : "Reservation";
+    content = s ? <StayDetail s={s} turn={!!turnDates[s.checkOut]} ownerMode={ownerMode} save={saveStayFlag} revertToBlock={revertToBlock} /> : <p>Not found.</p>;
   } else if (selected.type === "block") {
     const b = blocks.find(x => x.uid === selected.uid);
     title = "Blocked dates";
-    content = b ? <BlockDetail b={b} ownerMode={ownerMode} save={saveBlockNote} /> : <p>Not found.</p>;
+    content = b ? <BlockDetail b={b} ownerMode={ownerMode} save={saveBlockNote} convertBlock={convertBlock} /> : <p>Not found.</p>;
   } else if (selected.type === "day") {
     title = fmtFull(selected.iso);
     content = <DayDetail iso={selected.iso} stays={stays} blocks={blocks} dateFlags={dateFlags} turn={!!turnDates[selected.iso]}
@@ -535,9 +578,14 @@ function DetailSheet({ selected, stays, blocks, dateFlags, turnDates, ownerMode,
   );
 }
 
-function StayDetail({ s, turn, ownerMode, save }) {
+function StayDetail({ s, turn, ownerMode, save, revertToBlock }) {
+  const [name, setName] = useState(s.name || "");
+  const [note, setNote] = useState(s.note || "");
   const [earlyT, setEarlyT] = useState(s.earlyTime || "");
   const [lateT, setLateT] = useState(s.lateTime || "");
+  const [inT, setInT] = useState(s.inTime || "");
+  const [outT, setOutT] = useState(s.outTime || "");
+  const commit = (extra) => save(s, { name, note, ...extra });
   return (
     <div>
       <div style={{display:"flex", gap:"8px", alignItems:"center", marginBottom:"8px", flexWrap:"wrap"}}>
@@ -546,31 +594,44 @@ function StayDetail({ s, turn, ownerMode, save }) {
         {s.early && <span className="tag early">⚡ Early</span>}
         {s.late && <span className="tag late">🌙 Late</span>}
       </div>
-      {guestName(s) && <div className="kv"><span className="k">Guest</span><span className="v">{guestName(s)}</span></div>}
+      <div className="kv"><span className="k">Guest</span><span className="v">{guestName(s)}</span></div>
       <div className="kv"><span className="k">Check-in</span><span className="v">{fmtFull(s.checkIn)} · {inTimeOf(s)}</span></div>
       <div className="kv"><span className="k">Check-out</span><span className="v">{fmtFull(s.checkOut)} · {outTimeOf(s)}</span></div>
       <div className="kv"><span className="k">Nights</span><span className="v">{s.nights || nightsOf(s)}</span></div>
       {s.phone4 && <div className="kv"><span className="k">Guest phone</span><span className="v">····{s.phone4}</span></div>}
+      {s.note && <div className="kv"><span className="k">Note</span><span className="v">{s.note}</span></div>}
       {s.link && <div className="kv"><span className="k">Reservation</span><span className="v"><a href={s.link} target="_blank" rel="noreferrer">Open ↗</a></span></div>}
 
       {ownerMode &&
         <div className="owner-box">
-          <div className="switch-row">
-            <div><b style={{fontSize:"14px"}}>⚡ Early check-in</b><div style={{fontSize:"12px", color:"var(--muted)"}}>Overrides the {DEFAULT_IN} default</div></div>
-            <label className="switch"><input type="checkbox" checked={!!s.early} onChange={e=>save(s, { early:e.target.checked, earlyTime:earlyT })} /><span className="slider"></span></label>
-          </div>
-          {s.early && <input className="field" placeholder="Check-in time (e.g. 11am)" value={earlyT} onChange={e=>setEarlyT(e.target.value)} onBlur={()=>save(s, { early:true, earlyTime:earlyT })} />}
-          <div className="switch-row" style={{marginTop:"14px"}}>
-            <div><b style={{fontSize:"14px"}}>🌙 Late checkout</b><div style={{fontSize:"12px", color:"var(--muted)"}}>Overrides the {DEFAULT_OUT} default</div></div>
-            <label className="switch"><input type="checkbox" checked={!!s.late} onChange={e=>save(s, { late:e.target.checked, lateTime:lateT })} /><span className="slider"></span></label>
-          </div>
-          {s.late && <input className="field" placeholder="Check-out time (e.g. 2pm)" value={lateT} onChange={e=>setLateT(e.target.value)} onBlur={()=>save(s, { late:true, lateTime:lateT })} />}
+          <b style={{fontSize:"14px"}}>✏️ Edit details</b>
+          <input className="field" placeholder="Guest name" value={name} onChange={e=>setName(e.target.value)} onBlur={()=>commit({})} />
+          <input className="field" placeholder="Note (optional)" value={note} onChange={e=>setNote(e.target.value)} onBlur={()=>commit({})} />
+
+          {s.asReservation
+            ? <div style={{marginTop:"6px"}}>
+                <input className="field" placeholder={"Check-in time (default "+DEFAULT_IN+")"} value={inT} onChange={e=>setInT(e.target.value)} onBlur={()=>commit({ inTime:inT })} />
+                <input className="field" placeholder={"Check-out time (default "+DEFAULT_OUT+")"} value={outT} onChange={e=>setOutT(e.target.value)} onBlur={()=>commit({ outTime:outT })} />
+                <button className="btn-ghost" style={{marginTop:"10px"}} onClick={()=>revertToBlock(s)}>↩ Revert to blocked date</button>
+              </div>
+            : <div style={{marginTop:"6px"}}>
+                <div className="switch-row">
+                  <div><b style={{fontSize:"14px"}}>⚡ Early check-in</b><div style={{fontSize:"12px", color:"var(--muted)"}}>Overrides the {DEFAULT_IN} default</div></div>
+                  <label className="switch"><input type="checkbox" checked={!!s.early} onChange={e=>commit({ early:e.target.checked, earlyTime:earlyT })} /><span className="slider"></span></label>
+                </div>
+                {s.early && <input className="field" placeholder="Check-in time (e.g. 11am)" value={earlyT} onChange={e=>setEarlyT(e.target.value)} onBlur={()=>commit({ early:true, earlyTime:earlyT })} />}
+                <div className="switch-row" style={{marginTop:"14px"}}>
+                  <div><b style={{fontSize:"14px"}}>🌙 Late checkout</b><div style={{fontSize:"12px", color:"var(--muted)"}}>Overrides the {DEFAULT_OUT} default</div></div>
+                  <label className="switch"><input type="checkbox" checked={!!s.late} onChange={e=>commit({ late:e.target.checked, lateTime:lateT })} /><span className="slider"></span></label>
+                </div>
+                {s.late && <input className="field" placeholder="Check-out time (e.g. 2pm)" value={lateT} onChange={e=>setLateT(e.target.value)} onBlur={()=>commit({ late:true, lateTime:lateT })} />}
+              </div>}
         </div>}
     </div>
   );
 }
 
-function BlockDetail({ b, ownerMode, save }) {
+function BlockDetail({ b, ownerMode, save, convertBlock }) {
   const [note, setNote] = useState(b.note || "");
   return (
     <div>
@@ -584,6 +645,10 @@ function BlockDetail({ b, ownerMode, save }) {
           <div style={{fontSize:"12px", color:"var(--muted)", marginBottom:"2px"}}>Shows in the gray bar (Airbnb/VRBO don't share your block notes).</div>
           <input className="field" placeholder="e.g. Family, Kids, Maintenance" value={note} onChange={e=>setNote(e.target.value)} />
           <button className="btn-primary" style={{marginTop:"10px", width:"100%"}} onClick={()=>save(b, note)}>Save note</button>
+          <div style={{borderTop:"1px solid var(--line)", margin:"14px 0 10px"}}></div>
+          <b style={{fontSize:"14px"}}>🔄 Make this a reservation</b>
+          <div style={{fontSize:"12px", color:"var(--muted)", marginBottom:"8px"}}>Turns this blocked range into a normal reservation you can name & time.</div>
+          <button className="btn-primary" style={{width:"100%"}} onClick={()=>convertBlock(b)}>Convert to a reservation</button>
         </div>}
     </div>
   );
