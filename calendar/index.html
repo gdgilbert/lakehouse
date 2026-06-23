@@ -693,7 +693,7 @@ function SettingsSheet({ backend, ownerCode, onClose, onSave }) {
       <div className="sheet" onClick={e=>e.stopPropagation()}>
         <button className="closebtn" onClick={onClose}>✕</button>
         <h3>⚙ Settings</h3>
-        <p style={{color:"var(--muted)", fontSize:"13px", margin:"6px 0 14px"}}>The cleaner can leave the owner code blank — that's view-only.</p>
+        <p style={{color:"var(--muted)", fontSize:"13px", margin:"6px 0 14px"}}>You can leave the owner code blank — that's view-only.</p>
         <label style={{fontSize:"13px", fontWeight:600}}>Apps Script Web App URL</label>
         <input className="field" placeholder="https://script.google.com/macros/s/…/exec" value={b} onChange={e=>setB(e.target.value.trim())} />
         <label style={{fontSize:"13px", fontWeight:600, display:"block", marginTop:"14px"}}>Owner code <span style={{fontWeight:400, color:"var(--muted)"}}>(unlocks early/late & cleaning toggles)</span></label>
