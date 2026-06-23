@@ -219,8 +219,11 @@ function guestName(s) {
     var n = s.summary.replace(/reserved/i,"").replace(/^[\s:\-–—]+/,"").trim();
     if (n && !/not available|blocked|airbnb|vrbo|closed/i.test(n)) return n;
   }
+  if (s.asReservation) return "Guest";
   return s.platform === "Airbnb" ? "Airbnb guest" : "Guest";
 }
+// A converted block reads as "Manual"; real bookings show their platform.
+function platLabel(s) { return s.asReservation ? "Manual" : s.platform; }
 function inTimeOf(s) { return s.inTime ? s.inTime : ((s.early && s.earlyTime) ? s.earlyTime : DEFAULT_IN); }
 function outTimeOf(s) { return s.outTime ? s.outTime : ((s.late && s.lateTime) ? s.lateTime : DEFAULT_OUT); }
 // "3 nights: Friday, Saturday, and Sunday nights"
@@ -533,7 +536,7 @@ function ListView({ stays, turnDates, onPick }) {
           <div className="times">IN {inTimeOf(s)} · OUT {outTimeOf(s)}</div>
           <div className="times">🌙 {nightPhrase(s)}</div>
           <div className="meta">
-            <span className="tag plat">{s.platform}</span>
+            <span className="tag plat">{platLabel(s)}</span>
             <span>👤 {guestName(s)}</span>
             {s.phone4 && <span>📞 ····{s.phone4}</span>}
           </div>
@@ -589,7 +592,7 @@ function StayDetail({ s, turn, ownerMode, save, revertToBlock }) {
   return (
     <div>
       <div style={{display:"flex", gap:"8px", alignItems:"center", marginBottom:"8px", flexWrap:"wrap"}}>
-        <span className="tag plat">{s.platform}</span>
+        <span className="tag plat">{platLabel(s)}</span>
         {turn && <span className="tag turn">♻ Same-day turnaround</span>}
         {s.early && <span className="tag early">⚡ Early</span>}
         {s.late && <span className="tag late">🌙 Late</span>}
@@ -600,7 +603,7 @@ function StayDetail({ s, turn, ownerMode, save, revertToBlock }) {
       <div className="kv"><span className="k">Nights</span><span className="v">{s.nights || nightsOf(s)}</span></div>
       {s.phone4 && <div className="kv"><span className="k">Guest phone</span><span className="v">····{s.phone4}</span></div>}
       {s.note && <div className="kv"><span className="k">Note</span><span className="v">{s.note}</span></div>}
-      {s.link && <div className="kv"><span className="k">Reservation</span><span className="v"><a href={s.link} target="_blank" rel="noreferrer">Open ↗</a></span></div>}
+      {ownerMode && s.link && <div className="kv"><span className="k">Reservation</span><span className="v"><a href={s.link} target="_blank" rel="noreferrer">Open ↗</a></span></div>}
 
       {ownerMode &&
         <div className="owner-box">
