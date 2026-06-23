@@ -3558,7 +3558,46 @@ function App() {
   );
 }
 
-ReactDOM.render(React.createElement(App), document.getElementById("root"));
+/* ── Private-device gate ───────────────────────────────────
+ * This app is only useful on a device that already has the owner's
+ * private Web App link saved (SK.script). On any other device (e.g. a
+ * cleaner who trimmed the URL to reach this page) we show a blank
+ * locked screen over the photos instead of the finance app. The link
+ * itself is the secret — it is never in this public page. */
+function renderOwnerSetup() {
+  var root = document.getElementById("root");
+  root.innerHTML =
+    '<div style="min-height:78vh;display:flex;align-items:center;justify-content:center;padding:20px;">' +
+      '<div style="background:rgba(255,255,255,0.96);border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.3);padding:30px 24px;max-width:380px;width:100%;text-align:center;font-family:Inter,system-ui,-apple-system,sans-serif;">' +
+        '<div style="font-size:42px;line-height:1;">🔒</div>' +
+        '<h2 style="margin:10px 0 4px;font-size:20px;color:#1e293b;">Rough River Lake House</h2>' +
+        '<p style="color:#64748b;font-size:14px;margin-bottom:18px;">Private app. This device isn&rsquo;t set up.</p>' +
+        '<button id="lhg-toggle" style="background:#f8fafc;color:#1e293b;border:1px solid #e2e8f0;border-radius:9px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;">Owner setup</button>' +
+        '<div id="lhg-panel" style="display:none;margin-top:16px;text-align:left;">' +
+          '<label style="font-size:13px;font-weight:600;color:#1e293b;">Paste your finance Web App link</label>' +
+          '<input id="lhg-url" placeholder="https://script.google.com/macros/s/…/exec" style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #e2e8f0;border-radius:9px;margin-top:8px;font-size:14px;font-family:inherit;" />' +
+          '<button id="lhg-go" style="width:100%;margin-top:12px;background:#2563eb;color:#fff;border:0;border-radius:9px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Connect this device</button>' +
+          '<p style="color:#94a3b8;font-size:12px;margin-top:10px;">Saved on this device only.</p>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.getElementById("lhg-toggle").onclick = function () {
+    var p = document.getElementById("lhg-panel");
+    p.style.display = p.style.display === "none" ? "block" : "none";
+    if (p.style.display === "block") document.getElementById("lhg-url").focus();
+  };
+  document.getElementById("lhg-go").onclick = function () {
+    var v = (document.getElementById("lhg-url").value || "").trim();
+    if (v) { try { localStorage.setItem(SK.script, v); } catch (e) {} location.reload(); }
+  };
+}
+
+(function () {
+  var hasLink = false;
+  try { hasLink = !!localStorage.getItem(SK.script); } catch (e) {}
+  if (hasLink) ReactDOM.render(React.createElement(App), document.getElementById("root"));
+  else renderOwnerSetup();
+})();
 </script>
 </body>
 </html>
