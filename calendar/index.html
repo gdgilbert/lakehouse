@@ -12,52 +12,33 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  /* ── Design tokens (shared with the finance app) ───────── */
   :root {
-    --primary: #2563eb;
-    --primary-dark: #1d4ed8;
-    --neutral: #475569;
-    --in: #16a34a;            /* check-IN green */
-    --in-tint: #dcfce7;
-    --out: #ea580c;           /* check-OUT amber/orange */
-    --out-tint: #ffedd5;
-    --turn: #7c3aed;          /* same-day turnaround purple */
-    --turn-tint: #ede9fe;
-    --early: #d97706;         /* early check-in */
-    --ink: #1e293b;
-    --muted: #64748b;
-    --faint: #94a3b8;
-    --line: #e2e8f0;
-    --tint: #f8fafc;
-    --radius-card: 14px;
-    --radius-ctrl: 9px;
-    --shadow: 0 8px 30px rgba(0,0,0,0.28);
-    --ease: cubic-bezier(.4,0,.2,1);
+    --primary: #2563eb; --primary-dark: #1d4ed8; --neutral: #475569;
+    --in: #16a34a; --in-tint: #dcfce7;
+    --out: #ea580c; --out-tint: #ffedd5;
+    --turn: #7c3aed; --turn-tint: #ede9fe;
+    --early: #d97706; --block: #64748b;
+    --ink: #1e293b; --muted: #64748b; --faint: #94a3b8;
+    --line: #e2e8f0; --tint: #f8fafc;
+    --radius-card: 14px; --radius-ctrl: 9px;
+    --shadow: 0 8px 30px rgba(0,0,0,0.28); --ease: cubic-bezier(.4,0,.2,1);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: "Inter", system-ui, -apple-system, sans-serif;
-    background: #0f2942;
-    min-height: 100vh; padding: 18px;
-    font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
-    color: var(--ink);
-  }
+  body { font-family: "Inter", system-ui, -apple-system, sans-serif; background: #0f2942;
+    min-height: 100vh; padding: 18px; font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased; color: var(--ink); }
   select, input, button { font-family: inherit; }
   input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,0.18); }
-
   button { transition: transform .12s var(--ease), box-shadow .12s var(--ease), filter .12s var(--ease), background-color .12s var(--ease); }
   button:not(:disabled) { cursor: pointer; }
   button:not(:disabled):hover { filter: brightness(1.05); }
   button:not(:disabled):active { transform: scale(.97); }
 
-  /* Water/sky gradient base (shows through even if photos fail to load) */
   .bg-wrap { position: fixed; inset: 0; z-index: 0;
-    background:
-      radial-gradient(1200px 500px at 70% -10%, #1e4e79 0%, rgba(30,78,121,0) 60%),
+    background: radial-gradient(1200px 500px at 70% -10%, #1e4e79 0%, rgba(30,78,121,0) 60%),
       linear-gradient(180deg, #15395c 0%, #0f2942 55%, #0b2036 100%); }
-  .photo-collage { position: fixed; inset: 0; z-index: 0;
-    display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr);
-    gap: 3px; opacity: .5; }
+  .photo-collage { position: fixed; inset: 0; z-index: 0; display: grid;
+    grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); gap: 3px; opacity: .5; }
   .photo-collage .cell { background-size: cover; background-position: center; filter: brightness(0.55) saturate(0.9); }
   .photo-collage .cell:nth-child(1) { background-image: url("../Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/500186a3-7c3c-4d96-8f9d-21f1500bae45.jpg"); }
   .photo-collage .cell:nth-child(2) { background-image: url("../Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/473f492d-b833-420c-83a2-54e1c71738d8.jpg"); }
@@ -68,88 +49,97 @@
   .photo-collage .cell:nth-child(7) { background-image: url("../Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/2a2a8135-e3cb-4226-89d0-eaa6796dd057.jpg"); }
   .photo-collage .cell:nth-child(8) { background-image: url("../Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/5ef35995-4050-423e-9daf-6704f86c1fd6.jpg"); }
   .photo-scrim { position: fixed; inset: 0; z-index: 0; pointer-events: none;
-    background: linear-gradient(180deg, rgba(11,32,54,0.78) 0%, rgba(11,32,54,0.5) 30%, rgba(11,32,54,0.55) 100%); }
+    background: linear-gradient(180deg, rgba(11,32,54,0.8) 0%, rgba(11,32,54,0.55) 30%, rgba(11,32,54,0.6) 100%); }
   #root { position: relative; z-index: 1; }
+  .wrap { max-width: 820px; margin: 0 auto; }
 
-  .wrap { max-width: 760px; margin: 0 auto; }
-
-  /* Header */
   .app-head { color: #fff; text-align: center; margin: 6px 0 16px; }
   .app-head h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
   .app-head .sub { font-size: 13px; opacity: .85; margin-top: 3px; }
+  .head-actions { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+  .icon-btn { background: rgba(255,255,255,0.16); color: #fff; border: 0; border-radius: 9px; padding: 8px 13px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+  .spin { animation: rot 1s linear infinite; display: inline-block; }
+  @keyframes rot { to { transform: rotate(360deg); } }
 
   .card { background: #fff; border-radius: var(--radius-card); box-shadow: var(--shadow); }
   .pad { padding: 16px; }
 
-  /* Tabs */
   .tabs { display: flex; gap: 6px; background: rgba(255,255,255,0.14); padding: 5px; border-radius: 12px; margin-bottom: 14px; }
   .tabs button { flex: 1; border: 0; background: transparent; color: #fff; font-weight: 600; font-size: 14px; padding: 10px; border-radius: 8px; }
   .tabs button.active { background: #fff; color: var(--primary-dark); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
 
-  /* Summary chips */
   .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
   .chip { background: rgba(255,255,255,0.92); border-radius: 10px; padding: 8px 12px; font-size: 12.5px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 6px; }
   .chip b { font-size: 14px; }
 
-  /* Month nav */
   .monthbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
   .monthbar h2 { font-size: 18px; font-weight: 700; color: var(--ink); }
   .navbtn { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: #fff; font-size: 18px; color: var(--ink); display: flex; align-items: center; justify-content: center; }
   .today-btn { border: 1px solid var(--line); background: var(--tint); border-radius: 8px; padding: 7px 12px; font-size: 12.5px; font-weight: 600; color: var(--primary-dark); }
 
-  /* Calendar grid */
   .dow { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 6px; }
   .dow span { text-align: center; font-size: 11px; font-weight: 700; color: var(--faint); letter-spacing: .04em; }
-  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
-  .cell-day { position: relative; min-height: 64px; border-radius: 10px; border: 1px solid var(--line); background: #fff; padding: 4px 4px 4px 5px; overflow: hidden; text-align: left; display: flex; flex-direction: column; gap: 2px; }
-  .cell-day.out-month { background: #fbfcfe; }
-  .cell-day .num { font-size: 12.5px; font-weight: 600; color: var(--muted); }
-  .cell-day.out-month .num { color: #c7d0db; }
-  .cell-day.today { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
-  .cell-day.today .num { color: var(--primary-dark); font-weight: 800; }
-  .cell-day.occupied { background: #eff5ff; }
-  .cell-day.clickable:hover { background: #e8f0ff; }
-  .pill { font-size: 10px; font-weight: 700; line-height: 1.4; padding: 1px 5px; border-radius: 5px; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
-  .pill.in  { background: var(--in-tint);  color: #166534; }
-  .pill.out { background: var(--out-tint); color: #9a3412; }
-  .pill.turn{ background: var(--turn-tint);color: #5b21b6; }
-  .pill.early{ background: #fef3c7; color: #92400e; }
-  .badge-dot { position: absolute; top: 4px; right: 4px; display: flex; gap: 2px; }
 
-  /* Legend */
+  /* Week rows with spanning bars */
+  .cal-week { position: relative; margin-bottom: 5px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); height: 100%; position: absolute; inset: 0; }
+  .cal-cell { border: 1px solid var(--line); border-right: 0; background: #fff; position: relative; }
+  .cal-cell:last-child { border-right: 1px solid var(--line); }
+  .cal-cell.today { background: #eff6ff; }
+  .cal-cell.out-month { background: #fbfcfe; }
+  .cal-spacer { display: grid; grid-template-columns: repeat(7, 1fr); position: relative; }
+  .cal-spacer > div { } /* sets the week height via content */
+  .dn { font-size: 12px; font-weight: 600; color: var(--muted); padding: 3px 0 0 6px; position: relative; z-index: 2; }
+  .cal-cell.today .dn { color: var(--primary-dark); font-weight: 800; }
+  .cal-cell.out-month .dn { color: #cbd5e1; }
+  .marks { position: absolute; top: 3px; right: 4px; display: flex; gap: 3px; font-size: 12px; z-index: 3; }
+  .mark-btn { background: none; border: 0; font-size: 13px; line-height: 1; padding: 0; }
+
+  .cal-bars { position: absolute; left: 0; right: 0; top: 22px; bottom: 3px; z-index: 2; pointer-events: none; }
+  .bar { position: absolute; height: 20px; border-radius: 5px; display: flex; align-items: center;
+    overflow: hidden; border: 0; padding: 0; font-size: 10.5px; font-weight: 700; color: #fff;
+    pointer-events: auto; box-shadow: 0 1px 2px rgba(0,0,0,.18); }
+  .bar-stay { background: var(--primary); }
+  .bar-block { background: repeating-linear-gradient(45deg, #64748b, #64748b 7px, #5b6878 7px, #5b6878 14px); }
+  .cap { height: 100%; display: flex; align-items: center; padding: 0 5px; white-space: nowrap; flex: 0 0 auto; }
+  .capL { background: rgba(22,163,74,.95); border-radius: 5px 0 0 5px; }
+  .capR { background: rgba(234,88,12,.95); border-radius: 0 5px 5px 0; }
+  .bmid { flex: 1 1 auto; min-width: 0; padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bnote { flex: 1 1 auto; min-width: 0; padding: 0 8px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
   .legend { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
   .legend span { font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
-  .sw { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+  .sw { width: 22px; height: 12px; border-radius: 4px; display: inline-block; }
 
-  /* List view */
   .group-h { color: #fff; font-size: 13px; font-weight: 700; opacity: .9; margin: 14px 4px 8px; letter-spacing: .02em; }
-  .stay { display: flex; align-items: stretch; gap: 0; background: #fff; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 10px; overflow: hidden; width: 100%; text-align: left; border: 0; }
+  .stay { display: flex; gap: 0; background: #fff; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 10px; overflow: hidden; width: 100%; text-align: left; border: 0; }
   .stay .accent { width: 5px; flex: 0 0 5px; }
   .stay .body { padding: 12px 14px; flex: 1; min-width: 0; }
   .stay .row1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .stay .dates { font-size: 15px; font-weight: 700; color: var(--ink); }
-  .stay .meta { font-size: 12.5px; color: var(--muted); margin-top: 3px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .stay .times { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .stay .meta { font-size: 12.5px; color: var(--muted); margin-top: 4px; display: flex; gap: 10px; flex-wrap: wrap; }
   .tag { font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 20px; letter-spacing: .02em; }
   .tag.turn { background: var(--turn-tint); color: #5b21b6; }
   .tag.early { background: #fef3c7; color: #92400e; }
+  .tag.late { background: #e0e7ff; color: #3730a3; }
   .tag.plat { background: #e2e8f0; color: #334155; }
   .tag.past { background: #f1f5f9; color: #94a3b8; }
+  .tag.block { background: #e2e8f0; color: #475569; }
   .empty { background: rgba(255,255,255,0.92); border-radius: 12px; padding: 28px; text-align: center; color: var(--muted); font-size: 14px; }
 
-  /* Modal */
-  .overlay { position: fixed; inset: 0; background: rgba(8,20,34,0.6); z-index: 50; display: flex; align-items: flex-end; justify-content: center; padding: 0; animation: fade .2s ease; }
+  .overlay { position: fixed; inset: 0; background: rgba(8,20,34,0.6); z-index: 50; display: flex; align-items: flex-end; justify-content: center; animation: fade .2s ease; }
   @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
   @keyframes sheet { from { transform: translateY(24px); opacity: .6; } to { transform: none; opacity: 1; } }
-  .sheet { background: #fff; width: 100%; max-width: 760px; border-radius: 18px 18px 0 0; padding: 18px 18px 26px; animation: sheet .25s var(--ease); max-height: 88vh; overflow-y: auto; }
+  .sheet { background: #fff; width: 100%; max-width: 820px; border-radius: 18px 18px 0 0; padding: 18px 18px 26px; animation: sheet .25s var(--ease); max-height: 88vh; overflow-y: auto; }
   @media (min-width: 640px) { .overlay { align-items: center; } .sheet { border-radius: 18px; } }
   .sheet h3 { font-size: 18px; font-weight: 800; margin-bottom: 2px; }
-  .kv { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
-  .kv .k { color: var(--muted); }
-  .kv .v { font-weight: 600; text-align: right; }
+  .kv { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px; gap: 12px; }
+  .kv .k { color: var(--muted); } .kv .v { font-weight: 600; text-align: right; }
   .closebtn { float: right; border: 0; background: var(--tint); width: 32px; height: 32px; border-radius: 16px; font-size: 16px; color: var(--muted); }
 
-  .owner-box { margin-top: 14px; background: var(--tint); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
-  .switch-row { display: flex; align-items: center; justify-content: space-between; }
+  .owner-box { margin-top: 12px; background: var(--tint); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .switch { position: relative; width: 46px; height: 27px; flex: 0 0 46px; }
   .switch input { opacity: 0; width: 0; height: 0; }
   .slider { position: absolute; inset: 0; background: #cbd5e1; border-radius: 27px; transition: .2s; }
@@ -160,30 +150,18 @@
   .btn-primary { background: var(--primary); color: #fff; border: 0; border-radius: var(--radius-ctrl); padding: 11px 16px; font-size: 14px; font-weight: 700; }
   .btn-ghost { background: var(--tint); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-ctrl); padding: 9px 14px; font-size: 13px; font-weight: 600; }
 
-  /* Header action buttons */
-  .head-actions { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
-  .icon-btn { background: rgba(255,255,255,0.16); color: #fff; border: 0; border-radius: 9px; padding: 8px 13px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
-  .spin { animation: rot 1s linear infinite; display: inline-block; }
-  @keyframes rot { to { transform: rotate(360deg); } }
-
-  /* Toast */
   @keyframes toastIn { from { transform: translate(-50%, -20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
-  .toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
-    padding: 12px 26px; border-radius: 10px; font-weight: 600; font-size: 14px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.22); z-index: 1000; animation: toastIn .3s ease; color: #fff; }
+  .toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); padding: 12px 26px; border-radius: 10px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.22); z-index: 1000; animation: toastIn .3s ease; color: #fff; }
   .toast-ok { background: #16a34a; } .toast-warn { background: #d97706; } .toast-err { background: #dc2626; }
-
   .banner { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
 
   @media (max-width: 600px) {
     body { padding: 10px; }
     .photo-collage { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(4, 1fr); }
-    .cell-day { min-height: 58px; }
-    .pill { font-size: 9px; padding: 1px 4px; }
+    .bar { font-size: 9.5px; height: 18px; }
+    .cap { padding: 0 3px; } .bmid { padding: 0 3px; }
   }
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
-  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
 </style>
 </head>
 <body>
@@ -196,73 +174,52 @@
 <div id="root"></div>
 
 <script type="text/babel">
-const { useState, useEffect, useCallback, useMemo, useRef } = React;
+const { useState, useEffect, useCallback, useMemo } = React;
 
 /* ════════════════════════════════════════════════════════════
- *  CONFIG — paste your deployed Apps Script Web App URL here.
- *  (You can also set/override it in-app via the ⚙ Settings panel.)
+ *  CONFIG — deployed Apps Script Web App URL (overridable in ⚙ Settings).
  * ════════════════════════════════════════════════════════════ */
 const BACKEND_URL = "https://script.google.com/macros/s/AKfycbx1GcnCTQ5n2Rf4rXKFqfNAzmD1NnJO4DpX8fXZpT-FDfEDgQRAMQ2y0_cBHSb0EDSo/exec";
 
-/* ── Sample data so the page is usable before the backend is wired ── */
-function isoShift(days) {
-  const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + days);
-  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
-}
+const DEFAULT_IN = "4p";    // default check-in time shown on bars
+const DEFAULT_OUT = "11a";  // default check-out time shown on bars
+
+/* ── Sample data (used only if no backend URL is set) ── */
+function isoShift(days) { const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()+days);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 const SAMPLE = {
-  ok: true, sample: true, feeds: ["Airbnb","VRBO"], errors: [],
+  ok: true, sample: true, feeds: ["Airbnb","VRBO"], errors: [], dateFlags: {},
   generatedAt: new Date().toISOString(),
-  blocks: [{ uid:"b1", platform:"Airbnb", checkIn: isoShift(20), checkOut: isoShift(23), isBlock:true }],
+  blocks: [{ uid:"b1", platform:"Airbnb", checkIn: isoShift(20), checkOut: isoShift(23), isBlock:true, note:"Family" }],
   stays: [
-    { uid:"s1", platform:"Airbnb", checkIn: isoShift(-3), checkOut: isoShift(2), phone4:"4821", link:"", nights:5 },
-    { uid:"s2", platform:"VRBO",   checkIn: isoShift(2),  checkOut: isoShift(6), phone4:"0099", link:"", nights:4 }, // turnaround on day +2
-    { uid:"s3", platform:"Airbnb", checkIn: isoShift(9),  checkOut: isoShift(12), phone4:"7310", link:"", nights:3, early:true, earlyTime:"11am" },
-    { uid:"s4", platform:"VRBO",   checkIn: isoShift(14), checkOut: isoShift(17), phone4:"5567", link:"", nights:3 },
+    { uid:"s1", platform:"Airbnb", checkIn: isoShift(-3), checkOut: isoShift(2), phone4:"4821", summary:"Reserved", nights:5 },
+    { uid:"s2", platform:"VRBO",   checkIn: isoShift(2),  checkOut: isoShift(6), phone4:"", summary:"Reserved - Dana", nights:4, sameDayTurnaround:true },
+    { uid:"s3", platform:"Airbnb", checkIn: isoShift(9),  checkOut: isoShift(12), phone4:"7310", summary:"Reserved", nights:3, early:true, earlyTime:"11am" },
+    { uid:"s4", platform:"VRBO",   checkIn: isoShift(14), checkOut: isoShift(17), phone4:"", summary:"Reserved - Lee", nights:3, late:true, lateTime:"2pm" },
   ],
 };
 
-/* ── Date helpers (local, no timezone drift) ─────────────── */
+/* ── Date helpers (local) ── */
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 function parseISO(s) { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); }
-function toISO(dt) { return dt.getFullYear() + "-" + String(dt.getMonth()+1).padStart(2,"0") + "-" + String(dt.getDate()).padStart(2,"0"); }
-function fmtLong(s) { const d = parseISO(s); return DOW[d.getDay()] + " " + MONTHS[d.getMonth()].slice(0,3) + " " + d.getDate(); }
-function fmtFull(s) { const d = parseISO(s); return DOW[d.getDay()] + ", " + MONTHS[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear(); }
+function toISO(dt) { return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0"); }
+function fmtLong(s) { const d = parseISO(s); return DOW[d.getDay()]+" "+MONTHS[d.getMonth()].slice(0,3)+" "+d.getDate(); }
+function fmtFull(s) { const d = parseISO(s); return DOW[d.getDay()]+", "+MONTHS[d.getMonth()]+" "+d.getDate()+", "+d.getFullYear(); }
 const todayISO = toISO(new Date());
 
-/* Process raw payload: compute turnarounds client-side too (defensive), index by date. */
-function useDerived(stays) {
-  return useMemo(() => {
-    const list = (stays || []).slice().sort((a,b) => a.checkIn < b.checkIn ? -1 : 1);
-    const inDates = {}, outDates = {};
-    list.forEach(s => { if (s.checkIn) inDates[s.checkIn] = true; if (s.checkOut) outDates[s.checkOut] = true; });
-    list.forEach(s => {
-      s._turn = !!((s.checkOut && inDates[s.checkOut]) || (s.checkIn && outDates[s.checkIn]) || s.sameDayTurnaround);
-    });
-    // Map each calendar date -> what happens on it.
-    const byDate = {};
-    const touch = (iso) => (byDate[iso] = byDate[iso] || { ins:[], outs:[], occupied:false, turn:false, early:false });
-    list.forEach(s => {
-      if (s.checkIn)  { const c = touch(s.checkIn);  c.ins.push(s);  if (s.early) c.early = true; }
-      if (s.checkOut) { const c = touch(s.checkOut); c.outs.push(s); }
-      // occupied nights: checkIn .. checkOut-1
-      if (s.checkIn && s.checkOut) {
-        let d = parseISO(s.checkIn); const end = parseISO(s.checkOut);
-        while (d < end) { touch(toISO(d)).occupied = true; d.setDate(d.getDate()+1); }
-      }
-    });
-    Object.keys(byDate).forEach(k => { if (inDates[k] && outDates[k]) byDate[k].turn = true; });
-    return { list, byDate };
-  }, [stays]);
-}
+function nightsOf(s) { if (!s.checkIn || !s.checkOut) return 0; return Math.round((parseISO(s.checkOut)-parseISO(s.checkIn))/86400000); }
+function guestName(s) { if (!s || !s.summary) return "";
+  var n = s.summary.replace(/reserved/i,"").replace(/^[\s:\-–—]+/,"").trim();
+  if (!n || /not available|blocked|airbnb|vrbo|closed/i.test(n)) return ""; return n; }
+function inTimeOf(s) { return (s.early && s.earlyTime) ? s.earlyTime : DEFAULT_IN; }
+function outTimeOf(s) { return (s.late && s.lateTime) ? s.lateTime : DEFAULT_OUT; }
 
-/* ── Toast hook ──────────────────────────────────────────── */
+/* ── Toast hook ── */
 function useToast() {
   const [toast, setToast] = useState(null);
-  const show = useCallback((msg, kind="ok") => {
-    setToast({ msg, kind }); setTimeout(() => setToast(null), 2600);
-  }, []);
-  const node = toast ? <div className={"toast toast-" + toast.kind}>{toast.msg}</div> : null;
+  const show = useCallback((msg, kind="ok") => { setToast({ msg, kind }); setTimeout(() => setToast(null), 2600); }, []);
+  const node = toast ? <div className={"toast toast-"+toast.kind}>{toast.msg}</div> : null;
   return [node, show];
 }
 
@@ -275,7 +232,7 @@ function App() {
   const [err, setErr] = useState("");
   const [tab, setTab] = useState("calendar");
   const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
-  const [selected, setSelected] = useState(null);   // {iso} or {stay}
+  const [selected, setSelected] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [toastNode, toast] = useToast();
   const ownerMode = !!ownerCode;
@@ -285,19 +242,16 @@ function App() {
     if (!opts.silent) setLoading(true);
     setErr("");
     try {
-      const url = backend + (backend.indexOf("?") >= 0 ? "&" : "?") + "v=1" + (opts.refresh ? "&refresh=1" : "");
+      const url = backend + (backend.indexOf("?")>=0 ? "&" : "?") + "v=2" + (opts.refresh ? "&refresh=1" : "");
       const res = await fetch(url);
       const json = await res.json();
       if (!json.ok) throw new Error(json.error || "Backend error");
       setData(json);
-    } catch (e) {
-      setErr(String(e.message || e));
-      setData(prev => prev || null);
-    } finally { setLoading(false); }
+    } catch (e) { setErr(String(e.message || e)); setData(prev => prev || null); }
+    finally { setLoading(false); }
   }, [backend]);
 
   useEffect(() => { load(); }, [load]);
-  // Refresh on focus + every 5 min.
   useEffect(() => {
     const onFocus = () => load({ silent: true });
     window.addEventListener("focus", onFocus);
@@ -306,11 +260,20 @@ function App() {
   }, [load]);
 
   const stays = (data && data.stays) || [];
-  const { list, byDate } = useDerived(stays);
+  const blocks = (data && data.blocks) || [];
+  const dateFlags = (data && data.dateFlags) || {};
 
-  const upcoming = list.filter(s => (s.checkOut || s.checkIn) >= todayISO);
-  const nextTurn = upcoming.find(s => s._turn && s.checkIn >= todayISO);
-  const earlies = upcoming.filter(s => s.early && s.checkIn >= todayISO).length;
+  // Derived sets
+  const { turnDates } = useMemo(() => {
+    const ins = {}, outs = {}, t = {};
+    stays.forEach(s => { if (s.checkIn) ins[s.checkIn]=true; if (s.checkOut) outs[s.checkOut]=true; });
+    Object.keys(outs).forEach(d => { if (ins[d]) t[d]=true; });
+    return { turnDates: t };
+  }, [stays]);
+
+  const upcomingRes = stays.filter(s => (s.checkOut||s.checkIn) >= todayISO);
+  const nextCheckout = stays.map(s=>s.checkOut).filter(d=>d && d>=todayISO).sort()[0];
+  const nextTurn = Object.keys(turnDates).filter(d=>d>=todayISO).sort()[0];
 
   const saveSettings = (b, o) => {
     setBackend(b); setOwnerCode(o);
@@ -318,22 +281,29 @@ function App() {
     setShowSettings(false); toast("Settings saved");
   };
 
-  const setEarly = async (stay, early, time) => {
-    if (!backend) { // sample mode: just update locally
-      setData(d => ({ ...d, stays: d.stays.map(s => s.uid === stay.uid ? { ...s, early, earlyTime: time } : s) }));
-      toast(early ? "Marked early check-in" : "Cleared early flag"); return;
-    }
-    try {
-      const res = await fetch(backend, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" }, // avoids CORS preflight
-        body: JSON.stringify({ action:"setFlag", ownerCode, uid: stay.uid, early, time: time||"", note: stay.note||"" }),
-      });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || "Failed");
-      setData(d => ({ ...d, stays: d.stays.map(s => s.uid === stay.uid ? { ...s, early, earlyTime: time } : s) }));
-      toast(early ? "Marked early check-in" : "Cleared early flag");
-    } catch (e) { toast("Couldn't save: " + (e.message||e), "err"); }
+  // POST helper
+  const post = async (body) => {
+    if (!backend) return { ok: true, sample: true };
+    const res = await fetch(backend, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
+      body: JSON.stringify({ ...body, ownerCode }) });
+    return res.json();
+  };
+
+  const saveStayFlag = async (stay, patch) => {
+    const next = { early:!!stay.early, earlyTime:stay.earlyTime||"", late:!!stay.late, lateTime:stay.lateTime||"", note:stay.note||"", ...patch };
+    setData(d => ({ ...d, stays: d.stays.map(s => s.uid===stay.uid ? { ...s, ...next } : s) }));
+    try { const r = await post({ action:"setFlag", uid:stay.uid, ...next }); if (r && r.ok===false) throw new Error(r.error); toast("Saved"); }
+    catch (e) { toast("Couldn't save: "+(e.message||e), "err"); }
+  };
+  const saveBlockNote = async (block, note) => {
+    setData(d => ({ ...d, blocks: d.blocks.map(b => b.uid===block.uid ? { ...b, note } : b) }));
+    try { const r = await post({ action:"setFlag", uid:block.uid, note }); if (r && r.ok===false) throw new Error(r.error); toast("Saved"); }
+    catch (e) { toast("Couldn't save: "+(e.message||e), "err"); }
+  };
+  const saveDateClean = async (iso, clean, note) => {
+    setData(d => { const df = { ...(d.dateFlags||{}) }; if (clean) df[iso] = { clean:true, note:note||"" }; else delete df[iso]; return { ...d, dateFlags: df }; });
+    try { const r = await post({ action:"setDateFlag", date:iso, clean, note:note||"" }); if (r && r.ok===false) throw new Error(r.error); toast(clean ? "Extra cleaning added" : "Removed"); }
+    catch (e) { toast("Couldn't save: "+(e.message||e), "err"); }
   };
 
   return (
@@ -350,12 +320,9 @@ function App() {
         </div>
       </div>
 
-      {data && data.sample &&
-        <div className="banner">👋 <b>Demo mode</b> — showing sample bookings. Add your Apps Script URL in ⚙ Settings to go live.</div>}
-      {err && !data &&
-        <div className="banner">⚠ Couldn't reach the calendar service. {err}</div>}
-      {data && data.errors && data.errors.length > 0 &&
-        <div className="banner">⚠ Some feeds had trouble: {data.errors.join("; ")}</div>}
+      {data && data.sample && <div className="banner">👋 <b>Demo mode</b> — sample data. Add your Apps Script URL in ⚙ Settings to go live.</div>}
+      {err && !data && <div className="banner">⚠ Couldn't reach the calendar service. {err}</div>}
+      {data && data.errors && data.errors.length>0 && <div className="banner">⚠ Some feeds had trouble: {data.errors.join("; ")}</div>}
 
       <div className="tabs">
         <button className={tab==="calendar"?"active":""} onClick={()=>setTab("calendar")}>📅 Calendar</button>
@@ -363,37 +330,70 @@ function App() {
       </div>
 
       <div className="chips">
-        <span className="chip">📥 <b>{upcoming.filter(s=>s.checkIn>=todayISO).length}</b> upcoming check-ins</span>
-        <span className="chip">♻️ Next turnaround: <b>{nextTurn ? fmtLong(nextTurn.checkIn) : "none"}</b></span>
-        {earlies > 0 && <span className="chip">⚡ <b>{earlies}</b> early check-in{earlies>1?"s":""}</span>}
+        <span className="chip">🏠 <b>{upcomingRes.length}</b> upcoming reservation{upcomingRes.length===1?"":"s"}</span>
+        <span className="chip">🧽 Next checkout/cleaning: <b>{nextCheckout ? fmtLong(nextCheckout) : "none"}</b></span>
+        <span className="chip">♻️ Next same-day turnaround: <b>{nextTurn ? fmtLong(nextTurn) : "none"}</b></span>
       </div>
 
-      {tab === "calendar"
-        ? <CalendarView month={month} setMonth={setMonth} byDate={byDate} onPick={(iso)=>setSelected({iso})} />
-        : <ListView list={list} onPick={(stay)=>setSelected({stay})} />}
+      {tab==="calendar"
+        ? <CalendarView month={month} setMonth={setMonth} stays={stays} blocks={blocks}
+            turnDates={turnDates} dateFlags={dateFlags} onPick={setSelected} />
+        : <ListView stays={stays} turnDates={turnDates} onPick={setSelected} />}
 
-      {selected &&
-        <DetailSheet selected={selected} byDate={byDate} ownerMode={ownerMode}
-          onClose={()=>setSelected(null)} onSetEarly={setEarly} />}
+      {selected && <DetailSheet selected={selected} stays={stays} blocks={blocks} dateFlags={dateFlags}
+        turnDates={turnDates} ownerMode={ownerMode}
+        onClose={()=>setSelected(null)} saveStayFlag={saveStayFlag} saveBlockNote={saveBlockNote} saveDateClean={saveDateClean} />}
 
-      {showSettings &&
-        <SettingsSheet backend={backend} ownerCode={ownerCode}
-          onClose={()=>setShowSettings(false)} onSave={saveSettings} />}
+      {showSettings && <SettingsSheet backend={backend} ownerCode={ownerCode} onClose={()=>setShowSettings(false)} onSave={saveSettings} />}
     </div>
   );
 }
 
-/* ── Calendar (month grid) ───────────────────────────────── */
-function CalendarView({ month, setMonth, byDate, onPick }) {
+/* ── Build month weeks ── */
+function buildWeeks(year, month) {
+  const first = new Date(year, month, 1);
+  const gridStart = new Date(year, month, 1 - first.getDay());
+  const weeks = []; let cur = new Date(gridStart);
+  for (let w=0; w<6; w++) {
+    const days = [];
+    for (let d=0; d<7; d++) { days.push(new Date(cur)); cur.setDate(cur.getDate()+1); }
+    weeks.push(days);
+    if (days[6].getMonth() !== month && days[6] > first) break;
+  }
+  return weeks;
+}
+
+/* ── Compute bar segments + lanes for one week ── */
+function weekLayout(weekDays, items) {
+  const wStart = toISO(weekDays[0]), wEnd = toISO(weekDays[6]);
+  const segs = [];
+  items.forEach(it => {
+    if (!(it.checkIn <= wEnd && it.checkOut >= wStart)) return;
+    const inIdx = weekDays.findIndex(d => toISO(d)===it.checkIn);
+    const outIdx = weekDays.findIndex(d => toISO(d)===it.checkOut);
+    const isStart = inIdx >= 0, isEnd = outIdx >= 0;
+    const startCol = isStart ? inIdx : 0, endCol = isEnd ? outIdx : 6;
+    const startX = isStart ? startCol+0.5 : 0;
+    const endX = isEnd ? endCol+0.5 : 7;
+    if (endX <= startX) return;
+    segs.push({ it, startX, endX, isStart, isEnd });
+  });
+  segs.sort((a,b)=>a.startX-b.startX);
+  const laneEnds = [];
+  segs.forEach(s => {
+    let lane = laneEnds.findIndex(e => e <= s.startX + 0.001);
+    if (lane === -1) { lane = laneEnds.length; laneEnds.push(s.endX); } else laneEnds[lane] = s.endX;
+    s.lane = lane;
+  });
+  return { segs, lanes: laneEnds.length };
+}
+
+const NUM_ROW = 22, LANE_H = 24, BAR_H = 20, PADB = 4;
+
+function CalendarView({ month, setMonth, stays, blocks, turnDates, dateFlags, onPick }) {
   const y = month.getFullYear(), m = month.getMonth();
-  const first = new Date(y, m, 1);
-  const startPad = first.getDay();
-  const gridStart = new Date(y, m, 1 - startPad);
-  const cells = [];
-  for (let i = 0; i < 42; i++) { const d = new Date(gridStart); d.setDate(gridStart.getDate()+i); cells.push(d); }
-  // Trim trailing all-out-of-month week.
-  const weeks = cells.length / 7;
-  const used = (weeks === 6 && cells[35].getMonth() !== m) ? 35 : 42;
+  const weeks = buildWeeks(y, m);
+  const items = [...blocks.map(b=>({ ...b, _kind:"block" })), ...stays.map(s=>({ ...s, _kind:"stay" }))];
 
   return (
     <div className="card pad">
@@ -406,58 +406,88 @@ function CalendarView({ month, setMonth, byDate, onPick }) {
         </div>
       </div>
       <div className="dow">{DOW.map(d => <span key={d}>{d}</span>)}</div>
-      <div className="grid">
-        {cells.slice(0, used).map((d, i) => {
-          const iso = toISO(d);
-          const info = byDate[iso];
-          const outMonth = d.getMonth() !== m;
-          const cls = ["cell-day"];
-          if (outMonth) cls.push("out-month");
-          if (iso === todayISO) cls.push("today");
-          if (info && info.occupied) cls.push("occupied");
-          const hasEvent = info && (info.ins.length || info.outs.length);
-          if (hasEvent) cls.push("clickable");
-          return (
-            <div key={i} className={cls.join(" ")} onClick={hasEvent ? ()=>onPick(iso) : undefined}>
-              <span className="num">{d.getDate()}</span>
-              {info && info.turn && <div className="badge-dot"><span title="Same-day turnaround">♻️</span></div>}
-              {info && info.outs.map((s,j) => <span key={"o"+j} className="pill out">OUT</span>)}
-              {info && info.ins.map((s,j) => (
-                <span key={"i"+j} className={"pill " + (s.early ? "early" : "in")}>
-                  {s.early ? "⚡ IN" : "IN"}
-                </span>
-              ))}
+
+      {weeks.map((days, wi) => {
+        const { segs, lanes } = weekLayout(days, items);
+        const wkH = NUM_ROW + Math.max(lanes,1)*LANE_H + PADB;
+        return (
+          <div className="cal-week" key={wi} style={{ height: wkH+"px" }}>
+            <div className="cal-grid">
+              {days.map((d, di) => {
+                const iso = toISO(d);
+                const cls = ["cal-cell"];
+                if (d.getMonth() !== m) cls.push("out-month");
+                if (iso === todayISO) cls.push("today");
+                const isTurn = turnDates[iso];
+                const isClean = dateFlags[iso] && dateFlags[iso].clean;
+                return (
+                  <div key={di} className={cls.join(" ")} onClick={()=>onPick({ type:"day", iso })}>
+                    <div className="dn">{d.getDate()}</div>
+                    {(isTurn || isClean) &&
+                      <div className="marks">
+                        {isTurn && <span title="Same-day turnaround">♻️</span>}
+                        {isClean && <span title={"Extra cleaning"+(dateFlags[iso].note?": "+dateFlags[iso].note:"")}>🧹</span>}
+                      </div>}
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
+            <div className="cal-bars">
+              {segs.map((seg, si) => {
+                const it = seg.it;
+                const left = seg.startX/7*100, width = (seg.endX-seg.startX)/7*100;
+                const style = { left:"calc("+left+"% + 1px)", width:"calc("+width+"% - 2px)", top:(seg.lane*LANE_H)+"px", height:BAR_H+"px" };
+                if (it._kind === "block") {
+                  return (
+                    <button key={si} className="bar bar-block" style={style}
+                      onClick={(e)=>{ e.stopPropagation(); onPick({ type:"block", uid:it.uid }); }}>
+                      <span className="bnote">🔒 {it.note || "Blocked"}</span>
+                    </button>
+                  );
+                }
+                return (
+                  <button key={si} className="bar bar-stay" style={style}
+                    onClick={(e)=>{ e.stopPropagation(); onPick({ type:"stay", uid:it.uid }); }}>
+                    {seg.isStart && <span className="cap capL">IN {inTimeOf(it)}</span>}
+                    <span className="bmid">{guestName(it)}</span>
+                    {seg.isEnd && <span className="cap capR">OUT {outTimeOf(it)}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+
       <div className="legend">
-        <span><i className="sw" style={{background:"var(--in-tint)"}}></i> Check-in</span>
-        <span><i className="sw" style={{background:"var(--out-tint)"}}></i> Check-out</span>
-        <span>♻️ Same-day turnaround (paid extra)</span>
-        <span>⚡ Early check-in</span>
-        <span><i className="sw" style={{background:"#eff5ff"}}></i> Booked night</span>
+        <span><i className="sw" style={{background:"var(--primary)"}}></i> Reservation (IN one end, OUT the other)</span>
+        <span><i className="sw" style={{background:"#64748b"}}></i> Blocked</span>
+        <span>♻️ Same-day turnaround</span>
+        <span>🧹 Extra cleaning</span>
       </div>
     </div>
   );
 }
 
-/* ── List view ───────────────────────────────────────────── */
-function ListView({ list, onPick }) {
-  const upcoming = list.filter(s => (s.checkOut || s.checkIn) >= todayISO);
-  const past = list.filter(s => (s.checkOut || s.checkIn) < todayISO).reverse();
+/* ── List view ── */
+function ListView({ stays, turnDates, onPick }) {
+  const upcoming = stays.filter(s => (s.checkOut||s.checkIn) >= todayISO);
+  const past = stays.filter(s => (s.checkOut||s.checkIn) < todayISO).reverse();
   const render = (s) => {
-    const isPast = (s.checkOut || s.checkIn) < todayISO;
+    const isPast = (s.checkOut||s.checkIn) < todayISO;
+    const turn = !!turnDates[s.checkOut];   // this stay's checkout day is a turnaround
     return (
-      <button key={s.uid} className="stay" onClick={()=>onPick(s)}>
-        <div className="accent" style={{background: s._turn ? "var(--turn)" : (s.early ? "var(--early)" : "var(--in)")}}></div>
+      <button key={s.uid} className="stay" onClick={()=>onPick({ type:"stay", uid:s.uid })}>
+        <div className="accent" style={{background: turn ? "var(--turn)" : (s.early||s.late ? "var(--early)" : "var(--in)")}}></div>
         <div className="body">
           <div className="row1">
             <span className="dates">{fmtLong(s.checkIn)} → {fmtLong(s.checkOut)}</span>
-            {s._turn && <span className="tag turn">♻ TURNAROUND</span>}
+            {turn && <span className="tag turn">♻ SAME-DAY TURNAROUND</span>}
             {s.early && <span className="tag early">⚡ EARLY {s.earlyTime||""}</span>}
+            {s.late && <span className="tag late">🌙 LATE {s.lateTime||""}</span>}
             {isPast && <span className="tag past">PAST</span>}
           </div>
+          <div className="times">IN {inTimeOf(s)} · OUT {outTimeOf(s)}</div>
           <div className="meta">
             <span className="tag plat">{s.platform}</span>
             {guestName(s) && <span>👤 {guestName(s)}</span>}
@@ -472,63 +502,53 @@ function ListView({ list, onPick }) {
     <div>
       <div className="group-h">UPCOMING</div>
       {upcoming.length ? upcoming.map(render) : <div className="empty">No upcoming bookings yet.</div>}
-      {past.length > 0 && <div className="group-h">RECENT (past)</div>}
+      {past.length>0 && <div className="group-h">RECENT (past)</div>}
       {past.map(render)}
     </div>
   );
 }
-function nightsOf(s) {
-  if (!s.checkIn || !s.checkOut) return 0;
-  return Math.round((parseISO(s.checkOut) - parseISO(s.checkIn)) / 86400000);
-}
-// VRBO puts the guest's first name in the summary ("Reserved - Melissa"); Airbnb doesn't.
-function guestName(s) {
-  if (!s || !s.summary) return "";
-  var n = s.summary.replace(/reserved/i, "").replace(/^[\s:\-–—]+/, "").trim();
-  if (!n || /not available|blocked|airbnb|vrbo|closed/i.test(n)) return "";
-  return n;
-}
 
-/* ── Detail sheet ────────────────────────────────────────── */
-function DetailSheet({ selected, byDate, ownerMode, onClose, onSetEarly }) {
-  // Resolve which stays this refers to.
-  let stays = [], dayISO = null;
-  if (selected.stay) { stays = [selected.stay]; }
-  else if (selected.iso) {
-    dayISO = selected.iso;
-    const info = byDate[selected.iso] || { ins:[], outs:[] };
-    const seen = {};
-    [...info.outs, ...info.ins].forEach(s => { if (!seen[s.uid]) { seen[s.uid]=true; stays.push(s); } });
+/* ── Detail sheet (stay / block / day) ── */
+function DetailSheet({ selected, stays, blocks, dateFlags, turnDates, ownerMode, onClose, saveStayFlag, saveBlockNote, saveDateClean }) {
+  let content = null, title = "Booking";
+  if (selected.type === "stay") {
+    const s = stays.find(x => x.uid === selected.uid);
+    title = guestName(s) || "Reservation";
+    content = s ? <StayDetail s={s} turn={!!turnDates[s.checkOut]} ownerMode={ownerMode} save={saveStayFlag} /> : <p>Not found.</p>;
+  } else if (selected.type === "block") {
+    const b = blocks.find(x => x.uid === selected.uid);
+    title = "Blocked dates";
+    content = b ? <BlockDetail b={b} ownerMode={ownerMode} save={saveBlockNote} /> : <p>Not found.</p>;
+  } else if (selected.type === "day") {
+    title = fmtFull(selected.iso);
+    content = <DayDetail iso={selected.iso} stays={stays} blocks={blocks} dateFlags={dateFlags} turn={!!turnDates[selected.iso]}
+                ownerMode={ownerMode} saveDateClean={saveDateClean} onJump={(sel)=>{ /* replace */ }} />;
   }
   return (
     <div className="overlay" onClick={onClose}>
       <div className="sheet" onClick={e=>e.stopPropagation()}>
         <button className="closebtn" onClick={onClose}>✕</button>
-        <h3>{dayISO ? fmtFull(dayISO) : "Booking"}</h3>
-        {dayISO && byDate[dayISO] && byDate[dayISO].turn &&
-          <div className="tag turn" style={{display:"inline-block", marginTop:"6px"}}>♻ SAME-DAY TURNAROUND</div>}
-        <div style={{marginTop:"10px"}}>
-          {stays.map(s => <StayDetail key={s.uid} s={s} dayISO={dayISO} ownerMode={ownerMode} onSetEarly={onSetEarly} />)}
-          {stays.length === 0 && <p style={{color:"var(--muted)", padding:"12px 0"}}>Nothing scheduled.</p>}
-        </div>
+        <h3>{title}</h3>
+        <div style={{marginTop:"10px"}}>{content}</div>
       </div>
     </div>
   );
 }
 
-function StayDetail({ s, dayISO, ownerMode, onSetEarly }) {
-  const [time, setTime] = useState(s.earlyTime || "");
-  const role = dayISO === s.checkOut ? "Check-OUT" : (dayISO === s.checkIn ? "Check-IN" : "Staying");
+function StayDetail({ s, turn, ownerMode, save }) {
+  const [earlyT, setEarlyT] = useState(s.earlyTime || "");
+  const [lateT, setLateT] = useState(s.lateTime || "");
   return (
-    <div style={{marginBottom:"16px", paddingBottom:"6px", borderBottom:"2px solid var(--line)"}}>
-      <div style={{display:"flex", gap:"8px", alignItems:"center", marginBottom:"4px", flexWrap:"wrap"}}>
+    <div>
+      <div style={{display:"flex", gap:"8px", alignItems:"center", marginBottom:"8px", flexWrap:"wrap"}}>
         <span className="tag plat">{s.platform}</span>
-        {dayISO && <span className={"tag " + (role==="Check-OUT"?"early":"turn")}>{role}</span>}
-        {s._turn && <span className="tag turn">♻ Turnaround</span>}
+        {turn && <span className="tag turn">♻ Same-day turnaround</span>}
+        {s.early && <span className="tag early">⚡ Early</span>}
+        {s.late && <span className="tag late">🌙 Late</span>}
       </div>
       {guestName(s) && <div className="kv"><span className="k">Guest</span><span className="v">{guestName(s)}</span></div>}
-      <div className="kv"><span className="k">Check-in</span><span className="v">{fmtFull(s.checkIn)}{s.early && s.earlyTime ? "  ·  ⚡ "+s.earlyTime : ""}</span></div>
-      <div className="kv"><span className="k">Check-out</span><span className="v">{fmtFull(s.checkOut)}</span></div>
+      <div className="kv"><span className="k">Check-in</span><span className="v">{fmtFull(s.checkIn)} · {inTimeOf(s)}</span></div>
+      <div className="kv"><span className="k">Check-out</span><span className="v">{fmtFull(s.checkOut)} · {outTimeOf(s)}</span></div>
       <div className="kv"><span className="k">Nights</span><span className="v">{s.nights || nightsOf(s)}</span></div>
       {s.phone4 && <div className="kv"><span className="k">Guest phone</span><span className="v">····{s.phone4}</span></div>}
       {s.link && <div className="kv"><span className="k">Reservation</span><span className="v"><a href={s.link} target="_blank" rel="noreferrer">Open ↗</a></span></div>}
@@ -536,21 +556,67 @@ function StayDetail({ s, dayISO, ownerMode, onSetEarly }) {
       {ownerMode &&
         <div className="owner-box">
           <div className="switch-row">
-            <div><b style={{fontSize:"14px"}}>⚡ Early check-in</b><div style={{fontSize:"12px", color:"var(--muted)"}}>Cleaner sees this flag</div></div>
-            <label className="switch">
-              <input type="checkbox" checked={!!s.early} onChange={e => onSetEarly(s, e.target.checked, time)} />
-              <span className="slider"></span>
-            </label>
+            <div><b style={{fontSize:"14px"}}>⚡ Early check-in</b><div style={{fontSize:"12px", color:"var(--muted)"}}>Overrides the {DEFAULT_IN} default</div></div>
+            <label className="switch"><input type="checkbox" checked={!!s.early} onChange={e=>save(s, { early:e.target.checked, earlyTime:earlyT })} /><span className="slider"></span></label>
           </div>
-          {s.early &&
-            <input className="field" placeholder="Time (e.g. 11am)" value={time}
-              onChange={e=>setTime(e.target.value)} onBlur={()=>onSetEarly(s, true, time)} />}
+          {s.early && <input className="field" placeholder="Check-in time (e.g. 11am)" value={earlyT} onChange={e=>setEarlyT(e.target.value)} onBlur={()=>save(s, { early:true, earlyTime:earlyT })} />}
+          <div className="switch-row" style={{marginTop:"14px"}}>
+            <div><b style={{fontSize:"14px"}}>🌙 Late checkout</b><div style={{fontSize:"12px", color:"var(--muted)"}}>Overrides the {DEFAULT_OUT} default</div></div>
+            <label className="switch"><input type="checkbox" checked={!!s.late} onChange={e=>save(s, { late:e.target.checked, lateTime:lateT })} /><span className="slider"></span></label>
+          </div>
+          {s.late && <input className="field" placeholder="Check-out time (e.g. 2pm)" value={lateT} onChange={e=>setLateT(e.target.value)} onBlur={()=>save(s, { late:true, lateTime:lateT })} />}
         </div>}
     </div>
   );
 }
 
-/* ── Settings sheet ──────────────────────────────────────── */
+function BlockDetail({ b, ownerMode, save }) {
+  const [note, setNote] = useState(b.note || "");
+  return (
+    <div>
+      <div style={{display:"flex", gap:"8px", marginBottom:"8px"}}><span className="tag block">🔒 Blocked · {b.platform}</span></div>
+      <div className="kv"><span className="k">From</span><span className="v">{fmtFull(b.checkIn)}</span></div>
+      <div className="kv"><span className="k">Until</span><span className="v">{fmtFull(b.checkOut)}</span></div>
+      {b.note && <div className="kv"><span className="k">Reason</span><span className="v">{b.note}</span></div>}
+      {ownerMode &&
+        <div className="owner-box">
+          <b style={{fontSize:"14px"}}>📝 Reason / note</b>
+          <div style={{fontSize:"12px", color:"var(--muted)", marginBottom:"2px"}}>Shows in the gray bar (Airbnb/VRBO don't share your block notes).</div>
+          <input className="field" placeholder="e.g. Family, Kids, Maintenance" value={note} onChange={e=>setNote(e.target.value)} />
+          <button className="btn-primary" style={{marginTop:"10px", width:"100%"}} onClick={()=>save(b, note)}>Save note</button>
+        </div>}
+    </div>
+  );
+}
+
+function DayDetail({ iso, stays, blocks, dateFlags, turn, ownerMode, saveDateClean }) {
+  const flag = dateFlags[iso] || {};
+  const [note, setNote] = useState(flag.note || "");
+  const arrivals = stays.filter(s => s.checkIn === iso);
+  const departures = stays.filter(s => s.checkOut === iso);
+  const blocked = blocks.filter(b => b.checkIn <= iso && b.checkOut >= iso);
+  return (
+    <div>
+      {turn && <div className="tag turn" style={{display:"inline-block", marginBottom:"8px"}}>♻ SAME-DAY TURNAROUND</div>}
+      {departures.length>0 && <div className="kv"><span className="k">Check-OUT</span><span className="v">{departures.map(s=>(guestName(s)||s.platform)+" · "+outTimeOf(s)).join(", ")}</span></div>}
+      {arrivals.length>0 && <div className="kv"><span className="k">Check-IN</span><span className="v">{arrivals.map(s=>(guestName(s)||s.platform)+" · "+inTimeOf(s)).join(", ")}</span></div>}
+      {blocked.length>0 && <div className="kv"><span className="k">Blocked</span><span className="v">{blocked.map(b=>b.note||"Blocked").join(", ")}</span></div>}
+      {departures.length===0 && arrivals.length===0 && blocked.length===0 &&
+        <p style={{color:"var(--muted)", padding:"6px 0"}}>Nothing scheduled this day.</p>}
+
+      {ownerMode &&
+        <div className="owner-box">
+          <div className="switch-row">
+            <div><b style={{fontSize:"14px"}}>🧹 Extra cleaning</b><div style={{fontSize:"12px", color:"var(--muted)"}}>Flag a clean on this date</div></div>
+            <label className="switch"><input type="checkbox" checked={!!flag.clean} onChange={e=>saveDateClean(iso, e.target.checked, note)} /><span className="slider"></span></label>
+          </div>
+          {flag.clean && <input className="field" placeholder="Note (optional, e.g. mid-stay clean)" value={note} onChange={e=>setNote(e.target.value)} onBlur={()=>saveDateClean(iso, true, note)} />}
+        </div>}
+    </div>
+  );
+}
+
+/* ── Settings sheet ── */
 function SettingsSheet({ backend, ownerCode, onClose, onSave }) {
   const [b, setB] = useState(backend);
   const [o, setO] = useState(ownerCode);
@@ -562,7 +628,7 @@ function SettingsSheet({ backend, ownerCode, onClose, onSave }) {
         <p style={{color:"var(--muted)", fontSize:"13px", margin:"6px 0 14px"}}>The cleaner can leave the owner code blank — that's view-only.</p>
         <label style={{fontSize:"13px", fontWeight:600}}>Apps Script Web App URL</label>
         <input className="field" placeholder="https://script.google.com/macros/s/…/exec" value={b} onChange={e=>setB(e.target.value.trim())} />
-        <label style={{fontSize:"13px", fontWeight:600, display:"block", marginTop:"14px"}}>Owner code <span style={{fontWeight:400, color:"var(--muted)"}}>(only Greg — unlocks early-check-in toggles)</span></label>
+        <label style={{fontSize:"13px", fontWeight:600, display:"block", marginTop:"14px"}}>Owner code <span style={{fontWeight:400, color:"var(--muted)"}}>(unlocks early/late & cleaning toggles)</span></label>
         <input className="field" type="password" placeholder="leave blank for view-only" value={o} onChange={e=>setO(e.target.value)} />
         <div style={{display:"flex", gap:"10px", marginTop:"18px"}}>
           <button className="btn-primary" style={{flex:1}} onClick={()=>onSave(b.trim(), o)}>Save</button>
