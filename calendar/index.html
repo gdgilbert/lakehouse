@@ -440,6 +440,9 @@ function CalendarView({ month, setMonth, stays, blocks, turnDates, dateFlags, on
   const y = month.getFullYear(), m = month.getMonth();
   const weeks = buildWeeks(y, m);
   const items = [...blocks.map(b=>({ ...b, _kind:"block" })), ...stays.map(s=>({ ...s, _kind:"stay" }))];
+  // Dates that get a ⚡: early check-in lands on the check-in day, late checkout on the checkout day.
+  const earlyDates = {}, lateDates = {};
+  stays.forEach(s => { if (s.early && s.checkIn) earlyDates[s.checkIn] = true; if (s.late && s.checkOut) lateDates[s.checkOut] = true; });
 
   return (
     <div className="card pad">
@@ -466,12 +469,14 @@ function CalendarView({ month, setMonth, stays, blocks, turnDates, dateFlags, on
                 if (iso === todayISO) cls.push("today");
                 const isTurn = turnDates[iso];
                 const isClean = dateFlags[iso] && dateFlags[iso].clean;
+                const isEarly = earlyDates[iso], isLate = lateDates[iso];
                 return (
                   <div key={di} className={cls.join(" ")} onClick={()=>onPick({ type:"day", iso })}>
                     <div className="dn">{d.getDate()}{iso===todayISO && <span className="today-pill">TODAY</span>}</div>
-                    {(isTurn || isClean) &&
+                    {(isTurn || isClean || isEarly || isLate) &&
                       <div className="marks">
                         {isTurn && <span title="Same-day turnaround">♻️</span>}
+                        {(isEarly || isLate) && <span title={isEarly && isLate ? "Early check-in & late checkout" : (isEarly ? "Early check-in" : "Late checkout")}>⚡</span>}
                         {isClean && <span title={"Extra cleaning"+(dateFlags[iso].note?": "+dateFlags[iso].note:"")}>🧹</span>}
                       </div>}
                   </div>
