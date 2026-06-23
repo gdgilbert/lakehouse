@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rough River Lake House — Cleaning Calendar</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧹</text></svg>">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" integrity="sha384-tMH8h3BGESGckSAVGZ82T9n90ztNXxvdwvdM6UoR56cYcf+0iGXBliJ29D+wZ/x8" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" integrity="sha384-bm7MnzvK++ykSwVJ2tynSE5TRdN+xL418osEVF2DE/L/gfWHj91J2Sphe582B1Bh" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js" integrity="sha384-ku9eM40vVDsFUiERorrdlHlF0LIhdfn716M7TntM72Uo98T7LWiogD3hNenPx8Q0" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ── Design tokens (shared with the finance app) ───────── */
+  :root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --neutral: #475569;
+    --in: #16a34a;            /* check-IN green */
+    --in-tint: #dcfce7;
+    --out: #ea580c;           /* check-OUT amber/orange */
+    --out-tint: #ffedd5;
+    --turn: #7c3aed;          /* same-day turnaround purple */
+    --turn-tint: #ede9fe;
+    --early: #d97706;         /* early check-in */
+    --ink: #1e293b;
+    --muted: #64748b;
+    --faint: #94a3b8;
+    --line: #e2e8f0;
+    --tint: #f8fafc;
+    --radius-card: 14px;
+    --radius-ctrl: 9px;
+    --shadow: 0 8px 30px rgba(0,0,0,0.28);
+    --ease: cubic-bezier(.4,0,.2,1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    background: #0f2942;
+    min-height: 100vh; padding: 18px;
+    font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
+    color: var(--ink);
+  }
+  select, input, button { font-family: inherit; }
+  input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,0.18); }
+
+  button { transition: transform .12s var(--ease), box-shadow .12s var(--ease), filter .12s var(--ease), background-color .12s var(--ease); }
+  button:not(:disabled) { cursor: pointer; }
+  button:not(:disabled):hover { filter: brightness(1.05); }
+  button:not(:disabled):active { transform: scale(.97); }
+
+  /* Water/sky gradient base (shows through even if photos fail to load) */
+  .bg-wrap { position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(1200px 500px at 70% -10%, #1e4e79 0%, rgba(30,78,121,0) 60%),
+      linear-gradient(180deg, #15395c 0%, #0f2942 55%, #0b2036 100%); }
+  .photo-collage { position: fixed; inset: 0; z-index: 0;
+    display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr);
+    gap: 3px; opacity: .5; }
+  .photo-collage .cell { background-size: cover; background-position: center; filter: brightness(0.55) saturate(0.9); }
+  .photo-collage .cell:nth-child(1) { background-image: url("../Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/500186a3-7c3c-4d96-8f9d-21f1500bae45.jpg"); }
+  .photo-collage .cell:nth-child(2) { background-image: url("../Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/473f492d-b833-420c-83a2-54e1c71738d8.jpg"); }
+  .photo-collage .cell:nth-child(3) { background-image: url("../Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/057e4f05-ec1e-4c81-82c6-612d8aa5f711.jpg"); }
+  .photo-collage .cell:nth-child(4) { background-image: url("../Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/194a9d9b-b11d-4ae9-96d5-fb187f46a598.jpg"); }
+  .photo-collage .cell:nth-child(5) { background-image: url("../Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/1a352e13-5867-499d-a3ff-7316278bbb72.jpg"); }
+  .photo-collage .cell:nth-child(6) { background-image: url("../Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/51b45ef3-3c90-4f03-9025-fafbfd85467f.jpg"); }
+  .photo-collage .cell:nth-child(7) { background-image: url("../Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/2a2a8135-e3cb-4226-89d0-eaa6796dd057.jpg"); }
+  .photo-collage .cell:nth-child(8) { background-image: url("../Fwd_ Airbnb pictures - gdgilbert@gmail.com - Gmail_files/5ef35995-4050-423e-9daf-6704f86c1fd6.jpg"); }
+  .photo-scrim { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: linear-gradient(180deg, rgba(11,32,54,0.78) 0%, rgba(11,32,54,0.5) 30%, rgba(11,32,54,0.55) 100%); }
+  #root { position: relative; z-index: 1; }
+
+  .wrap { max-width: 760px; margin: 0 auto; }
+
+  /* Header */
+  .app-head { color: #fff; text-align: center; margin: 6px 0 16px; }
+  .app-head h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+  .app-head .sub { font-size: 13px; opacity: .85; margin-top: 3px; }
+
+  .card { background: #fff; border-radius: var(--radius-card); box-shadow: var(--shadow); }
+  .pad { padding: 16px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 6px; background: rgba(255,255,255,0.14); padding: 5px; border-radius: 12px; margin-bottom: 14px; }
+  .tabs button { flex: 1; border: 0; background: transparent; color: #fff; font-weight: 600; font-size: 14px; padding: 10px; border-radius: 8px; }
+  .tabs button.active { background: #fff; color: var(--primary-dark); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+
+  /* Summary chips */
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .chip { background: rgba(255,255,255,0.92); border-radius: 10px; padding: 8px 12px; font-size: 12.5px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+  .chip b { font-size: 14px; }
+
+  /* Month nav */
+  .monthbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .monthbar h2 { font-size: 18px; font-weight: 700; color: var(--ink); }
+  .navbtn { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: #fff; font-size: 18px; color: var(--ink); display: flex; align-items: center; justify-content: center; }
+  .today-btn { border: 1px solid var(--line); background: var(--tint); border-radius: 8px; padding: 7px 12px; font-size: 12.5px; font-weight: 600; color: var(--primary-dark); }
+
+  /* Calendar grid */
+  .dow { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 6px; }
+  .dow span { text-align: center; font-size: 11px; font-weight: 700; color: var(--faint); letter-spacing: .04em; }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .cell-day { position: relative; min-height: 64px; border-radius: 10px; border: 1px solid var(--line); background: #fff; padding: 4px 4px 4px 5px; overflow: hidden; text-align: left; display: flex; flex-direction: column; gap: 2px; }
+  .cell-day.out-month { background: #fbfcfe; }
+  .cell-day .num { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .cell-day.out-month .num { color: #c7d0db; }
+  .cell-day.today { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+  .cell-day.today .num { color: var(--primary-dark); font-weight: 800; }
+  .cell-day.occupied { background: #eff5ff; }
+  .cell-day.clickable:hover { background: #e8f0ff; }
+  .pill { font-size: 10px; font-weight: 700; line-height: 1.4; padding: 1px 5px; border-radius: 5px; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+  .pill.in  { background: var(--in-tint);  color: #166534; }
+  .pill.out { background: var(--out-tint); color: #9a3412; }
+  .pill.turn{ background: var(--turn-tint);color: #5b21b6; }
+  .pill.early{ background: #fef3c7; color: #92400e; }
+  .badge-dot { position: absolute; top: 4px; right: 4px; display: flex; gap: 2px; }
+
+  /* Legend */
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .legend span { font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+
+  /* List view */
+  .group-h { color: #fff; font-size: 13px; font-weight: 700; opacity: .9; margin: 14px 4px 8px; letter-spacing: .02em; }
+  .stay { display: flex; align-items: stretch; gap: 0; background: #fff; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 10px; overflow: hidden; width: 100%; text-align: left; border: 0; }
+  .stay .accent { width: 5px; flex: 0 0 5px; }
+  .stay .body { padding: 12px 14px; flex: 1; min-width: 0; }
+  .stay .row1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .stay .dates { font-size: 15px; font-weight: 700; color: var(--ink); }
+  .stay .meta { font-size: 12.5px; color: var(--muted); margin-top: 3px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .tag { font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 20px; letter-spacing: .02em; }
+  .tag.turn { background: var(--turn-tint); color: #5b21b6; }
+  .tag.early { background: #fef3c7; color: #92400e; }
+  .tag.plat { background: #e2e8f0; color: #334155; }
+  .tag.past { background: #f1f5f9; color: #94a3b8; }
+  .empty { background: rgba(255,255,255,0.92); border-radius: 12px; padding: 28px; text-align: center; color: var(--muted); font-size: 14px; }
+
+  /* Modal */
+  .overlay { position: fixed; inset: 0; background: rgba(8,20,34,0.6); z-index: 50; display: flex; align-items: flex-end; justify-content: center; padding: 0; animation: fade .2s ease; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes sheet { from { transform: translateY(24px); opacity: .6; } to { transform: none; opacity: 1; } }
+  .sheet { background: #fff; width: 100%; max-width: 760px; border-radius: 18px 18px 0 0; padding: 18px 18px 26px; animation: sheet .25s var(--ease); max-height: 88vh; overflow-y: auto; }
+  @media (min-width: 640px) { .overlay { align-items: center; } .sheet { border-radius: 18px; } }
+  .sheet h3 { font-size: 18px; font-weight: 800; margin-bottom: 2px; }
+  .kv { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .kv .k { color: var(--muted); }
+  .kv .v { font-weight: 600; text-align: right; }
+  .closebtn { float: right; border: 0; background: var(--tint); width: 32px; height: 32px; border-radius: 16px; font-size: 16px; color: var(--muted); }
+
+  .owner-box { margin-top: 14px; background: var(--tint); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .switch-row { display: flex; align-items: center; justify-content: space-between; }
+  .switch { position: relative; width: 46px; height: 27px; flex: 0 0 46px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: #cbd5e1; border-radius: 27px; transition: .2s; }
+  .slider:before { content: ""; position: absolute; height: 21px; width: 21px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  .switch input:checked + .slider { background: var(--in); }
+  .switch input:checked + .slider:before { transform: translateX(19px); }
+  .field { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-ctrl); font-size: 14px; margin-top: 8px; }
+  .btn-primary { background: var(--primary); color: #fff; border: 0; border-radius: var(--radius-ctrl); padding: 11px 16px; font-size: 14px; font-weight: 700; }
+  .btn-ghost { background: var(--tint); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-ctrl); padding: 9px 14px; font-size: 13px; font-weight: 600; }
+
+  /* Header action buttons */
+  .head-actions { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+  .icon-btn { background: rgba(255,255,255,0.16); color: #fff; border: 0; border-radius: 9px; padding: 8px 13px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+  .spin { animation: rot 1s linear infinite; display: inline-block; }
+  @keyframes rot { to { transform: rotate(360deg); } }
+
+  /* Toast */
+  @keyframes toastIn { from { transform: translate(-50%, -20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+  .toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+    padding: 12px 26px; border-radius: 10px; font-weight: 600; font-size: 14px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.22); z-index: 1000; animation: toastIn .3s ease; color: #fff; }
+  .toast-ok { background: #16a34a; } .toast-warn { background: #d97706; } .toast-err { background: #dc2626; }
+
+  .banner { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
+
+  @media (max-width: 600px) {
+    body { padding: 10px; }
+    .photo-collage { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(4, 1fr); }
+    .cell-day { min-height: 58px; }
+    .pill { font-size: 9px; padding: 1px 4px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-wrap"></div>
+<div class="photo-collage">
+  <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+  <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+</div>
+<div class="photo-scrim"></div>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+/* ════════════════════════════════════════════════════════════
+ *  CONFIG — paste your deployed Apps Script Web App URL here.
+ *  (You can also set/override it in-app via the ⚙ Settings panel.)
+ * ════════════════════════════════════════════════════════════ */
+const BACKEND_URL = "https://script.google.com/macros/s/AKfycbx1GcnCTQ5n2Rf4rXKFqfNAzmD1NnJO4DpX8fXZpT-FDfEDgQRAMQ2y0_cBHSb0EDSo/exec";
+
+/* ── Sample data so the page is usable before the backend is wired ── */
+function isoShift(days) {
+  const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + days);
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+const SAMPLE = {
+  ok: true, sample: true, feeds: ["Airbnb","VRBO"], errors: [],
+  generatedAt: new Date().toISOString(),
+  blocks: [{ uid:"b1", platform:"Airbnb", checkIn: isoShift(20), checkOut: isoShift(23), isBlock:true }],
+  stays: [
+    { uid:"s1", platform:"Airbnb", checkIn: isoShift(-3), checkOut: isoShift(2), phone4:"4821", link:"", nights:5 },
+    { uid:"s2", platform:"VRBO",   checkIn: isoShift(2),  checkOut: isoShift(6), phone4:"0099", link:"", nights:4 }, // turnaround on day +2
+    { uid:"s3", platform:"Airbnb", checkIn: isoShift(9),  checkOut: isoShift(12), phone4:"7310", link:"", nights:3, early:true, earlyTime:"11am" },
+    { uid:"s4", platform:"VRBO",   checkIn: isoShift(14), checkOut: isoShift(17), phone4:"5567", link:"", nights:3 },
+  ],
+};
+
+/* ── Date helpers (local, no timezone drift) ─────────────── */
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+function parseISO(s) { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); }
+function toISO(dt) { return dt.getFullYear() + "-" + String(dt.getMonth()+1).padStart(2,"0") + "-" + String(dt.getDate()).padStart(2,"0"); }
+function fmtLong(s) { const d = parseISO(s); return DOW[d.getDay()] + " " + MONTHS[d.getMonth()].slice(0,3) + " " + d.getDate(); }
+function fmtFull(s) { const d = parseISO(s); return DOW[d.getDay()] + ", " + MONTHS[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear(); }
+const todayISO = toISO(new Date());
+
+/* Process raw payload: compute turnarounds client-side too (defensive), index by date. */
+function useDerived(stays) {
+  return useMemo(() => {
+    const list = (stays || []).slice().sort((a,b) => a.checkIn < b.checkIn ? -1 : 1);
+    const inDates = {}, outDates = {};
+    list.forEach(s => { if (s.checkIn) inDates[s.checkIn] = true; if (s.checkOut) outDates[s.checkOut] = true; });
+    list.forEach(s => {
+      s._turn = !!((s.checkOut && inDates[s.checkOut]) || (s.checkIn && outDates[s.checkIn]) || s.sameDayTurnaround);
+    });
+    // Map each calendar date -> what happens on it.
+    const byDate = {};
+    const touch = (iso) => (byDate[iso] = byDate[iso] || { ins:[], outs:[], occupied:false, turn:false, early:false });
+    list.forEach(s => {
+      if (s.checkIn)  { const c = touch(s.checkIn);  c.ins.push(s);  if (s.early) c.early = true; }
+      if (s.checkOut) { const c = touch(s.checkOut); c.outs.push(s); }
+      // occupied nights: checkIn .. checkOut-1
+      if (s.checkIn && s.checkOut) {
+        let d = parseISO(s.checkIn); const end = parseISO(s.checkOut);
+        while (d < end) { touch(toISO(d)).occupied = true; d.setDate(d.getDate()+1); }
+      }
+    });
+    Object.keys(byDate).forEach(k => { if (inDates[k] && outDates[k]) byDate[k].turn = true; });
+    return { list, byDate };
+  }, [stays]);
+}
+
+/* ── Toast hook ──────────────────────────────────────────── */
+function useToast() {
+  const [toast, setToast] = useState(null);
+  const show = useCallback((msg, kind="ok") => {
+    setToast({ msg, kind }); setTimeout(() => setToast(null), 2600);
+  }, []);
+  const node = toast ? <div className={"toast toast-" + toast.kind}>{toast.msg}</div> : null;
+  return [node, show];
+}
+
+/* ════════════════════════════ App ════════════════════════ */
+function App() {
+  const [backend, setBackend] = useState(() => localStorage.getItem("cal_backend") || BACKEND_URL);
+  const [ownerCode, setOwnerCode] = useState(() => localStorage.getItem("cal_owner") || "");
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [tab, setTab] = useState("calendar");
+  const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
+  const [selected, setSelected] = useState(null);   // {iso} or {stay}
+  const [showSettings, setShowSettings] = useState(false);
+  const [toastNode, toast] = useToast();
+  const ownerMode = !!ownerCode;
+
+  const load = useCallback(async (opts={}) => {
+    if (!backend) { setData(SAMPLE); setLoading(false); return; }
+    if (!opts.silent) setLoading(true);
+    setErr("");
+    try {
+      const url = backend + (backend.indexOf("?") >= 0 ? "&" : "?") + "v=1" + (opts.refresh ? "&refresh=1" : "");
+      const res = await fetch(url);
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || "Backend error");
+      setData(json);
+    } catch (e) {
+      setErr(String(e.message || e));
+      setData(prev => prev || null);
+    } finally { setLoading(false); }
+  }, [backend]);
+
+  useEffect(() => { load(); }, [load]);
+  // Refresh on focus + every 5 min.
+  useEffect(() => {
+    const onFocus = () => load({ silent: true });
+    window.addEventListener("focus", onFocus);
+    const id = setInterval(() => load({ silent: true }), 300000);
+    return () => { window.removeEventListener("focus", onFocus); clearInterval(id); };
+  }, [load]);
+
+  const stays = (data && data.stays) || [];
+  const { list, byDate } = useDerived(stays);
+
+  const upcoming = list.filter(s => (s.checkOut || s.checkIn) >= todayISO);
+  const nextTurn = upcoming.find(s => s._turn && s.checkIn >= todayISO);
+  const earlies = upcoming.filter(s => s.early && s.checkIn >= todayISO).length;
+
+  const saveSettings = (b, o) => {
+    setBackend(b); setOwnerCode(o);
+    localStorage.setItem("cal_backend", b); localStorage.setItem("cal_owner", o);
+    setShowSettings(false); toast("Settings saved");
+  };
+
+  const setEarly = async (stay, early, time) => {
+    if (!backend) { // sample mode: just update locally
+      setData(d => ({ ...d, stays: d.stays.map(s => s.uid === stay.uid ? { ...s, early, earlyTime: time } : s) }));
+      toast(early ? "Marked early check-in" : "Cleared early flag"); return;
+    }
+    try {
+      const res = await fetch(backend, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" }, // avoids CORS preflight
+        body: JSON.stringify({ action:"setFlag", ownerCode, uid: stay.uid, early, time: time||"", note: stay.note||"" }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || "Failed");
+      setData(d => ({ ...d, stays: d.stays.map(s => s.uid === stay.uid ? { ...s, early, earlyTime: time } : s) }));
+      toast(early ? "Marked early check-in" : "Cleared early flag");
+    } catch (e) { toast("Couldn't save: " + (e.message||e), "err"); }
+  };
+
+  return (
+    <div className="wrap">
+      {toastNode}
+      <div className="app-head">
+        <h1>🏠 Rough River Cleaning Calendar</h1>
+        <div className="sub">Check-ins, check-outs & turnarounds — synced from Airbnb & VRBO</div>
+        <div className="head-actions">
+          <button className="icon-btn" onClick={() => load({ refresh: true })} disabled={loading}>
+            <span className={loading ? "spin" : ""}>↻</span> {loading ? "Syncing…" : "Refresh"}
+          </button>
+          <button className="icon-btn" onClick={() => setShowSettings(true)}>⚙ Settings</button>
+        </div>
+      </div>
+
+      {data && data.sample &&
+        <div className="banner">👋 <b>Demo mode</b> — showing sample bookings. Add your Apps Script URL in ⚙ Settings to go live.</div>}
+      {err && !data &&
+        <div className="banner">⚠ Couldn't reach the calendar service. {err}</div>}
+      {data && data.errors && data.errors.length > 0 &&
+        <div className="banner">⚠ Some feeds had trouble: {data.errors.join("; ")}</div>}
+
+      <div className="tabs">
+        <button className={tab==="calendar"?"active":""} onClick={()=>setTab("calendar")}>📅 Calendar</button>
+        <button className={tab==="list"?"active":""} onClick={()=>setTab("list")}>📋 List</button>
+      </div>
+
+      <div className="chips">
+        <span className="chip">📥 <b>{upcoming.filter(s=>s.checkIn>=todayISO).length}</b> upcoming check-ins</span>
+        <span className="chip">♻️ Next turnaround: <b>{nextTurn ? fmtLong(nextTurn.checkIn) : "none"}</b></span>
+        {earlies > 0 && <span className="chip">⚡ <b>{earlies}</b> early check-in{earlies>1?"s":""}</span>}
+      </div>
+
+      {tab === "calendar"
+        ? <CalendarView month={month} setMonth={setMonth} byDate={byDate} onPick={(iso)=>setSelected({iso})} />
+        : <ListView list={list} onPick={(stay)=>setSelected({stay})} />}
+
+      {selected &&
+        <DetailSheet selected={selected} byDate={byDate} ownerMode={ownerMode}
+          onClose={()=>setSelected(null)} onSetEarly={setEarly} />}
+
+      {showSettings &&
+        <SettingsSheet backend={backend} ownerCode={ownerCode}
+          onClose={()=>setShowSettings(false)} onSave={saveSettings} />}
+    </div>
+  );
+}
+
+/* ── Calendar (month grid) ───────────────────────────────── */
+function CalendarView({ month, setMonth, byDate, onPick }) {
+  const y = month.getFullYear(), m = month.getMonth();
+  const first = new Date(y, m, 1);
+  const startPad = first.getDay();
+  const gridStart = new Date(y, m, 1 - startPad);
+  const cells = [];
+  for (let i = 0; i < 42; i++) { const d = new Date(gridStart); d.setDate(gridStart.getDate()+i); cells.push(d); }
+  // Trim trailing all-out-of-month week.
+  const weeks = cells.length / 7;
+  const used = (weeks === 6 && cells[35].getMonth() !== m) ? 35 : 42;
+
+  return (
+    <div className="card pad">
+      <div className="monthbar">
+        <button className="navbtn" onClick={()=>setMonth(new Date(y, m-1, 1))} aria-label="Previous month">‹</button>
+        <h2>{MONTHS[m]} {y}</h2>
+        <div style={{display:"flex", gap:"8px", alignItems:"center"}}>
+          <button className="today-btn" onClick={()=>{const d=new Date(); setMonth(new Date(d.getFullYear(), d.getMonth(), 1));}}>Today</button>
+          <button className="navbtn" onClick={()=>setMonth(new Date(y, m+1, 1))} aria-label="Next month">›</button>
+        </div>
+      </div>
+      <div className="dow">{DOW.map(d => <span key={d}>{d}</span>)}</div>
+      <div className="grid">
+        {cells.slice(0, used).map((d, i) => {
+          const iso = toISO(d);
+          const info = byDate[iso];
+          const outMonth = d.getMonth() !== m;
+          const cls = ["cell-day"];
+          if (outMonth) cls.push("out-month");
+          if (iso === todayISO) cls.push("today");
+          if (info && info.occupied) cls.push("occupied");
+          const hasEvent = info && (info.ins.length || info.outs.length);
+          if (hasEvent) cls.push("clickable");
+          return (
+            <div key={i} className={cls.join(" ")} onClick={hasEvent ? ()=>onPick(iso) : undefined}>
+              <span className="num">{d.getDate()}</span>
+              {info && info.turn && <div className="badge-dot"><span title="Same-day turnaround">♻️</span></div>}
+              {info && info.outs.map((s,j) => <span key={"o"+j} className="pill out">OUT</span>)}
+              {info && info.ins.map((s,j) => (
+                <span key={"i"+j} className={"pill " + (s.early ? "early" : "in")}>
+                  {s.early ? "⚡ IN" : "IN"}
+                </span>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+      <div className="legend">
+        <span><i className="sw" style={{background:"var(--in-tint)"}}></i> Check-in</span>
+        <span><i className="sw" style={{background:"var(--out-tint)"}}></i> Check-out</span>
+        <span>♻️ Same-day turnaround (paid extra)</span>
+        <span>⚡ Early check-in</span>
+        <span><i className="sw" style={{background:"#eff5ff"}}></i> Booked night</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── List view ───────────────────────────────────────────── */
+function ListView({ list, onPick }) {
+  const upcoming = list.filter(s => (s.checkOut || s.checkIn) >= todayISO);
+  const past = list.filter(s => (s.checkOut || s.checkIn) < todayISO).reverse();
+  const render = (s) => {
+    const isPast = (s.checkOut || s.checkIn) < todayISO;
+    return (
+      <button key={s.uid} className="stay" onClick={()=>onPick(s)}>
+        <div className="accent" style={{background: s._turn ? "var(--turn)" : (s.early ? "var(--early)" : "var(--in)")}}></div>
+        <div className="body">
+          <div className="row1">
+            <span className="dates">{fmtLong(s.checkIn)} → {fmtLong(s.checkOut)}</span>
+            {s._turn && <span className="tag turn">♻ TURNAROUND</span>}
+            {s.early && <span className="tag early">⚡ EARLY {s.earlyTime||""}</span>}
+            {isPast && <span className="tag past">PAST</span>}
+          </div>
+          <div className="meta">
+            <span className="tag plat">{s.platform}</span>
+            {guestName(s) && <span>👤 {guestName(s)}</span>}
+            <span>🌙 {s.nights || nightsOf(s)} night{(s.nights||nightsOf(s))===1?"":"s"}</span>
+            {s.phone4 && <span>📞 ····{s.phone4}</span>}
+          </div>
+        </div>
+      </button>
+    );
+  };
+  return (
+    <div>
+      <div className="group-h">UPCOMING</div>
+      {upcoming.length ? upcoming.map(render) : <div className="empty">No upcoming bookings yet.</div>}
+      {past.length > 0 && <div className="group-h">RECENT (past)</div>}
+      {past.map(render)}
+    </div>
+  );
+}
+function nightsOf(s) {
+  if (!s.checkIn || !s.checkOut) return 0;
+  return Math.round((parseISO(s.checkOut) - parseISO(s.checkIn)) / 86400000);
+}
+// VRBO puts the guest's first name in the summary ("Reserved - Melissa"); Airbnb doesn't.
+function guestName(s) {
+  if (!s || !s.summary) return "";
+  var n = s.summary.replace(/reserved/i, "").replace(/^[\s:\-–—]+/, "").trim();
+  if (!n || /not available|blocked|airbnb|vrbo|closed/i.test(n)) return "";
+  return n;
+}
+
+/* ── Detail sheet ────────────────────────────────────────── */
+function DetailSheet({ selected, byDate, ownerMode, onClose, onSetEarly }) {
+  // Resolve which stays this refers to.
+  let stays = [], dayISO = null;
+  if (selected.stay) { stays = [selected.stay]; }
+  else if (selected.iso) {
+    dayISO = selected.iso;
+    const info = byDate[selected.iso] || { ins:[], outs:[] };
+    const seen = {};
+    [...info.outs, ...info.ins].forEach(s => { if (!seen[s.uid]) { seen[s.uid]=true; stays.push(s); } });
+  }
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="sheet" onClick={e=>e.stopPropagation()}>
+        <button className="closebtn" onClick={onClose}>✕</button>
+        <h3>{dayISO ? fmtFull(dayISO) : "Booking"}</h3>
+        {dayISO && byDate[dayISO] && byDate[dayISO].turn &&
+          <div className="tag turn" style={{display:"inline-block", marginTop:"6px"}}>♻ SAME-DAY TURNAROUND</div>}
+        <div style={{marginTop:"10px"}}>
+          {stays.map(s => <StayDetail key={s.uid} s={s} dayISO={dayISO} ownerMode={ownerMode} onSetEarly={onSetEarly} />)}
+          {stays.length === 0 && <p style={{color:"var(--muted)", padding:"12px 0"}}>Nothing scheduled.</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StayDetail({ s, dayISO, ownerMode, onSetEarly }) {
+  const [time, setTime] = useState(s.earlyTime || "");
+  const role = dayISO === s.checkOut ? "Check-OUT" : (dayISO === s.checkIn ? "Check-IN" : "Staying");
+  return (
+    <div style={{marginBottom:"16px", paddingBottom:"6px", borderBottom:"2px solid var(--line)"}}>
+      <div style={{display:"flex", gap:"8px", alignItems:"center", marginBottom:"4px", flexWrap:"wrap"}}>
+        <span className="tag plat">{s.platform}</span>
+        {dayISO && <span className={"tag " + (role==="Check-OUT"?"early":"turn")}>{role}</span>}
+        {s._turn && <span className="tag turn">♻ Turnaround</span>}
+      </div>
+      {guestName(s) && <div className="kv"><span className="k">Guest</span><span className="v">{guestName(s)}</span></div>}
+      <div className="kv"><span className="k">Check-in</span><span className="v">{fmtFull(s.checkIn)}{s.early && s.earlyTime ? "  ·  ⚡ "+s.earlyTime : ""}</span></div>
+      <div className="kv"><span className="k">Check-out</span><span className="v">{fmtFull(s.checkOut)}</span></div>
+      <div className="kv"><span className="k">Nights</span><span className="v">{s.nights || nightsOf(s)}</span></div>
+      {s.phone4 && <div className="kv"><span className="k">Guest phone</span><span className="v">····{s.phone4}</span></div>}
+      {s.link && <div className="kv"><span className="k">Reservation</span><span className="v"><a href={s.link} target="_blank" rel="noreferrer">Open ↗</a></span></div>}
+
+      {ownerMode &&
+        <div className="owner-box">
+          <div className="switch-row">
+            <div><b style={{fontSize:"14px"}}>⚡ Early check-in</b><div style={{fontSize:"12px", color:"var(--muted)"}}>Cleaner sees this flag</div></div>
+            <label className="switch">
+              <input type="checkbox" checked={!!s.early} onChange={e => onSetEarly(s, e.target.checked, time)} />
+              <span className="slider"></span>
+            </label>
+          </div>
+          {s.early &&
+            <input className="field" placeholder="Time (e.g. 11am)" value={time}
+              onChange={e=>setTime(e.target.value)} onBlur={()=>onSetEarly(s, true, time)} />}
+        </div>}
+    </div>
+  );
+}
+
+/* ── Settings sheet ──────────────────────────────────────── */
+function SettingsSheet({ backend, ownerCode, onClose, onSave }) {
+  const [b, setB] = useState(backend);
+  const [o, setO] = useState(ownerCode);
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="sheet" onClick={e=>e.stopPropagation()}>
+        <button className="closebtn" onClick={onClose}>✕</button>
+        <h3>⚙ Settings</h3>
+        <p style={{color:"var(--muted)", fontSize:"13px", margin:"6px 0 14px"}}>The cleaner can leave the owner code blank — that's view-only.</p>
+        <label style={{fontSize:"13px", fontWeight:600}}>Apps Script Web App URL</label>
+        <input className="field" placeholder="https://script.google.com/macros/s/…/exec" value={b} onChange={e=>setB(e.target.value.trim())} />
+        <label style={{fontSize:"13px", fontWeight:600, display:"block", marginTop:"14px"}}>Owner code <span style={{fontWeight:400, color:"var(--muted)"}}>(only Greg — unlocks early-check-in toggles)</span></label>
+        <input className="field" type="password" placeholder="leave blank for view-only" value={o} onChange={e=>setO(e.target.value)} />
+        <div style={{display:"flex", gap:"10px", marginTop:"18px"}}>
+          <button className="btn-primary" style={{flex:1}} onClick={()=>onSave(b.trim(), o)}>Save</button>
+          <button className="btn-ghost" onClick={onClose}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
