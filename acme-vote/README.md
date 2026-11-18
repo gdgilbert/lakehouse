@@ -135,6 +135,14 @@ The screens talk only to `src/server/api.js`, and every function in it returns a
 
 ## Styling
 
-The request was to match the ACME website at https://acme-fellowship.pages.dev/. That site could not be reached from the environment this demo was built in, so the colors, fonts, and logo here are placeholders: a navy and gold palette, Lora for headings, Source Sans 3 for body text, and a simple cross mark beside an "ACME / Fellowship" wordmark. All colors and fonts are set as variables at the top of `src/styles.css`, and the logo is the `Logo` component in `src/components.jsx`, so matching the site means changing those two places.
+The styling follows the ACME website (acmefellowship.org). The site could not be fetched from the environment this demo was built in, so the match was made from screenshots of the site:
+
+- Near-black (#0f141d) and deep navy (#1b2335) for the header and opening screen; a light background for ballots and results so they are easy to read.
+- Muted gold (#c19a3f) for main buttons, short divider rules and spaced uppercase labels.
+- An italic serif for headings (Newsreader) and a light geometric sans for text (Outfit), both from Google Fonts. These are close matches, not necessarily the site's exact fonts.
+- Square buttons with uppercase, letter-spaced text.
+- The "ACME / Fellowship of Churches" wordmark set in type. Swap in the real logo file in the `Logo` component in `src/components.jsx` if one is available.
+
+All colors and fonts are variables at the top of `src/styles.css`.
 
 All names, churches, and figures in the demo are made up.

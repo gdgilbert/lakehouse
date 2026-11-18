@@ -16,24 +16,26 @@ export default function Start() {
     <div className="start">
       <div className="hero">
         <Logo large />
-        <h1 style={{ color: '#fff', fontSize: 26, marginTop: 28 }}>General Assembly Voting</h1>
-        <p>Association of Churches for Missions and Evangelism</p>
+        <div className="eyebrow">General Assembly</div>
+        <h1>Voting for Member Churches</h1>
+        <div className="rule" />
+        <p>Association of Churches for Missions &amp; Evangelism</p>
       </div>
       <div className="panel">
         <div className="section-title" style={{ marginTop: 0 }}>Choose a role for this demo</div>
         <button className="role-card" onClick={() => nav.push('delegateSignIn')}>
-          <span className="ico"><Icon name="vote" size={24} /></span>
+          <span className="ico"><Icon name="vote" size={22} /></span>
           <span style={{ flex: 1 }}>
             <b>Delegate</b>
-            <span>Sign in with your church&rsquo;s code and vote.</span>
+            <span className="desc">Sign in with your church&rsquo;s code and vote.</span>
           </span>
           <Icon name="chev" size={18} />
         </button>
         <button className="role-card" onClick={manager}>
-          <span className="ico gold"><Icon name="gavel" size={24} /></span>
+          <span className="ico"><Icon name="gavel" size={22} /></span>
           <span style={{ flex: 1 }}>
             <b>Manager</b>
-            <span>Set up ballots, open and close voting, and see results.</span>
+            <span className="desc">Set up ballots, open and close voting, and see results.</span>
           </span>
           <Icon name="chev" size={18} />
         </button>

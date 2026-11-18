@@ -76,10 +76,9 @@ export function LogoMark({ size = 36 }) {
 export function Logo({ large }) {
   return (
     <div className={`logo${large ? ' large' : ''}`}>
-      <LogoMark size={large ? 52 : 32} />
       <div className="logo-word">
         <b>ACME</b>
-        <small>Fellowship</small>
+        <small>Fellowship of Churches</small>
       </div>
     </div>
   );
