@@ -1101,26 +1101,41 @@ const fsElement = () => document.fullscreenElement || document.webkitFullscreenE
 const fsEnabled = () => {
   try { return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled); } catch { return false; }
 };
-export function FullscreenButton({ className = '' }) {
+export function FullscreenButton({ className = '', always = false }) {
   const [on, setOn] = React.useState(() => !!fsElement());
+  const [help, setHelp] = React.useState(false); // full screen was refused or is not offered here
   React.useEffect(() => {
     const f = () => setOn(!!fsElement());
     document.addEventListener('fullscreenchange', f);
     document.addEventListener('webkitfullscreenchange', f);
     return () => { document.removeEventListener('fullscreenchange', f); document.removeEventListener('webkitfullscreenchange', f); };
   }, []);
-  if (on || !fsEnabled()) return null;
+  if (on || (!always && !fsEnabled())) return null;
   const go = () => {
     const el = document.documentElement;
-    const req = el.requestFullscreen || el.webkitRequestFullscreen;
-    try { const r = req && req.call(el, { navigationUI: 'hide' }); if (r && r.catch) r.catch(() => {}); } catch { /* not allowed here */ }
+    const req = fsEnabled() && (el.requestFullscreen || el.webkitRequestFullscreen);
+    if (!req) { setHelp(true); return; }
+    try {
+      const r = req.call(el, { navigationUI: 'hide' });
+      if (r && r.catch) r.catch(() => setHelp(true));
+    } catch { setHelp(true); }
   };
+  const iphone = /iPhone|iPod/.test(navigator.userAgent);
   return (
-    <button className={`fs-btn ${className}`} onClick={go} aria-label="Full screen">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
-      </svg>
-      Full screen
-    </button>
+    <>
+      <button className={`fs-btn ${className}`} onClick={go} aria-label="Full screen">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+        </svg>
+        Full screen
+      </button>
+      {help && (
+        <p className={`fs-help ${className}`} onClick={() => setHelp(false)}>
+          {iphone
+            ? 'iPhone browsers do not allow full screen. In Safari, tap the page menu at the left of the address bar, then Hide Toolbar. Turning the phone sideways and back also hides the address bar in some browsers.'
+            : 'This browser does not allow full screen for this page. Try opening the link in Chrome or another browser.'}
+        </p>
+      )}
+    </>
   );
 }

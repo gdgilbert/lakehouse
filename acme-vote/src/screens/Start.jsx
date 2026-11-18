@@ -17,6 +17,7 @@ export default function Start() {
   return (
     <div className="start">
       <div className="hero">
+        <div className="hero-fs"><FullscreenButton className="on-dark" always /></div>
         <Logo large />
         <div className="eyebrow">National Business Meeting</div>
         <h1>Delegate Voting</h1>
@@ -25,7 +26,6 @@ export default function Start() {
       </div>
       <div className="panel">
         <button className="btn gold start-btn" onClick={() => nav.push('intro')}>Start the tutorial</button>
-        <FullscreenButton className="on-dark" />
         {FEATURES.manager && (
           <button className="role-card" style={{ marginTop: 14 }} onClick={manager}>
             <span className="ico"><Icon name="gavel" size={22} /></span>
