@@ -6,7 +6,7 @@
 // All of the wording lives here so it can be revised in one place.
 
 import { MEASURING_YEAR } from './server/seed.js';
-import { THRESHOLDS, fmt } from './server/rules.js';
+import { fmt } from './server/rules.js';
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 const pct = (n, d) => (d > 0 ? fmt((n / d) * 100) : '0.0');
@@ -30,7 +30,7 @@ export function ballotKind(b) {
 // Opening, sign-in, home
 // ---------------------------------------------------------------------------
 
-export function startTips() {
+export function startTips(mode = 'path') {
   return [{
     id: 'start',
     target: '.start-btn',
@@ -42,6 +42,10 @@ export function startTips() {
       {
         title: 'The main idea',
         body: 'Most votes are counted two ways: once with one vote per church, and once with each church’s votes weighted by its giving to ACME as a share of its own budget. Some ballots use only the first count. The tutorial shows when each is used and why.',
+      },
+      {
+        title: 'How the tutorial works',
+        body: 'Your church is one of 17. The other churches\u2019 votes are set so that you can see each rule at work. At the end, you can try it yourself and choose how each vote comes out.',
       },
       { title: 'Ready?', body: 'Tap Start the tutorial.' },
     ],
@@ -75,7 +79,8 @@ export function homeTips() {
 // Before voting
 // ---------------------------------------------------------------------------
 
-export function beforeVoteTips(b, church) {
+export function beforeVoteTips(b, church, mode = 'path') {
+  const guided = mode === 'path';
   const kind = ballotKind(b);
   const w = church.weight;
   const votes = plural(w, 'weighted vote', 'weighted votes');
@@ -111,10 +116,12 @@ export function beforeVoteTips(b, church) {
         title: 'Share, not size',
         body: 'Weight depends on the share of a church’s own budget, not on dollars. A small church that gives 4% has the same 4 votes as a large church that gives 4%.',
       },
-      {
-        title: 'Try this',
-        body: 'Vote, then on the next screen choose Demo fail. The demo will set up a result where most churches vote Yes but the weighted count says No, so you can see what happens when the two counts disagree.',
-      },
+      guided
+        ? { title: 'Your turn', body: 'Vote however you like, then compare the two counts on the result.' }
+        : {
+          title: 'Try this',
+          body: 'Vote, then on the next screen choose Demo fail. The demo will set up a result where most churches vote Yes but the weighted count says No, so you can see what happens when the two counts disagree.',
+        },
     ] });
   }
 
@@ -124,7 +131,7 @@ export function beforeVoteTips(b, church) {
         title: 'A higher bar',
         body: 'Amendments to the bylaws need 75% of the votes cast, in both counts. Changing the rules that every Member Church agreed to should take more than a bare majority.',
       },
-      { title: 'Your turn', body: 'Vote however you like. On the next screen you can choose whether it passes or fails.' },
+      { title: 'Your turn', body: guided ? 'Vote however you like, then see the result.' : 'Vote however you like. On the next screen you can choose whether it passes or fails.' },
     ] });
   }
 
@@ -137,14 +144,16 @@ export function beforeVoteTips(b, church) {
         },
         {
           title: 'If no one wins',
-          body: 'With three candidates, that often does not happen on the first ballot. Then the top two go to a runoff. Choose a candidate, then choose No one elected to see how the runoff works.',
+          body: 'With three candidates, that often does not happen on the first ballot. Then the top two go to a runoff.' +
+            (guided ? ' Vote for any candidate, then see the result.' : ' Choose a candidate, then choose No one elected to see how the runoff works.'),
         },
       ] });
     }
     if (b.round === 2) {
       tips.push({ id: 'before:election:2', pages: [{
         title: 'The runoff',
-        body: 'Two candidates remain. A candidate still has to carry both counts. If one wins the church count and the other wins the weighted count, there is a third ballot. Choose No one elected again to see ballot 3, or Someone elected to finish here.',
+        body: 'Two candidates remain. A candidate still has to carry both counts. If one wins the church count and the other wins the weighted count, there is a third ballot.' +
+          (guided ? '' : ' Choose No one elected again to see ballot 3, or Someone elected to finish here.'),
       }] });
     }
     if (b.round >= 3) {
@@ -170,7 +179,8 @@ export function beforeVoteTips(b, church) {
       },
       {
         title: 'If the slate fails',
-        body: 'The five seats are then filled one at a time, with nominees from the floor. Choose Demo pass to keep the tutorial short, or Demo fail to see the seat-by-seat elections.',
+        body: 'The five seats are then filled one at a time, with nominees from the floor.' +
+          (guided ? ' In this tutorial the slate passes, to keep it short. You can make it fail when you try it yourself.' : ' Choose Demo pass to keep the tutorial short, or Demo fail to see the seat-by-seat elections.'),
       },
     ] });
   }
@@ -208,8 +218,24 @@ const SUGGEST = {
   motion: 'Choose either one.',
 };
 
-export function afterVoteTips(b) {
+export function afterVoteTips(b, mode = 'path') {
   const kind = ballotKind(b);
+  if (mode === 'path') {
+    return [{
+      id: 'voted:first',
+      target: '.demo-panel',
+      pages: [
+        {
+          title: 'Your vote is recorded',
+          body: 'Once submitted, a vote cannot be changed. The receipt number lets a delegate confirm later that the vote was counted.',
+        },
+        {
+          title: 'See the result',
+          body: 'At the meeting, results appear when voting closes. Here, tap See the result. The other churches\u2019 votes are set for this tutorial.',
+        },
+      ],
+    }];
+  }
   return [
     {
       id: 'voted:first',
@@ -257,11 +283,22 @@ function motionNumbers(b) {
 function bothCountsSentence(b) {
   const r = b.result;
   const n = motionNumbers(b);
-  const need = THRESHOLDS[b.threshold].label.toLowerCase();
+  const need = { majority: 'a majority of the votes cast', twoThirds: 'two-thirds of the votes cast', threeQuarters: '75% of the votes cast' }[b.threshold];
+  const cMaj = Number(n.cPct) > 50;
+  const wMaj = Number(n.wPct) > 50;
   if (r.passed) return `It passed both counts: Yes had ${n.cPct}% of the church count and ${n.wPct}% of the weighted count. It needed ${need}.`;
-  if (r.churchPass) return `Most churches voted Yes (${n.cPct}% of the church count), but Yes had only ${n.wPct}% of the weighted count. The churches that give the largest share of their budgets mostly voted No. Because it must pass both counts, it fails.`;
-  if (r.weightedPass) return `Yes had ${n.wPct}% of the weighted count, but only ${n.cPct}% of the church count. Most churches voted No. Because it must pass both counts, it fails.`;
-  return `It did not pass either count: Yes had ${n.cPct}% of the church count and ${n.wPct}% of the weighted count. It needed ${need}.`;
+  if (r.churchPass) {
+    return `Yes had ${n.cPct}% of the church count, enough to pass, but only ${n.wPct}% of the weighted count.` +
+      (wMaj ? '' : ' The churches that give a larger share of their budgets mostly voted No.') +
+      ` It needed ${need} in both counts, so it fails.`;
+  }
+  if (r.weightedPass) {
+    return `Yes had ${n.wPct}% of the weighted count, enough to pass, but only ${n.cPct}% of the church count.` +
+      (cMaj ? '' : ' Most churches voted No.') +
+      ` It needed ${need} in both counts, so it fails.`;
+  }
+  return `Yes had ${n.cPct}% of the church count and ${n.wPct}% of the weighted count. It needed ${need}, so it fails.` +
+    (cMaj && wMaj ? ' A majority voted Yes in both counts, but a majority is not enough here.' : '');
 }
 
 function electionNames(b) {
@@ -347,8 +384,7 @@ export function resultTips(b, { hasNext, onRestart }) {
       },
       {
         title: 'You have finished the tutorial',
-        body: 'You have seen every kind of ballot: church count only, both counts at a majority, 75% and two-thirds, elections with runoffs, the Judicial Commission slate, and a regional ballot. In each case the rules ask for agreement from most churches and, where money or governance is at stake, from the churches that fund the work.',
-        action: { label: 'Run the tutorial again', onClick: onRestart },
+        body: 'You have seen every kind of ballot: church count only, both counts at a majority, 75% and two-thirds, elections with runoffs, the Judicial Commission slate, and a regional ballot. In each case the rules ask for agreement from most churches and, where money or governance is at stake, from the churches that fund the work. Tap Try it yourself to vote again and choose each result.',
       },
     ] }];
   }

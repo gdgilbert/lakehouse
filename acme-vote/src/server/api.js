@@ -92,9 +92,31 @@ export function subscribe(cb) {
   };
 }
 
-export async function resetDemo() {
-  save(freshDb());
+/**
+ * Start the demo over. mode 'path' is the guided tutorial with set results;
+ * mode 'free' lets the viewer choose each result. In free mode the opening
+ * tips are skipped, since the viewer has already seen them.
+ */
+export async function resetDemo({ mode = 'path' } = {}) {
+  const db = freshDb();
+  db.demo.mode = mode;
+  if (mode === 'free') db.demo.tutorial.seen = ['start', 'signin', 'home', 'voted:first'];
+  save(db);
   return respond(true);
+}
+
+// The result each guided-tutorial ballot is set to show (see README).
+function scriptedTarget(b) {
+  if (b.commissionId) return 'pass';                                  // slate passes
+  if (b.electionId) {
+    if (b.region || b.title.startsWith('Judicial Commission, Seat')) return 'pass'; // elected on ballot 1
+    return b.round >= 3 ? 'combined' : 'fail';                         // runoff, split, combined score
+  }
+  if (b.type === 'procedural') return 'pass';
+  if (b.type === 'budget') return 'fail';                              // passes church count, fails weighted
+  if (b.type === 'amendment') return 'pass';                           // passes both
+  if (b.threshold === 'twoThirds') return 'short';                     // majority, but short of two-thirds
+  return 'pass';
 }
 
 // ---------------------------------------------------------------------------
@@ -162,7 +184,8 @@ function tutorialState(db) {
 }
 
 export async function getTutorial() {
-  return respond(tutorialState(load()));
+  const db = load();
+  return respond({ ...tutorialState(db), mode: demoState(db).mode });
 }
 
 export async function markTipSeen(id) {
@@ -336,6 +359,7 @@ function closeInDb(db, b) {
 
 function demoState(db) {
   if (!db.demo) db.demo = { autoNext: true, step: 0 };
+  if (!db.demo.mode) db.demo.mode = 'path';
   return db.demo;
 }
 
@@ -376,7 +400,7 @@ const DEMO_STEPS = [
   (db) => addElection(db, { // election with three candidates
     office: 'Moderator', names: ['Andrew Mills', 'Jonathan Pierce', 'Timothy Walsh'],
   }),
-  (db) => addMotion(db, { // procedural: church count only
+  (db) => db.demo.mode !== 'path' && addMotion(db, { // procedural: church count only (free mode only)
     type: 'procedural', countRule: 'church', threshold: 'majority',
     title: 'Recess until 1:30 p.m.',
     description: 'Recess for lunch and resume the business meeting at 1:30 p.m.',
@@ -501,6 +525,7 @@ export async function demoFinishBallot(ballotId, target = 'pass', favoredChoice 
     mutate((db) => {
       const b = db.ballots.find((x) => x.id === ballotId);
       if (!b || b.status !== 'open') return null;
+      if (target === 'script') target = scriptedTarget(b);
       const remaining = db.churches.filter((c) => eligible(c, b.region) && !b.votes[c.id]);
       const choices = choiceList(b);
       const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -510,6 +535,10 @@ export async function demoFinishBallot(ballotId, target = 'pass', favoredChoice 
         const strict = attempt < 400; // first look for the more illustrative result
         const r = Math.random();
         if (b.kind === 'motion') {
+          if (target === 'short') {
+            const pYes = 0.54 + 0.1 * r;
+            return () => (Math.random() < 0.04 ? 'abstain' : Math.random() < pYes ? 'yes' : 'no');
+          }
           if (target === 'pass') {
             const pYes = 0.62 + 0.25 * r;
             return (c) => (Math.random() < 0.05 ? 'abstain' : Math.random() < pYes ? 'yes' : 'no');
@@ -530,7 +559,7 @@ export async function demoFinishBallot(ballotId, target = 'pass', favoredChoice 
           const p = 0.55 + 0.4 * r;
           return () => (Math.random() < 0.04 ? 'abstain' : Math.random() < p ? favored : pick(choices));
         }
-        if (strict && choices.length >= 2) {
+        if ((strict || target === 'combined') && choices.length >= 2) {
           const [a, bb] = [favored, pick(choices.filter((x) => x !== favored))];
           return (c) => {
             if (Math.random() < 0.04) return 'abstain';
@@ -545,12 +574,23 @@ export async function demoFinishBallot(ballotId, target = 'pass', favoredChoice 
       const ok = (result, attempt) => {
         const strict = attempt < 400;
         if (b.kind === 'motion') {
+          if (target === 'short') return !result.passed && result.churchYesPct > 50 && result.weightedYesPct > 50;
           if (target === 'pass') return result.passed;
           if (result.passed) return false;
           if (strict && b.countRule === 'both') return result.churchPass && !result.weightedPass;
           return true;
         }
-        if (target === 'pass') return result.outcome === 'elected' && (!strict || result.winner === favored);
+        if (target === 'pass') {
+          if (result.outcome !== 'elected') return false;
+          if (!strict) return true;
+          const win = result.standings.rows.find((x) => x.id === result.winner);
+          return result.winner === favored && win.churchPct < 100; // a win, but not a unanimous one
+        }
+        if (target === 'combined') {
+          if (result.outcome !== 'elected') return false;
+          const win = result.standings.rows.find((x) => x.id === result.winner);
+          return !strict || !(win.carriesChurch && win.carriesWeighted);
+        }
         if (result.outcome === 'elected' || result.outcome === 'repeat') return false;
         if (!strict) return true;
         const rows = result.standings.rows;

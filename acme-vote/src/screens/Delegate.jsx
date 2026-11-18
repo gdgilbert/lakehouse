@@ -162,16 +162,31 @@ function resultLine(b) {
 /** Shown when every ballot in the tutorial is done. */
 function TutorialEnd() {
   const nav = useNav();
+  const [tut] = useData(() => api.getTutorial());
+  const [session] = useData(() => api.getSession());
+  const free = tut?.mode === 'free';
+  const tryIt = async () => {
+    await api.resetDemo({ mode: 'free' });
+    nav.reset('delegateHome', { churchId: session?.churchId });
+  };
+  const guided = async () => {
+    await api.resetDemo({ mode: 'path' });
+    await api.signOut();
+    nav.reset('start');
+  };
   return (
     <div className="tutorial-end">
-      <span className="eyebrow-sm">End of the tutorial</span>
+      <span className="eyebrow-sm">{free ? 'All ballots done' : 'End of the tutorial'}</span>
       <h3>You have voted on every kind of ballot</h3>
-      <p>Run it again to try different choices and results.</p>
-      <button className="btn gold" onClick={async () => {
-        await api.resetDemo();
-        await api.signOut();
-        nav.reset('start');
-      }}>Run the tutorial again</button>
+      <p>
+        {free
+          ? 'Go again with different results, or take the guided tutorial again.'
+          : 'Now try it yourself: vote on the same ballots and choose how each one comes out.'}
+      </p>
+      <div className="btn-stack">
+        <button className="btn gold" onClick={tryIt}>{free ? 'Try it yourself again' : 'Try it yourself'}</button>
+        <button className="btn secondary end-secondary" onClick={guided}>{free ? 'Run the guided tutorial' : 'Run the guided tutorial again'}</button>
+      </div>
     </div>
   );
 }
@@ -187,10 +202,10 @@ function TutorialControls() {
         <Toggle label="Show tutorial tips" checked={!tut.off} onChange={(v) => api.setTipsOff(!v)} />
       </div>
       <button className="btn secondary" onClick={async () => {
-        await api.resetDemo();
+        await api.resetDemo({ mode: 'path' });
         await api.signOut();
         nav.reset('start');
-      }}>Start the tutorial over</button>
+      }}>Start the guided tutorial over</button>
     </>
   );
 }
@@ -261,16 +276,30 @@ function countExplanation(ballot, church) {
 function DemoResultsButton({ ballot }) {
   const nav = useNav();
   const [busy, setBusy] = useState(null);
+  const [tut] = useData(() => api.getTutorial());
   const isElection = ballot.kind === 'candidates';
   const finish = async (target) => {
     setBusy(target);
     await api.demoFinishBallot(ballot.id, target, ballot.myVote?.choice);
     nav.replace('delegateBallot', { ballotId: ballot.id });
   };
+  if (!tut) return null;
+  if (tut.mode === 'path') {
+    return (
+      <div className="demo-panel">
+        <p className="tiny" style={{ margin: '0 0 8px', color: 'var(--amber)' }}>
+          Tutorial. The other churches&rsquo; votes are set so you can see this rule at work.
+        </p>
+        <button className="btn gold" disabled={!!busy} onClick={() => finish('script')}>
+          {busy ? 'Counting…' : 'See the result'}
+        </button>
+      </div>
+    );
+  }
   return (
     <div className="demo-panel">
       <p className="tiny" style={{ margin: '0 0 8px', color: 'var(--amber)' }}>
-        Demo only. Fills in votes for the other churches and closes the ballot, as the manager would.
+        Try it yourself. Fills in votes for the other churches and closes the ballot.
         Choose how it comes out.
       </p>
       <div className="demo-choice">
@@ -301,12 +330,14 @@ export function BallotScreen({ ballotId }) {
   const [error, setError] = useState('');
 
   const [allBallots] = useData(() => (churchId ? api.listBallots({ churchId }) : Promise.resolve([])), [churchId]);
+  const [tut] = useData(() => api.getTutorial());
+  const mode = tut?.mode || 'path';
   if (!ballot || !church) return <div className="screen"><AppBar title="Ballot" /></div>;
   const hasNext = (allBallots || []).some((x) => x.status === 'open' && x.id !== ballot.id && x.eligible && !x.myVote);
-  const restart = async () => { await api.resetDemo(); await api.signOut(); nav.reset('start'); };
+  const restart = async () => { await api.resetDemo({ mode: 'path' }); await api.signOut(); nav.reset('start'); };
   const tips = ballot.status === 'closed'
     ? (ballot.result ? resultTips(ballot, { hasNext, onRestart: restart }) : [])
-    : ballot.myVote ? afterVoteTips(ballot) : beforeVoteTips(ballot, church);
+    : ballot.myVote ? afterVoteTips(ballot, mode) : beforeVoteTips(ballot, church, mode);
 
   const options = ballot.kind === 'candidates'
     ? ballot.options.map((o) => ({ id: o.id, label: o.label }))
@@ -408,6 +439,7 @@ export function BallotScreen({ ballotId }) {
 export function Receipt({ ballotId, receipt, choice, weight, at }) {
   const nav = useNav();
   const [session] = useData(() => api.getSession());
+  const [tut] = useData(() => api.getTutorial());
   const [ballot] = useData(
     () => (session ? api.getBallot(ballotId, { churchId: session.churchId }) : Promise.resolve(null)),
     [ballotId, session?.churchId]
@@ -435,7 +467,7 @@ export function Receipt({ ballotId, receipt, choice, weight, at }) {
         {ballot?.status === 'open' && <DemoResultsButton ballot={ballot} />}
         <button className="btn" onClick={nav.pop}>Back to ballots</button>
       </div>
-      {ballot?.status === 'open' && <Coach tips={afterVoteTips(ballot)} />}
+      {ballot?.status === 'open' && tut && <Coach tips={afterVoteTips(ballot, tut.mode)} />}
     </div>
   );
 }

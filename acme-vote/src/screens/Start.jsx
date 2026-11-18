@@ -50,7 +50,7 @@ export default function Start() {
           <p className="muted">This clears your votes and results and starts the tutorial from the beginning.</p>
           <div className="btn-stack">
             <button className="btn danger" onClick={async () => {
-              await api.resetDemo();
+              await api.resetDemo({ mode: 'path' });
               await api.signOut();
               setConfirmReset(false);
               setResetDone(true);

@@ -25,7 +25,19 @@ A built copy is committed in `acme-vote/demo/`, so the demo can be served withou
 
 ## Using the demo
 
-**The app currently runs as a tutorial.** The Manager role is hidden. The opening screen has one button, **Start the tutorial**, which signs you in as the delegate for Grace Fellowship Church and walks you through every kind of ballot. Tip cards appear at each step: first telling you what to do, then explaining how each ballot is counted, then explaining what just happened and why the rule is useful. Each tip appears once. When the last ballot is done, a **Run the tutorial again** button appears on the result and on the Ballots tab. **Hide tips** on any card turns them off; the **My church** tab can turn them back on or start the tutorial over. **Start over** on the opening screen does the same.
+**The app currently runs as a tutorial.** The Manager role is hidden. The opening screen has one button, **Start the tutorial**, which signs you in as the delegate for Grace Fellowship Church and walks you through every kind of ballot. Tip cards appear at each step: first telling you what to do, then explaining how each ballot is counted, then explaining what just happened and why the rule is useful. Each tip appears once.
+
+The guided tutorial follows a set path. After you vote, **See the result** fills in the other churches' votes so that each ballot shows a particular case:
+
+1. Adopt the agenda (church count only): passes.
+2. Approve the budget (both counts): passes the church count but fails the weighted count.
+3. Amendment (75%, both counts): passes both.
+4. Moderator election: no one elected on ballot 1, the runoff splits between the two counts, and ballot 3 is decided by combined score.
+5. Judicial Commission slate: passes.
+6. Regional election: elected on the first ballot.
+7. President's third consecutive term (two-thirds): a majority votes Yes but it falls short of two-thirds.
+
+The exact numbers vary from run to run, but each outcome is fixed. At the end, **Try it yourself** runs the same ballots again with a choice of result on each (**Demo pass** / **Demo fail**, or **Someone elected** / **No one elected**), and **Run the guided tutorial again** starts the path over. **Hide tips** on any card turns them off; the **My church** tab can turn them back on or start the guided tutorial over.
 
 All tutorial wording is in `src/tutorial.js`. To bring back the Manager role, set `manager: true` in `src/features.js`. The rest of this section describes both roles.
 
