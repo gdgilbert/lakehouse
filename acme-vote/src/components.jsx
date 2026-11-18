@@ -627,6 +627,8 @@ export function Coach({ tips }) {
   const [chipAt, setChipAt] = useState(null); // where the minimize button was tapped
   const [recallId, setRecallId] = useState(null); // the last tip finished on this screen, kept as a chip
   const openFrom = useRef(null); // where the chip was, so the card can grow out of it
+  const [moved, setMoved] = useState({ id: null, dx: 0, dy: 0 }); // how far the viewer dragged the open card
+  const cardDrag = useRef(null);
   const tipEdits = useTipEdits();
   const editing = FEATURES.editTips && tipEdits.canEdit;
   const [draft, setDraft] = useState(null); // { key, title, body } while a page is being edited
@@ -699,7 +701,8 @@ export function Coach({ tips }) {
     openFrom.current = null;
     const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (still) return;
-    el.style.transformOrigin = `${from.cx - el.offsetLeft}px ${from.cy - el.offsetTop}px`;
+    const off = moved.id === tip?.id ? moved : { dx: 0, dy: 0 };
+    el.style.transformOrigin = `${from.cx - el.offsetLeft - off.dx}px ${from.cy - el.offsetTop - off.dy}px`;
     el.classList.remove('coach-closing');
     el.classList.add('coach-opening');
     const t = setTimeout(() => el.classList.remove('coach-opening'), 420);
@@ -785,7 +788,8 @@ export function Coach({ tips }) {
     const el = cardRef.current;
     const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!el || !at || still) { finish(); return; }
-    el.style.transformOrigin = `${at.cx - el.offsetLeft}px ${at.cy - el.offsetTop}px`;
+    const off = moved.id === tip.id ? moved : { dx: 0, dy: 0 };
+    el.style.transformOrigin = `${at.cx - el.offsetLeft - off.dx}px ${at.cy - el.offsetTop - off.dy}px`;
     el.classList.add('coach-closing');
     setShield(true);
     setTimeout(finish, 340);
@@ -871,10 +875,40 @@ export function Coach({ tips }) {
     );
   }
 
+  // Dragging the open card by its grip bar. The card stays inside the screen.
+  const off = moved.id === tip.id ? moved : { dx: 0, dy: 0 };
+  const gripDown = (e) => {
+    const el = cardRef.current;
+    const box = el && el.offsetParent;
+    if (!el || !box) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const r = el.getBoundingClientRect();
+    const br = box.getBoundingClientRect();
+    cardDrag.current = {
+      px: e.clientX, py: e.clientY, dx: off.dx, dy: off.dy,
+      // limits so the card cannot leave the screen
+      minX: off.dx - (r.left - br.left) + 4, maxX: off.dx + (br.right - r.right) - 4,
+      minY: off.dy - (r.top - br.top) + 4, maxY: off.dy + (br.bottom - r.bottom) - 4,
+    };
+  };
+  const gripMove = (e) => {
+    const d = cardDrag.current;
+    if (!d) return;
+    const dx = Math.max(d.minX, Math.min(d.maxX, d.dx + e.clientX - d.px));
+    const dy = Math.max(d.minY, Math.min(d.maxY, d.dy + e.clientY - d.py));
+    setMoved({ id: tip.id, dx, dy });
+  };
+  const gripUp = () => { cardDrag.current = null; };
+
   return (
     <>
     {shieldEl}
-    <div ref={cardRef} className={`coach${!measuring && place.top ? ' coach-top' : ''}${measuring ? ' coach-measuring' : ''}`} role="dialog" aria-label={pg.title}>
+    <div ref={cardRef} className={`coach${!measuring && place.top ? ' coach-top' : ''}${measuring ? ' coach-measuring' : ''}`} role="dialog" aria-label={pg.title}
+      style={off.dx || off.dy ? { translate: `${off.dx}px ${off.dy}px` } : undefined}>
+      <div className="coach-grip" onPointerDown={gripDown} onPointerMove={gripMove} onPointerUp={gripUp} onPointerCancel={gripUp} onLostPointerCapture={gripUp}
+        title="Drag to move" aria-label="Drag to move the tip" role="separator">
+        <span />
+      </div>
       <div className="coach-head">
         <span className="eyebrow-sm">
           Tutorial{tip.pages.length > 1 ? ` · ${page + 1} of ${tip.pages.length}` : ''}

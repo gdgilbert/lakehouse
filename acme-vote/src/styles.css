@@ -460,3 +460,9 @@ table.standings .win { font-weight: 700; color: var(--green); }
 @keyframes coachGrow { from { transform: scale(0.1); opacity: 0; } }
 @keyframes chipIn { from { transform: scale(0.4); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .coach.coach-closing, .coach.coach-opening { animation: none; } }
+
+/* Grip bar for moving an open tip card */
+.coach-grip { margin: -10px -16px 2px; padding: 8px 0 6px; display: flex; justify-content: center; cursor: grab; touch-action: none; }
+.coach-grip:active { cursor: grabbing; }
+.coach-grip span { width: 44px; height: 5px; border-radius: 3px; background: #d9c48f; }
+@media (max-height: 700px) { .coach-grip { margin: -6px -12px 0; padding: 6px 0 4px; } }
