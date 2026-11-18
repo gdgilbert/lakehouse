@@ -519,14 +519,14 @@ const OUTRO = [
     viz: (step) => <VizGauge step={step} />,
   },
   {
-    title: 'If every church gave 4%',
-    steps: [['Here are the five churches as they are.'], ['Now every church gives a larger share of its budget, until each gives 4% and has 4 weighted votes.'], ['Equal weight is one church, one vote again.']],
-    viz: (step) => <VizEveryone step={step} />,
-  },
-  {
     title: 'Double Majority Voting',
     steps: [['Every church has a voice.'], ['Commitment has weight.'], ['The more churches share in the work, the closer the two counts come to one.', { t: 'A decision needs both.', delay: 1800 }]],
     viz: (step) => <VizFinal step={step} />,
+  },
+  {
+    title: 'If every church gave 4%',
+    steps: [['Here are the five churches as they are.'], ['Now every church gives a larger share of its budget, until each gives 4% and has 4 weighted votes.'], ['Equal weight is one church, one vote again.']],
+    viz: (step) => <VizEveryone step={step} />,
   },
 ];
 

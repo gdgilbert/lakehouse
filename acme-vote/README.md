@@ -41,7 +41,7 @@ A **Full screen** button on the opening screen and the slideshow hides the brows
    | Give the conference budget to missions | Churches at higher commitment levels cannot overrule everyone else | Yes | fails | passes | fails |
 
    In this first run-through the delegate is asked to vote as shown, so each ballot tells its story; tapping another answer does not select it; a short note asks for the needed vote and explains that Run it yourself is open afterward. Each two-count result has a **Counted different ways** card showing what one church, one vote and weighted votes alone would each decide next to Double Majority Voting, with a sentence on what the difference shows.
-3. **End.** After the last ballot: **Finish** (a short closing slideshow: what you saw, big does not mean powerful, commitment is a choice, what happens if every church gives 4% or more (the weighted count becomes one church, one vote again), and a closing line), **Run it yourself** (the same ballots; vote however you like, and the other churches vote at random, so results differ each run), or **Start the tutorial again**.
+3. **End.** After the last ballot: **Finish** (a short closing slideshow: what you saw, big does not mean powerful, commitment is a choice, a summary of Double Majority Voting, and last, every church climbing to 4% and 4 weighted votes, at which point the weighted count collapses back to one church, one vote), **Run it yourself** (the same ballots; vote however you like, and the other churches vote at random, so results differ each run), or **Start the tutorial again**.
 
 The sample churches are grouped to make these stories clear (see `GROUPS` in `src/server/seed.js`); the votes for each story are set in `STORY_VOTES` in `src/server/api.js`.
 
