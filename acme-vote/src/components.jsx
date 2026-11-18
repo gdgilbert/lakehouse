@@ -118,11 +118,42 @@ export function TabBar({ tabs, current, onChange }) {
   );
 }
 
+// Bottom sheet. Close it by swiping down, tapping outside it, or the X button.
 export function Sheet({ onClose, children }) {
+  const ref = useRef(null);
+  const start = useRef(null);
+  const [dy, setDy] = useState(0);
+
+  const begin = (y) => {
+    if (ref.current && ref.current.scrollTop <= 0) start.current = y;
+  };
+  const move = (y) => {
+    if (start.current == null) return;
+    const d = y - start.current;
+    if (d > 0) setDy(d);
+    else { start.current = null; setDy(0); } // swiping up scrolls the sheet instead
+  };
+  const end = () => {
+    if (start.current == null) return;
+    start.current = null;
+    if (dy > 80) onClose();
+    else setDy(0);
+  };
+
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <div className="grabber" />
+      <div className="sheet" ref={ref} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true"
+        style={dy ? { transform: `translateY(${dy}px)`, transition: 'none' } : undefined}
+        onTouchStart={(e) => begin(e.touches[0].clientY)}
+        onTouchMove={(e) => move(e.touches[0].clientY)}
+        onTouchEnd={end} onTouchCancel={end}>
+        <div className="sheet-top"
+          onPointerDown={(e) => { if (e.pointerType === 'mouse') { begin(e.clientY); e.currentTarget.setPointerCapture(e.pointerId); } }}
+          onPointerMove={(e) => e.pointerType === 'mouse' && move(e.clientY)}
+          onPointerUp={(e) => e.pointerType === 'mouse' && end()}>
+          <div className="grabber" />
+          <button className="sheet-close" onClick={onClose} aria-label="Close"><Icon name="x" size={20} /></button>
+        </div>
         {children}
       </div>
     </div>

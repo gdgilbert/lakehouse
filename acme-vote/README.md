@@ -37,8 +37,9 @@ The opening screen asks you to choose a role: **Delegate** or **Manager**. This 
 
 **Delegate**
 
-- Sign in with the church's 8-digit delegate code. Tap **Show demo codes** to see the codes for the sample churches.
-- The **Ballots** tab lists open ballots. The delegate chooses one option (or abstains), reviews it, and submits. A vote cannot be changed after it is submitted. The app shows a receipt number.
+- Sign in with the church's delegate code. The sample churches use 0000-0001 through 0000-0017. Tap **Show demo codes** to see which code belongs to which church.
+- The **Ballots** tab lists open ballots. Each ballot explains how the church's vote counts: on a church-count-only ballot, every church has a single vote whatever its weight; on a ballot that must pass both counts, the church casts 1 vote in the church count and its full weight in the weighted count. The delegate chooses one option (or abstains), reviews it, and submits. A vote cannot be changed after it is submitted. The app shows a receipt number.
+- After voting, **Show results** (demo only) fills in votes for the other churches at random and closes the ballot, so a delegate can see a result without switching to the manager.
 - The **Results** tab lists closed ballots and their results.
 - The **My church** tab shows the church's weighted votes and the figures they are based on.
 

@@ -195,6 +195,44 @@ function ChurchTab({ church }) {
   );
 }
 
+// What this church's vote counts for on this ballot.
+function countExplanation(ballot, church) {
+  const w = church.weight;
+  const votes = `${w} vote${w === 1 ? '' : 's'}`;
+  if (ballot.countRule === 'church') {
+    return {
+      title: 'Each church has 1 vote on this ballot',
+      body: w > 1
+        ? `${church.name} has ${votes} in the weighted count, but this ballot is decided by the church count only. Your church casts a single vote, the same as every other church.`
+        : `This ballot is decided by the church count only. Your church casts a single vote, the same as every other church.`,
+    };
+  }
+  return {
+    title: 'This ballot is counted two ways',
+    body: `${church.name} casts 1 vote in the church count and ${votes} in the weighted count, all for the choice you make. ` +
+      (ballot.kind === 'candidates'
+        ? 'A candidate must carry both counts to be elected.'
+        : 'The motion must pass both counts.'),
+  };
+}
+
+function DemoResultsButton({ ballotId }) {
+  const nav = useNav();
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="demo-panel">
+      <p className="tiny" style={{ margin: '0 0 8px', color: 'var(--amber)' }}>
+        Demo only. Fills in votes for the other churches and closes the ballot, as the manager would.
+      </p>
+      <button className="btn secondary" disabled={busy} onClick={async () => {
+        setBusy(true);
+        await api.demoFinishBallot(ballotId);
+        nav.replace('delegateBallot', { ballotId });
+      }}>{busy ? 'Counting…' : 'Show results'}</button>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Vote on one ballot
 // ---------------------------------------------------------------------------
@@ -254,11 +292,12 @@ export function BallotScreen({ ballotId }) {
             Receipt {ballot.myVote.receipt}. Results appear when the manager closes the ballot.
           </Banner>
         )}
+        {ballot.status === 'open' && ballot.myVote && <DemoResultsButton ballotId={ballot.id} />}
 
         {ballot.status === 'open' && !ballot.myVote && (
           <>
-            <Banner tone="navy" title={`You cast ${church.weight} weighted vote${church.weight > 1 ? 's' : ''} and 1 church vote`}>
-              All of {church.name}&rsquo;s votes go to the choice you make.
+            <Banner tone="navy" title={countExplanation(ballot, church).title}>
+              {countExplanation(ballot, church).body}
             </Banner>
             <div className="section-title">Your choice</div>
             <div className="choice-group">
@@ -288,7 +327,9 @@ export function BallotScreen({ ballotId }) {
             <div className="small">
               {choice === 'abstain'
                 ? `${church.name} abstains. No votes are cast.`
-                : `${church.name} casts 1 church vote and ${church.weight} weighted vote${church.weight > 1 ? 's' : ''}.`}
+                : ballot.countRule === 'church'
+                  ? `${church.name} casts 1 vote. This ballot is decided by the church count only.`
+                  : `${church.name} casts 1 vote in the church count and ${church.weight} in the weighted count.`}
             </div>
           </div>
           <p className="small muted">You cannot change your vote after you submit it.</p>
@@ -317,7 +358,7 @@ export function Receipt({ ballotId, receipt, choice, weight, at }) {
             <dl className="kv">
               <dt>Ballot</dt><dd>{ballot.title}</dd>
               <dt>Choice</dt><dd>{choiceLabel(ballot, choice)}</dd>
-              <dt>Votes cast</dt><dd>{choice === 'abstain' ? 'None (abstained)' : `1 church, ${weight} weighted`}</dd>
+              <dt>Votes cast</dt><dd>{choice === 'abstain' ? 'None (abstained)' : ballot.countRule === 'church' ? '1 (church count only)' : `1 church, ${weight} weighted`}</dd>
               <dt>Time</dt><dd>{time(at)}</dd>
             </dl>
           </div>
@@ -326,6 +367,7 @@ export function Receipt({ ballotId, receipt, choice, weight, at }) {
           <div className="small muted" style={{ marginBottom: 6 }}>Receipt number</div>
           <span className="code-box">{receipt}</span>
         </div>
+        {ballot?.status === 'open' && <DemoResultsButton ballotId={ballotId} />}
         <button className="btn" onClick={nav.pop}>Back to ballots</button>
       </div>
     </div>

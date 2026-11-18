@@ -14,8 +14,8 @@ import {
 } from './rules.js';
 import { MEASURING_YEAR, seedBallots, seedChurches } from './seed.js';
 
-const DB_KEY = 'acme-vote-db-v1';
-const SESSION_KEY = 'acme-vote-session-v1';
+const DB_KEY = 'acme-vote-db-v2'; // v2: simple demo codes 0000-0001 and up
+const SESSION_KEY = 'acme-vote-session-v2';
 const CHANGE_EVENT = 'acme-vote-db-change';
 
 // ---------------------------------------------------------------------------
@@ -343,6 +343,12 @@ export async function demoFillRemaining(ballotId) {
       return true;
     })
   );
+}
+
+/** Demo only: fill in the churches that have not voted, then close the ballot and count it. */
+export async function demoFinishBallot(ballotId) {
+  await demoFillRemaining(ballotId);
+  return closeBallot(ballotId);
 }
 
 // ---------------------------------------------------------------------------
