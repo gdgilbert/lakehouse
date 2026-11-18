@@ -17,14 +17,17 @@ const FIVE = [
 const TOTAL_VOTES = FIVE.reduce((s, c) => s + c.votes, 0);
 const money = (n) => (n >= 1000000 ? `$${(n / 1000000).toFixed(1)}M` : `$${Math.round(n / 1000)},000`);
 const dollars = (n) => '$' + Math.round(n).toLocaleString('en-US');
-const ms = (n) => ({ animationDelay: `${n}ms` });
+// Every delay and timeline in the slides is stretched by this factor.
+const SLOW = 1.7;
+const ms = (n) => ({ animationDelay: `${Math.round(n * SLOW)}ms` });
+const td = (n) => `${Math.round(n * SLOW)}ms`; // a transition delay
 
 /** Moves through stages 1, 2, ... at each delay in `times` after `key` changes; returns the stage. */
 function useTimeline(times, key) {
   const [stage, setStage] = useState(0);
   useEffect(() => {
     setStage(0);
-    const ts = times.map((t, i) => setTimeout(() => setStage(i + 1), t));
+    const ts = times.map((t, i) => setTimeout(() => setStage(i + 1), t * SLOW));
     return () => ts.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
@@ -36,9 +39,9 @@ function useCountUp(to, delay = 0, duration = 900) {
   const [v, setV] = useState(0);
   useEffect(() => {
     let raf = 0;
-    const start = performance.now() + delay;
+    const start = performance.now() + delay * SLOW;
     const step = (now) => {
-      const t = Math.max(0, Math.min(1, (now - start) / duration));
+      const t = Math.max(0, Math.min(1, (now - start) / (duration * SLOW)));
       setV(Math.round(to * (1 - Math.pow(1 - t, 3))));
       if (t < 1) raf = requestAnimationFrame(step);
     };
@@ -90,7 +93,7 @@ function VizChurches({ step }) {
         <div className="slide-town-item" key={c.short} style={ms(150 + i * 180)}>
           <Church size={churchPx(c.budget)} delay={150 + i * 180} />
           <b>{c.short}</b>
-          <span className={`slide-reveal${step >= 1 ? ' on' : ''}`} style={{ transitionDelay: `${i * 140}ms` }}>{money(c.budget)}</span>
+          <span className={`slide-reveal${step >= 1 ? ' on' : ''}`} style={{ transitionDelay: td(i * 140) }}>{money(c.budget)}</span>
         </div>
       ))}
     </div>
@@ -110,9 +113,9 @@ function SquashChurch({ size, ratio, crushed, cracks }) {
       <path d="M20 3v6M17 5.5h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       <path d="M8 38V20l12-9 12 9v18z" fill="currentColor" opacity="0.92" />
       <path d="M17 38v-7a3 3 0 016 0v7" fill="var(--navy-dark)" />
-      {CRACKS.slice(0, cracks).map((d, k) => <path key={d} className="squash-crack" d={d} style={{ transitionDelay: `${700 + k * 220}ms` }} />)}
+      {CRACKS.slice(0, cracks).map((d, k) => <path key={d} className="squash-crack" d={d} style={{ transitionDelay: td(700 + k * 220) }} />)}
       {cracks >= 2 && WRINKLES.slice(0, cracks >= 4 ? 2 : 1).map((d, k) => (
-        <path key={d} className="squash-wrinkle" d={d} style={{ transitionDelay: `${900 + k * 250}ms` }} />
+        <path key={d} className="squash-wrinkle" d={d} style={{ transitionDelay: td(900 + k * 250) }} />
       ))}
     </svg>
   );
@@ -172,12 +175,12 @@ function VizGivers({ step }) {
           </div>
           <div className="slide-morph-name">
             <b>{c.short}</b>
-            <span className={step >= 1 ? 'on' : ''} style={{ transitionDelay: `${i * 120}ms` }}>{money(c.budget)} budget</span>
+            <span className={step >= 1 ? 'on' : ''} style={{ transitionDelay: td(i * 120) }}>{money(c.budget)} budget</span>
           </div>
           <div className="slide-morph-track">
             {share && [2, 3, 4].map((t) => <i key={t} className="slide-meter-line" style={{ left: `${(t / 5) * 100}%` }} />)}
             <span className={`slide-morph-bar${flash && top2.includes(c.short) ? ' flash' : ''}`}
-              style={{ width: `${share ? (c.pct / 5) * 100 : (c.gives / maxGives) * 100}%`, transitionDelay: share ? `${i * 90}ms` : '0ms', ...ms(300 + i * 140) }} />
+              style={{ width: `${share ? (c.pct / 5) * 100 : (c.gives / maxGives) * 100}%`, transitionDelay: share ? td(i * 90) : '0ms', ...ms(300 + i * 140) }} />
           </div>
           <span className="slide-morph-value">{share ? `${c.pct.toFixed(1)}%` : dollars(c.gives)}</span>
         </div>
@@ -186,22 +189,41 @@ function VizGivers({ step }) {
   );
 }
 
+/**
+ * Weighted votes: opens on the gold share-of-budget bars from the slide before
+ * (step -1, shown with the sentence). Then each bar cracks into as many pieces as
+ * the church has weighted votes, and the pieces round into dots.
+ */
+const BANDS = [['under 2%', 1], ['2\u20133%', 2], ['3\u20134%', 3], ['4%+', 4]];
 function VizWeights({ step }) {
+  const tl = useTimeline([900, 2600, 4400], step === 0 ? 'w' : 'x');
+  const st = step >= 1 ? 3 : step === 0 ? tl : 0; // 0 bars, 1 cracked, 2 dots, 3 key shown
   return (
-    <div className="slide-weights">
-      <div className="slide-bands">
-        {[['under 2%', 1], ['2–3%', 2], ['3–4%', 3], ['4%+', 4]].map(([l, v], i) => (
-          <span key={l} style={ms(150 + i * 160)}><b>{v}</b>{l}</span>
-        ))}
+    <div className={`slide-morph share weights st${st}${step < 0 ? ' carry' : ''}`}>
+      <div className="slide-morph-caption">{st >= 2 ? 'Weighted votes' : 'Share of its own budget given to ACME'}</div>
+      {FIVE.map((c, i) => {
+        const piece = (c.pct / 5) * 100 / c.votes;
+        const w = st === 0 ? `${piece}%` : st === 1 ? `calc(${piece}% - 5px)` : '14px';
+        return (
+          <div className={`slide-morph-row givers${step >= 1 && c.short === 'Grace' ? ' star' : ''}`} key={c.short}>
+            <div className="slide-giver-icon"><Church size={Math.round(churchPx(c.budget) * 0.45)} /></div>
+            <div className="slide-morph-name"><b>{c.short}</b><span className="on">{money(c.budget)} budget</span></div>
+            <div className="slide-morph-track">
+              {[2, 3, 4].map((t) => <i key={t} className="slide-meter-line" style={{ left: `${(t / 5) * 100}%` }} />)}
+              <span className="w-segs">
+                {Array.from({ length: c.votes }, (_, k) => <i key={k} style={{ width: w, transitionDelay: td(i * 140 + k * 80) }} />)}
+              </span>
+            </div>
+            <span className="slide-morph-value">{c.pct.toFixed(1)}%</span>
+          </div>
+        );
+      })}
+      <div className={`slide-bands w-bands${st >= 3 ? ' on' : ''}`}>
+        {BANDS.map(([l, v]) => <span key={l}><b>{v}</b>{l}</span>)}
       </div>
-      {step >= 1 && FIVE.map((c, i) => (
-        <div className="slide-weight-row" key={c.short} style={ms(150 + i * 260)}>
-          <b>{c.short}</b>
-          <span className="slide-weight-pct">{c.pct.toFixed(1)}%</span>
-          <Dots n={c.votes} from={350 + i * 260} step={160} />
-        </div>
-      ))}
-      {step >= 1 && <div className="slide-total" style={ms(1900)}><Count to={TOTAL_VOTES} delay={1900} label=" weighted votes in all" /></div>}
+      <div className={`slide-total w-total${step >= 1 ? ' on' : ''}`}>
+        {step >= 1 ? <Count to={TOTAL_VOTES} delay={1200} label=" weighted votes in all" /> : '\u00a0'}
+      </div>
     </div>
   );
 }
@@ -266,9 +288,9 @@ function VizWhyBoth({ step }) {
 }
 
 /** A double pass: three very different churches together make a majority of both counts.
- *  They are drawn side by side, with one box around them in each count. */
+ *  The churches keep their usual order; gold boxes mark the two large ones and Grace,
+ *  joined by a bracket underneath. */
 const PASS_YES = ['Emmanuel', 'Covenant', 'Grace'];
-const PASS_ORDER = ['Emmanuel', 'Covenant', 'Grace', 'Hope', 'Harbor'].map((n) => FIVE.find((c) => c.short === n));
 function VizDoublePass({ step }) {
   const yes = (c) => PASS_YES.includes(c.short);
   const churchYes = FIVE.filter(yes).length;
@@ -281,27 +303,28 @@ function VizDoublePass({ step }) {
       <span className="dp-name">{c.short}</span>
     </div>
   );
-  const row = (weighted, boxed) => (
-    <div className="dp-row">
-      <div className={`dp-group${boxed ? ' on' : ''}`}>{PASS_ORDER.slice(0, 3).map((c) => cell(c, weighted))}</div>
-      {PASS_ORDER.slice(3).map((c) => cell(c, weighted))}
+  const row = (weighted) => (
+    <div className="dp-row split">
+      <div className="dp-group on two">{FIVE.slice(0, 2).map((c) => cell(c, weighted))}</div>
+      {FIVE.slice(2, 4).map((c) => cell(c, weighted))}
+      <div className="dp-group on one">{cell(FIVE[4], weighted)}</div>
     </div>
   );
   return (
     <div className="slide-example dp">
       <div className="slide-example-who">
-        {PASS_ORDER.map((c, i) => <span key={c.short} className={yes(c) ? 'yes' : 'no'} style={ms(300 + i * 160)}>{c.short}</span>)}
+        {FIVE.map((c, i) => <span key={c.short} className={yes(c) ? 'yes' : 'no'} style={ms(300 + i * 160)}>{c.short}</span>)}
       </div>
       {step >= 1 && (
         <div className="dp-count" style={ms(100)}>
           <div className="dp-head"><span>Church count</span><b className="pass" style={ms(1200)}>{churchYes} of 5 · Yes</b></div>
-          {row(false, true)}
+          {row(false)}
         </div>
       )}
       {step >= 2 && (
         <div className="dp-count" style={ms(100)}>
           <div className="dp-head"><span>Weighted count</span><b className="pass" style={ms(1600)}>{weightYes} of {TOTAL_VOTES} · Yes</b></div>
-          {row(true, true)}
+          {row(true)}
         </div>
       )}
       {step >= 3 && <div className="slide-stamp pass" style={ms(300)}>Passes</div>}
@@ -348,6 +371,7 @@ const INTRO = [
       ['Size has nothing to do with it. Grace, the smallest church, has the most.'],
     ],
     viz: (step) => <VizWeights step={step} />,
+    carry: true, // opens on the last slide's bars
   },
   {
     title: 'Every decision is counted twice',
@@ -428,8 +452,8 @@ function VizGauge({ step }) {
   return (
     <div className={`slide-gauge stepwise${step >= 1 ? ' climb' : ''}`}>
       <div className="slide-gauge-track">
-        {[['under 2%', 1], ['2–3%', 2], ['3–4%', 3], ['4%+', 4]].map(([l, v], i) => (
-          <span key={l} className={i === 0 || step >= 1 ? 'lit' : ''} style={{ transitionDelay: step >= 1 ? `${i * 1100}ms` : '0ms' }}><b>{v}</b>{l}</span>
+        {BANDS.map(([l, v], i) => (
+          <span key={l} className={i === 0 || step >= 1 ? 'lit' : ''} style={{ transitionDelay: step >= 1 ? td(i * 1100) : '0ms' }}><b>{v}</b>{l}</span>
         ))}
         <i className="slide-gauge-dot" />
       </div>
@@ -531,7 +555,7 @@ function Captions({ steps, step }) {
 }
 
 // The sentence for a step appears first; its animation starts this long after.
-const LEAD = 1300;
+const LEAD = 2600;
 
 function Slideshow({ slides, lastLabel, onDone, onSkip }) {
   const [i, setI] = useState(0);
@@ -563,13 +587,16 @@ function Slideshow({ slides, lastLabel, onDone, onSkip }) {
         <Logo />
         {onSkip && !lastSlide && <button className="slides-skip" onClick={onSkip}>Skip</button>}
       </div>
+      <div className="slides-stage">
       <div className="slides-body" key={`${i}-${replay}`}>
         <h1 className="slides-title">{s.title}</h1>
         <Captions steps={s.steps} step={step} />
-        <div className="slides-viz">{vizStep >= 0 && s.viz(Math.min(vizStep, s.steps.length - 1))}</div>
-        <button className="slides-replay-btn" onClick={() => { setStep(0); setVizStep(-1); setReplay(replay + 1); }} aria-label="Replay this slide" title="Replay">
-          <ReplayIcon />
-        </button>
+        <div className={`slides-viz${s.carry ? ' carry' : ''}`}>{(vizStep >= 0 || s.carry) && s.viz(Math.min(vizStep, s.steps.length - 1))}</div>
+      </div>
+      {/* outside the scrolling area, so it never moves */}
+      <button className="slides-replay-btn" onClick={() => { setStep(0); setVizStep(-1); setReplay(replay + 1); }} aria-label="Replay this slide" title="Replay">
+        <ReplayIcon />
+      </button>
       </div>
       <div className="slides-bottom">
         <button className="slides-back" onClick={back} style={{ visibility: i > 0 || step > 0 ? 'visible' : 'hidden' }}>Back</button>
