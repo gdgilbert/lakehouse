@@ -747,3 +747,20 @@ table.standings .win { font-weight: 700; color: var(--green); }
 .dp-church.yes .dp-name { color: #fff; }
 .slide-stamp.pass { border-color: #8fd3a8; color: #8fd3a8; }
 .slide-example.dp .slide-stamp { position: relative; right: auto; top: auto; display: table; margin: 12px auto 0; font-size: 14px; padding: 3px 12px; }
+
+/* Captions keep their place: later sentences are invisible until their step */
+.slides-cap.future { visibility: hidden; }
+.slides-cap.old { color: rgba(255,255,255,0.72); }
+.slides-viz { min-height: 40px; }
+
+/* Punks: a speech bubble on Covenant's bar, its tail pointing back at Covenant */
+.bar-bubble { right: auto; left: 10px; padding: 3px 10px 4px; font-size: 15px; }
+.bar-bubble::after { content: ''; position: absolute; left: -9px; top: 50%; margin-top: -6px; border: 6px solid transparent; border-right: 9px solid #fff; border-left: 0; }
+
+/* Passing both: one box around the three churches that make each majority */
+.dp-row { grid-template-columns: 3fr 1fr 1fr; }
+.dp-group { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; border: 1.5px solid transparent; border-radius: 5px; padding: 2px; transition: border-color 0.5s, background 0.5s; }
+.dp-group.on { border-color: var(--gold); background: rgba(193,154,63,0.12); animation: slideRise 0.5s both; }
+.dp-church.carry { border-color: transparent; background: none; }
+.dp-dots { flex-wrap: nowrap; gap: 2px; }
+.dp-dots i { width: 11px; height: 11px; flex-shrink: 0; }

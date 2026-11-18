@@ -120,7 +120,7 @@ function SquashChurch({ size, ratio, crushed, cracks }) {
 
 /** One church, one vote: standing, then the press, then one ballot each and Grace laughs. */
 function VizOneVote({ step }) {
-  const laugh = useTimeline([2600], step === 2 ? 'laugh' : 'no') >= 1 && step === 2;
+  const laugh = useTimeline([4200], step === 2 ? 'laugh' : 'no') >= 1 && step === 2; // well after the ballots land
   const sizes = FIVE.map((c) => churchPx(c.budget));
   const smallest = Math.min(...sizes);
   const tallest = Math.max(...sizes);
@@ -152,7 +152,10 @@ function VizOneVote({ step }) {
 
 /** Who gives the most: dollar bars (the big two flash and the biggest scoffs), then the budgets and the reversal. */
 function VizGivers({ step }) {
-  const flash = useTimeline([2200], step === 0 ? 'a' : 'b') >= 1 && step === 0;
+  // the two biggest bars flash gold, a pause, then the biggest giver speaks
+  const beat = useTimeline([1600, 3400, 4600], step === 0 ? 'a' : 'b');
+  const flash = step === 0 && beat >= 1 && beat < 2;
+  const punks = step === 0 && beat >= 3;
   const flip = useTimeline([1800], step === 1 ? 'flip' : 'x') >= 1 && step >= 1;
   const share = step >= 2 || flip;
   const maxGives = Math.max(...FIVE.map((c) => c.gives));
@@ -172,7 +175,7 @@ function VizGivers({ step }) {
           </div>
           <div className="slide-morph-track">
             {share && [2, 3, 4].map((t) => <i key={t} className="slide-meter-line" style={{ left: `${(t / 5) * 100}%` }} />)}
-            {flash && c.short === biggest && <span className="bar-bubble">Punks!</span>}
+            {punks && c.short === biggest && <span className="bar-bubble">Punks!</span>}
             <span className={`slide-morph-bar${flash && top2.includes(c.short) ? ' flash' : ''}`}
               style={{ width: `${share ? (c.pct / 5) * 100 : (c.gives / maxGives) * 100}%`, transitionDelay: share ? `${i * 90}ms` : '0ms', ...ms(300 + i * 140) }} />
           </div>
@@ -262,43 +265,43 @@ function VizWhyBoth({ step }) {
   );
 }
 
-/** A double pass carried by different churches: the large churches make the church-count
- *  majority, Grace's 4 weighted votes make the weighted majority. */
+/** A double pass: three very different churches together make a majority of both counts.
+ *  They are drawn side by side, with one box around them in each count. */
 const PASS_YES = ['Emmanuel', 'Covenant', 'Grace'];
+const PASS_ORDER = ['Emmanuel', 'Covenant', 'Grace', 'Hope', 'Harbor'].map((n) => FIVE.find((c) => c.short === n));
 function VizDoublePass({ step }) {
   const yes = (c) => PASS_YES.includes(c.short);
   const churchYes = FIVE.filter(yes).length;
   const weightYes = FIVE.filter(yes).reduce((t, c) => t + c.votes, 0);
-  const row = (weighted) => (
+  const cell = (c, weighted) => (
+    <div className={`dp-church${yes(c) ? ' yes' : ''}`} key={c.short}>
+      <span className="dp-dots">
+        {Array.from({ length: weighted ? c.votes : 1 }, (_, k) => <i key={k} style={ms(200 + k * 120)} />)}
+      </span>
+      <span className="dp-name">{c.short}</span>
+    </div>
+  );
+  const row = (weighted, boxed) => (
     <div className="dp-row">
-      {FIVE.map((c) => {
-        const carry = weighted ? c.short === 'Grace' : (c.short === 'Emmanuel' || c.short === 'Covenant');
-        return (
-          <div className={`dp-church${yes(c) ? ' yes' : ''}${carry ? ' carry' : ''}`} key={c.short}>
-            <span className="dp-dots">
-              {Array.from({ length: weighted ? c.votes : 1 }, (_, k) => <i key={k} style={ms(200 + k * 120)} />)}
-            </span>
-            <span className="dp-name">{c.short}</span>
-          </div>
-        );
-      })}
+      <div className={`dp-group${boxed ? ' on' : ''}`}>{PASS_ORDER.slice(0, 3).map((c) => cell(c, weighted))}</div>
+      {PASS_ORDER.slice(3).map((c) => cell(c, weighted))}
     </div>
   );
   return (
     <div className="slide-example dp">
       <div className="slide-example-who">
-        {FIVE.map((c, i) => <span key={c.short} className={yes(c) ? 'yes' : 'no'} style={ms(300 + i * 160)}>{c.short}</span>)}
+        {PASS_ORDER.map((c, i) => <span key={c.short} className={yes(c) ? 'yes' : 'no'} style={ms(300 + i * 160)}>{c.short}</span>)}
       </div>
       {step >= 1 && (
         <div className="dp-count" style={ms(100)}>
           <div className="dp-head"><span>Church count</span><b className="pass" style={ms(1200)}>{churchYes} of 5 · Yes</b></div>
-          {row(false)}
+          {row(false, true)}
         </div>
       )}
       {step >= 2 && (
         <div className="dp-count" style={ms(100)}>
           <div className="dp-head"><span>Weighted count</span><b className="pass" style={ms(1600)}>{weightYes} of {TOTAL_VOTES} · Yes</b></div>
-          {row(true)}
+          {row(true, true)}
         </div>
       )}
       {step >= 3 && <div className="slide-stamp pass" style={ms(300)}>Passes</div>}
@@ -334,7 +337,7 @@ const INTRO = [
     title: 'Who gives the most?',
     steps: [
       ['Counted in dollars, the large churches give the most.'],
-      ['But every church gives out of its own budget.', { t: 'Measured against what each church has, the order turns over: the smallest church gives the most.', delay: 2600 }],
+      ['But every church gives out of its own budget.', { t: 'Measured against what each church has, the order turns over: the smallest church gives the most.', delay: 4400 }],
     ],
     viz: (step) => <VizGivers step={step} />,
   },
@@ -365,9 +368,9 @@ const INTRO = [
     title: 'Passing both',
     steps: [
       ['Now three very different churches vote Yes: the two largest, and the smallest.'],
-      ['In the church count, the two large churches make the majority: 3 of 5.'],
-      ['In the weighted count, Grace\u2019s 4 votes carry it: 6 of 11.'],
-      ['It wins both counts, so it passes, with a different set of churches carrying each majority.'],
+      ['Together they make a majority of the church count: 3 of 5.'],
+      ['And together they make a majority of the weighted count: 6 of 11.'],
+      ['Large and small, giving little and giving much, they agree. It wins both counts, so it passes.'],
     ],
     viz: (step) => <VizDoublePass step={step} />,
   },
@@ -507,16 +510,18 @@ function ReplayIcon() {
   );
 }
 
-/** The sentences for steps 0..step. The current step's sentences fade in (some after a delay). */
+/** All of a slide's sentences, laid out from the start so nothing moves when one
+ *  appears. Sentences for later steps are invisible until their step; the current
+ *  step's sentences fade in (some after a delay). */
 function Captions({ steps, step }) {
   return (
     <p className="slides-text">
-      {steps.slice(0, step + 1).map((parts, k) => parts.map((part, j) => {
+      {steps.map((parts, k) => parts.map((part, j) => {
         const text = typeof part === 'string' ? part : part.t;
         const delay = typeof part === 'string' ? 0 : part.delay;
-        const current = k === step;
+        const cls = k < step ? 'old' : k === step ? 'new' : 'future';
         return (
-          <span key={`${k}-${j}`} className={`slides-cap${current ? ' new' : ''}`} style={current ? ms(150 + delay) : undefined}>
+          <span key={`${k}-${j}`} className={`slides-cap ${cls}`} style={k === step ? ms(150 + delay) : undefined}>
             {text}{' '}
           </span>
         );
@@ -525,19 +530,30 @@ function Captions({ steps, step }) {
   );
 }
 
+// The sentence for a step appears first; its animation starts this long after.
+const LEAD = 1300;
+
 function Slideshow({ slides, lastLabel, onDone, onSkip }) {
   const [i, setI] = useState(0);
   const [step, setStep] = useState(0);
   const [replay, setReplay] = useState(0); // bumping this restarts the slide from its first step
+  const [vizStep, setVizStep] = useState(-1); // the step the animation is showing; trails `step` by LEAD
+  const instant = React.useRef(false); // stepping back shows the earlier state at once
+  useEffect(() => {
+    if (instant.current) { instant.current = false; setVizStep(step); return undefined; }
+    const t = setTimeout(() => setVizStep(step), LEAD);
+    return () => clearTimeout(t);
+  }, [step, i, replay]);
   const s = slides[i];
   const lastStep = step >= s.steps.length - 1;
   const lastSlide = i === slides.length - 1;
   const next = () => {
     if (!lastStep) setStep(step + 1);
-    else if (!lastSlide) { setI(i + 1); setStep(0); }
+    else if (!lastSlide) { setI(i + 1); setStep(0); setVizStep(-1); }
     else onDone();
   };
   const back = () => {
+    instant.current = true;
     if (step > 0) setStep(step - 1);
     else if (i > 0) { setI(i - 1); setStep(slides[i - 1].steps.length - 1); }
   };
@@ -550,8 +566,8 @@ function Slideshow({ slides, lastLabel, onDone, onSkip }) {
       <div className="slides-body" key={`${i}-${replay}`}>
         <h1 className="slides-title">{s.title}</h1>
         <Captions steps={s.steps} step={step} />
-        <div className="slides-viz">{s.viz(step)}</div>
-        <button className="slides-replay-btn" onClick={() => { setStep(0); setReplay(replay + 1); }} aria-label="Replay this slide" title="Replay">
+        <div className="slides-viz">{vizStep >= 0 && s.viz(Math.min(vizStep, s.steps.length - 1))}</div>
+        <button className="slides-replay-btn" onClick={() => { setStep(0); setVizStep(-1); setReplay(replay + 1); }} aria-label="Replay this slide" title="Replay">
           <ReplayIcon />
         </button>
       </div>
