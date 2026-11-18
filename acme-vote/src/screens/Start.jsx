@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Icon, Logo, Sheet, useNav } from '../components.jsx';
+import { Coach, Icon, Logo, Sheet, useNav } from '../components.jsx';
+import { FEATURES } from '../features.js';
+import { startTips } from '../tutorial.js';
 import * as api from '../server/api.js';
 
 export default function Start() {
@@ -22,46 +24,42 @@ export default function Start() {
         <p>Association of Churches for Missions &amp; Evangelism</p>
       </div>
       <div className="panel">
-        <div className="section-title" style={{ marginTop: 0 }}>Choose a role for this demo</div>
-        <button className="role-card" onClick={() => nav.push('delegateSignIn')}>
-          <span className="ico"><Icon name="vote" size={22} /></span>
-          <span style={{ flex: 1 }}>
-            <b>Delegate</b>
-            <span className="desc">Sign in with your church&rsquo;s code and vote.</span>
-          </span>
-          <Icon name="chev" size={18} />
-        </button>
-        <button className="role-card" onClick={manager}>
-          <span className="ico"><Icon name="gavel" size={22} /></span>
-          <span style={{ flex: 1 }}>
-            <b>Manager</b>
-            <span className="desc">Set up ballots, open and close voting, and see results.</span>
-          </span>
-          <Icon name="chev" size={18} />
-        </button>
+        <div className="section-title" style={{ marginTop: 0 }}>A tutorial on the proposed voting rules</div>
+        <button className="btn gold start-btn" onClick={() => nav.push('delegateSignIn')}>Start the tutorial</button>
+        {FEATURES.manager && (
+          <button className="role-card" style={{ marginTop: 14 }} onClick={manager}>
+            <span className="ico"><Icon name="gavel" size={22} /></span>
+            <span style={{ flex: 1 }}>
+              <b>Manager</b>
+              <span className="desc">Set up ballots, open and close voting, and see results.</span>
+            </span>
+            <Icon name="chev" size={18} />
+          </button>
+        )}
         <p className="demo-note">
           This is a demonstration. Votes are saved only in this browser.
           <br />
           <button className="btn link small" onClick={() => setConfirmReset(true)}>
-            {resetDone ? 'Demo data reset' : 'Reset demo data'}
+            {resetDone ? 'Tutorial reset' : 'Start over'}
           </button>
         </p>
       </div>
       {confirmReset && (
         <Sheet onClose={() => setConfirmReset(false)}>
-          <h2>Reset demo data?</h2>
-          <p className="muted">This removes all ballots, votes and elections and restores the sample churches.</p>
+          <h2>Start over?</h2>
+          <p className="muted">This clears your votes and results and starts the tutorial from the beginning.</p>
           <div className="btn-stack">
             <button className="btn danger" onClick={async () => {
               await api.resetDemo();
               await api.signOut();
               setConfirmReset(false);
               setResetDone(true);
-            }}>Reset</button>
+            }}>Start over</button>
             <button className="btn secondary" onClick={() => setConfirmReset(false)}>Cancel</button>
           </div>
         </Sheet>
       )}
+      <Coach tips={startTips()} />
     </div>
   );
 }

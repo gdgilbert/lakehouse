@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { AppBar, Banner, useData } from '../components.jsx';
+import { AppBar, Banner, Coach, useData } from '../components.jsx';
+import { chartsTips } from '../tutorial.js';
 import * as api from '../server/api.js';
 import { REGIONS, THRESHOLDS, fmt } from '../server/rules.js';
 
@@ -325,6 +326,7 @@ export default function ResultDetails({ ballotId }) {
         {tab === 'region' && <ByRegion d={d} choices={choices} />}
         {tab === 'churches' && <Churches d={d} choices={choices} />}
       </div>
+      <Coach tips={chartsTips()} />
     </div>
   );
 }

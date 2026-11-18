@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import {
   AppBar, Banner, Choice, Empty, Icon, ResultView, Row, RuleChips, Sheet, StatusChip, TabBar,
-  WeightPips, choiceLabel, money, time, typeLabel, useData, useNav, useStickyState, NextBallot,
+  WeightPips, choiceLabel, money, time, typeLabel, useData, useNav, useStickyState, NextBallot, Coach, Toggle,
 } from '../components.jsx';
 import * as api from '../server/api.js';
 import { fmt } from '../server/rules.js';
+import { afterVoteTips, beforeVoteTips, homeTips, resultTips, signInTips } from '../tutorial.js';
 
 // ---------------------------------------------------------------------------
 // Sign in
@@ -58,6 +59,7 @@ export function SignIn() {
           Show demo codes
         </button>
       </div>
+      <Coach tips={signInTips(() => setCode('0000-0001'))} />
       {showCodes && (
         <Sheet onClose={() => setShowCodes(false)}>
           <h2>Demo delegate codes</h2>
@@ -96,6 +98,7 @@ export function Home({ churchId }) {
         {tab === 'results' && <ResultsTab closed={closed} />}
         {tab === 'church' && church && <ChurchTab church={church} />}
       </div>
+      {tab === 'ballots' && open.length > 0 && <Coach tips={homeTips()} />}
       <TabBar current={tab} onChange={setTab} tabs={[
         { id: 'ballots', label: 'Ballots', icon: 'ballot', count: toVote },
         { id: 'results', label: 'Results', icon: 'results' },
@@ -155,6 +158,25 @@ function resultLine(b) {
   return 'No one elected on this ballot';
 }
 
+function TutorialControls() {
+  const nav = useNav();
+  const [tut] = useData(() => api.getTutorial());
+  if (!tut) return null;
+  return (
+    <>
+      <div className="section-title">Tutorial</div>
+      <div className="card">
+        <Toggle label="Show tutorial tips" checked={!tut.off} onChange={(v) => api.setTipsOff(!v)} />
+      </div>
+      <button className="btn secondary" onClick={async () => {
+        await api.resetDemo();
+        await api.signOut();
+        nav.reset('start');
+      }}>Start the tutorial over</button>
+    </>
+  );
+}
+
 function ChurchTab({ church }) {
   const nav = useNav();
   return (
@@ -187,6 +209,8 @@ function ChurchTab({ church }) {
           <dt>Member all year</dt><dd>{church.fullYearMember ? 'Yes' : 'No'}</dd>
         </dl>
       </div>
+
+      <TutorialControls />
 
       <button className="btn secondary" onClick={async () => { await api.signOut(); nav.reset('start'); }}>
         <Icon name="logout" size={18} /> Sign out
@@ -258,7 +282,13 @@ export function BallotScreen({ ballotId }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
+  const [allBallots] = useData(() => (churchId ? api.listBallots({ churchId }) : Promise.resolve([])), [churchId]);
   if (!ballot || !church) return <div className="screen"><AppBar title="Ballot" /></div>;
+  const hasNext = (allBallots || []).some((x) => x.status === 'open' && x.id !== ballot.id && x.eligible && !x.myVote);
+  const restart = async () => { await api.resetDemo(); await api.signOut(); nav.reset('start'); };
+  const tips = ballot.status === 'closed'
+    ? (ballot.result ? resultTips(ballot, { hasNext, onRestart: restart }) : [])
+    : ballot.myVote ? afterVoteTips(ballot) : beforeVoteTips(ballot, church);
 
   const options = ballot.kind === 'candidates'
     ? ballot.options.map((o) => ({ id: o.id, label: o.label }))
@@ -327,6 +357,7 @@ export function BallotScreen({ ballotId }) {
         )}
       </div>
 
+      {!confirming && <Coach tips={tips} />}
       {confirming && (
         <Sheet onClose={() => !busy && setConfirming(false)}>
           <h2>Confirm your vote</h2>
@@ -385,6 +416,7 @@ export function Receipt({ ballotId, receipt, choice, weight, at }) {
         {ballot?.status === 'open' && <DemoResultsButton ballot={ballot} />}
         <button className="btn" onClick={nav.pop}>Back to ballots</button>
       </div>
+      {ballot?.status === 'open' && <Coach tips={afterVoteTips(ballot)} />}
     </div>
   );
 }

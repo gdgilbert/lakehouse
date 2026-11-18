@@ -5,6 +5,7 @@ import Start from './screens/Start.jsx';
 import * as Delegate from './screens/Delegate.jsx';
 import * as Manager from './screens/Manager.jsx';
 import ResultDetails from './screens/ResultDetails.jsx';
+import { FEATURES } from './features.js';
 
 const SCREENS = {
   start: Start,
@@ -47,7 +48,7 @@ export default function App() {
   useEffect(() => {
     api.getSession().then((s) => {
       if (s?.role === 'delegate') setStack([{ name: 'start' }, { name: 'delegateHome', props: { churchId: s.churchId } }]);
-      else if (s?.role === 'manager') setStack([{ name: 'start' }, { name: 'managerHome' }]);
+      else if (s?.role === 'manager' && FEATURES.manager) setStack([{ name: 'start' }, { name: 'managerHome' }]);
       else setStack([{ name: 'start' }]);
     });
   }, []);

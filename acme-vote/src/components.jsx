@@ -405,6 +405,70 @@ function ElectionResult({ ballot, r }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Tutorial tip card
+// ---------------------------------------------------------------------------
+
+/**
+ * Shows the first tip in `tips` that has not been seen. A tip has an id, pages
+ * ({title, body, target?, action?}) and an optional target selector that is
+ * highlighted while the tip is open.
+ */
+export function Coach({ tips }) {
+  const [tut] = useData(() => api.getTutorial());
+  const [page, setPage] = useState(0);
+  const [closing, setClosing] = useState(null);
+  const [top, setTop] = useState(false);
+  const tip = tut && !tut.off ? (tips || []).find((t) => t && !tut.seen.includes(t.id) && t.id !== closing) : null;
+  const pg = tip ? tip.pages[Math.min(page, tip.pages.length - 1)] : null;
+  const target = pg ? pg.target || tip.target : null;
+
+  useEffect(() => { setPage(0); }, [tip?.id]);
+
+  // Highlight the element the tip points to.
+  // Highlight the element the tip points to, and move the tip to the top of
+  // the screen when that element is in the lower half, so it is not covered.
+  useEffect(() => {
+    setTop(false);
+    if (!target) return undefined;
+    let el = null;
+    const t = setTimeout(() => {
+      el = document.querySelector(target);
+      if (el) {
+        el.classList.add('coach-target');
+        el.scrollIntoView({ block: 'nearest' });
+        const frame = el.closest('.device') || document.body;
+        const fr = frame.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        setTop((r.top + r.bottom) / 2 - fr.top > fr.height * 0.5);
+      }
+    }, 120);
+    return () => { clearTimeout(t); if (el) el.classList.remove('coach-target'); };
+  }, [target, tip?.id, page]);
+
+  if (!tip) return null;
+  const last = page >= tip.pages.length - 1;
+  const done = () => { setClosing(tip.id); api.markTipSeen(tip.id); (tip.alsoMarks || []).forEach((x) => api.markTipSeen(x)); };
+
+  return (
+    <div className={`coach${top ? ' coach-top' : ''}`} role="dialog" aria-label={pg.title}>
+      <div className="coach-head">
+        <span className="eyebrow-sm">Tutorial{tip.pages.length > 1 ? ` · ${page + 1} of ${tip.pages.length}` : ''}</span>
+        <button className="coach-hide" onClick={() => api.setTipsOff(true)}>Hide tips</button>
+      </div>
+      <h3>{pg.title}</h3>
+      <p>{pg.body}</p>
+      <div className="coach-actions">
+        {page > 0 && <button className="coach-back" onClick={() => setPage(page - 1)}>Back</button>}
+        {pg.action && (
+          <button className="btn small secondary coach-action" onClick={() => { pg.action.onClick(); done(); }}>{pg.action.label}</button>
+        )}
+        <button className="btn small gold" onClick={() => (last ? done() : setPage(page + 1))}>{last ? 'Got it' : 'Next'}</button>
+      </div>
+    </div>
+  );
+}
+
 // State that survives a screen being unmounted and shown again (e.g. the selected tab).
 const sticky = new Map();
 export const resetSticky = () => sticky.clear();

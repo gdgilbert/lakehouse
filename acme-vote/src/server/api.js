@@ -32,7 +32,7 @@ function freshDb() {
     ballots: seedBallots().map((b) => ({ ...b, createdAt: Date.now(), openedAt: b.status === 'open' ? Date.now() : null })),
     elections: [],
     commissions: [],
-    demo: { autoNext: true, step: 0 },
+    demo: { autoNext: true, step: 0, tutorial: { seen: [], off: false } },
   };
 }
 
@@ -152,6 +152,33 @@ function publicChurch(c) {
 export async function getMeta() {
   const db = load();
   return respond({ measuringYear: db.measuringYear, autoNext: demoState(db).autoNext });
+}
+
+// Tutorial tips: which ones the viewer has seen, and whether tips are turned off.
+function tutorialState(db) {
+  const d = demoState(db);
+  if (!d.tutorial) d.tutorial = { seen: [], off: false };
+  return d.tutorial;
+}
+
+export async function getTutorial() {
+  return respond(tutorialState(load()));
+}
+
+export async function markTipSeen(id) {
+  return respond(mutate((db) => {
+    const t = tutorialState(db);
+    if (!t.seen.includes(id)) t.seen.push(id);
+    return true;
+  }));
+}
+
+export async function setTipsOff(off) {
+  return respond(mutate((db) => { tutorialState(db).off = Boolean(off); return true; }));
+}
+
+export async function restartTutorial() {
+  return respond(mutate((db) => { const t = tutorialState(db); t.seen = []; t.off = false; return true; }));
 }
 
 export async function setAutoNext(on) {
@@ -484,7 +511,7 @@ export async function demoFinishBallot(ballotId, target = 'pass', favoredChoice 
         const r = Math.random();
         if (b.kind === 'motion') {
           if (target === 'pass') {
-            const pYes = 0.6 + 0.4 * r;
+            const pYes = 0.62 + 0.25 * r;
             return (c) => (Math.random() < 0.05 ? 'abstain' : Math.random() < pYes ? 'yes' : 'no');
           }
           if (strict && b.countRule === 'both') {
