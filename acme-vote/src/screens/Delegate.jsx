@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   AppBar, Banner, Choice, Empty, Icon, ResultView, Row, RuleChips, Sheet, StatusChip, TabBar,
-  WeightPips, choiceLabel, money, time, typeLabel, useData, useNav, useStickyState,
+  WeightPips, choiceLabel, money, time, typeLabel, useData, useNav, useStickyState, NextBallot,
 } from '../components.jsx';
 import * as api from '../server/api.js';
 import { fmt } from '../server/rules.js';
@@ -289,6 +289,7 @@ export function BallotScreen({ ballotId }) {
           <div style={{ marginTop: 10 }}><RuleChips ballot={ballot} /></div>
         </div>
 
+        {ballot.status === 'closed' && <NextBallot currentId={ballot.id} churchId={churchId} screen="delegateBallot" />}
         {ballot.status === 'closed' && <ResultView ballot={ballot} />}
         {ballot.status === 'closed' && ballot.myVote && (
           <p className="small muted center">

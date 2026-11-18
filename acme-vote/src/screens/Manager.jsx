@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   AppBar, Banner, Choice, Empty, Icon, ResultView, Row, RuleChips, Sheet, StatusChip, TabBar, Toggle,
-  WeightPips, choiceLabel, money, time, typeLabel, useData, useNav, useStickyState, useToast,
+  WeightPips, choiceLabel, money, time, typeLabel, useData, useNav, useStickyState, useToast, NextBallot,
 } from '../components.jsx';
 import * as api from '../server/api.js';
 import { BALLOT_TYPES, COUNT_RULES, REGIONS, THRESHOLDS, churchWeight, fmt } from '../server/rules.js';
@@ -160,6 +160,7 @@ function ChurchesTab() {
 
 function MoreTab() {
   const nav = useNav();
+  const [meta] = useData(() => api.getMeta());
   const [confirm, setConfirm] = useState(false);
   return (
     <>
@@ -167,6 +168,11 @@ function MoreTab() {
       <div className="card small">
         All data in this demo is stored in this browser. Open the app in a second tab to sign in as a delegate while
         this tab stays signed in as the manager. Both tabs update together.
+      </div>
+      <div className="card">
+        <Toggle label="Open the next sample ballot automatically" checked={!!meta?.autoNext}
+          onChange={(v) => api.setAutoNext(v)}
+          hint="When a ballot closes, the demo opens another kind of ballot, and an undecided election goes to its next ballot." />
       </div>
       <div className="btn-stack">
         <button className="btn secondary" onClick={async () => { await api.signOut(); nav.reset('start'); }}>
@@ -306,6 +312,7 @@ export function BallotScreen({ ballotId }) {
 
         {ballot.status === 'closed' && (
           <>
+            <NextBallot currentId={ballot.id} screen="managerBallot" />
             <ResultView ballot={ballot} />
             {ballot.electionId && (
               <button className="btn" onClick={() => { nav.pop(); }}>Back to the election</button>

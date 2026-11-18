@@ -312,6 +312,24 @@ function MotionCount({ title, count, pass, unit, decides, threshold, ballotId })
   );
 }
 
+/** Shown under a closed result: the next open ballot this viewer can act on. */
+export function NextBallot({ currentId, churchId, screen }) {
+  const nav = useNav();
+  const [ballots] = useData(() => api.listBallots(churchId ? { churchId } : {}), [churchId]);
+  const next = (ballots || []).find((b) => b.status === 'open' && b.id !== currentId && (!churchId || (b.eligible && !b.myVote)));
+  if (!next) return null;
+  return (
+    <button type="button" className="next-ballot" onClick={() => nav.replace(screen, { ballotId: next.id })}>
+      <span>
+        <span className="eyebrow-sm">Next ballot is open</span>
+        <b>{next.title}</b>
+        <span className="sub">{typeLabel(next)} · {THRESHOLDS[next.threshold].label} · {COUNT_RULES[next.countRule]}{next.region ? ` · ${next.region} only` : ''}</span>
+      </span>
+      <Icon name="chev" />
+    </button>
+  );
+}
+
 function ChartsLink({ ballotId }) {
   const nav = useNav();
   return (

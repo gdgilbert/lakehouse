@@ -32,6 +32,7 @@ function freshDb() {
     ballots: seedBallots().map((b) => ({ ...b, createdAt: Date.now(), openedAt: b.status === 'open' ? Date.now() : null })),
     elections: [],
     commissions: [],
+    demo: { autoNext: true, step: 0 },
   };
 }
 
@@ -150,7 +151,11 @@ function publicChurch(c) {
 
 export async function getMeta() {
   const db = load();
-  return respond({ measuringYear: db.measuringYear });
+  return respond({ measuringYear: db.measuringYear, autoNext: demoState(db).autoNext });
+}
+
+export async function setAutoNext(on) {
+  return respond(mutate((db) => { demoState(db).autoNext = Boolean(on); return true; }));
 }
 
 export async function listChurches() {
@@ -292,7 +297,112 @@ function closeInDb(db, b) {
   b.result = computeResult(db, b);
   if (b.electionId) afterElectionBallot(db, b);
   if (b.commissionId) afterSlateBallot(db, b);
+  demoAdvance(db, b);
   return b.result;
+}
+
+// ---------------------------------------------------------------------------
+// Demo sequence: after a ballot closes, put up the next one so a presenter can
+// walk through every kind of ballot without switching to the manager.
+// Turn it off in the manager's Settings tab.
+// ---------------------------------------------------------------------------
+
+function demoState(db) {
+  if (!db.demo) db.demo = { autoNext: true, step: 0 };
+  return db.demo;
+}
+
+function addMotion(db, spec) {
+  const b = {
+    id: uid('b'), kind: 'motion', options: [], votes: {}, region: null,
+    status: 'open', createdAt: Date.now(), openedAt: Date.now(), ...spec,
+  };
+  db.ballots.push(b);
+  return b;
+}
+
+function addElection(db, { office, names, threshold = 'majority', region = null }) {
+  const e = newElection({ office, threshold, region });
+  for (const n of names) e.candidates.push({ id: uid('p'), name: n, disqualified: false });
+  db.elections.push(e);
+  openNextInDb(e, db);
+}
+
+function sessionRegion(db) {
+  const s = readSession();
+  const c = s?.churchId && db.churches.find((x) => x.id === s.churchId);
+  return c ? c.region : 'Midwest';
+}
+
+// Each step opens one ballot of a different kind.
+const DEMO_STEPS = [
+  (db) => { // budget approval: both counts, majority
+    const b = db.ballots.find((x) => x.id === 'b-demo-2');
+    if (b && b.status === 'draft') { b.status = 'open'; b.openedAt = Date.now(); return true; }
+    return false;
+  },
+  (db) => addMotion(db, { // amendment: both counts, 75%
+    type: 'amendment', countRule: 'both', threshold: 'threeQuarters',
+    title: 'Amend Article IV, Section 2',
+    description: 'Require each Member Church to submit its elder-certified budget by March 1 of the year after the measuring year.',
+  }),
+  (db) => addElection(db, { // election with three candidates
+    office: 'Moderator', names: ['Andrew Mills', 'Jonathan Pierce', 'Timothy Walsh'],
+  }),
+  (db) => addMotion(db, { // procedural: church count only
+    type: 'procedural', countRule: 'church', threshold: 'majority',
+    title: 'Recess until 1:30 p.m.',
+    description: 'Recess for lunch and resume the business meeting at 1:30 p.m.',
+  }),
+  (db) => { // Judicial Commission slate
+    const c = createCommissionInDb(db, ['Richard Hale', 'Kevin Ortiz', 'Gregory Lane', 'Martin Cho', 'Edward Banks']);
+    openSlateInDb(db, c);
+  },
+  (db) => { // regional election for the signed-in delegate's Region
+    const region = sessionRegion(db);
+    addElection(db, { office: `${region} Regional Representative`, names: ['Matthew Cole', 'Joel Harper'], region });
+  },
+  (db) => addMotion(db, { // special case: two-thirds
+    type: 'election', countRule: 'both', threshold: 'twoThirds',
+    title: 'President: third consecutive term',
+    description: 'Elect Thomas Avery to a third consecutive term as President. A third consecutive term requires two-thirds of the votes cast in both counts.',
+  }),
+];
+
+const FLOOR_NAMES = ['Scott Turner', 'Brian Kelly', 'Adam Ross', 'Ryan Hughes', 'Neil Foster'];
+
+function demoAdvance(db, closed) {
+  const d = demoState(db);
+  if (!d.autoNext) return;
+
+  // An undecided election goes straight to its next ballot (runoff, ballot 3, ballot 4).
+  if (closed.electionId) {
+    const e = db.elections.find((x) => x.id === closed.electionId);
+    if (e.status === 'awaiting') { openNextInDb(e, db); return; }
+    if (e.status === 'reopened') {
+      e.candidates.push({ id: uid('p'), name: FLOOR_NAMES[e.series % FLOOR_NAMES.length], disqualified: false });
+      e.candidates.push({ id: uid('p'), name: FLOOR_NAMES[(e.series + 2) % FLOOR_NAMES.length], disqualified: false });
+      openNextInDb(e, db);
+      return;
+    }
+  }
+  // A failed slate or a filled seat leaves the next seat taking nominations: nominate and open it.
+  const seat = db.elections.find((x) => x.commissionId && x.status === 'nominating');
+  if (seat) {
+    const c = db.commissions.find((x) => x.id === seat.commissionId);
+    const pres = c.nominees.filter((n) => !c.members.includes(n)).slice(0, 2);
+    const floor = FLOOR_NAMES[(seat.seat - 1) % FLOOR_NAMES.length];
+    for (const n of [...pres, floor]) seat.candidates.push({ id: uid('p'), name: n, disqualified: false });
+    openNextInDb(seat, db);
+    return;
+  }
+
+  if (db.ballots.some((x) => x.status === 'open')) return; // something is already up
+  while (d.step < DEMO_STEPS.length) {
+    const made = DEMO_STEPS[d.step](db);
+    d.step += 1;
+    if (made !== false) return;
+  }
 }
 
 function recordVote(db, ballotId, churchId, choice) {
@@ -556,7 +666,10 @@ function mutateElection(id, fn) {
 
 /** Create and open the next ballot of an election. */
 export async function openNextElectionBallot(electionId) {
-  return mutateElection(electionId, (e, db) => {
+  return mutateElection(electionId, (e, db) => openNextInDb(e, db));
+}
+
+function openNextInDb(e, db) {
     let ids;
     if (e.status === 'nominating' || e.status === 'reopened') {
       ids = e.candidates.filter((c) => !c.disqualified).map((c) => c.id);
@@ -595,7 +708,6 @@ export async function openNextElectionBallot(electionId) {
     e.ballotIds.push(b.id);
     e.status = 'voting';
     e.nextCandidateIds = null;
-  });
 }
 
 function afterElectionBallot(db, b) {
@@ -641,8 +753,10 @@ export async function getCommission(id) {
 export async function createCommission({ nominees }) {
   const names = nominees.map((n) => n.trim()).filter(Boolean);
   if (names.length !== 5) return fail('Enter all five of the President’s nominees.');
-  return respond(
-    mutate((db) => {
+  return respond(mutate((db) => createCommissionInDb(db, names).id));
+}
+
+function createCommissionInDb(db, names) {
       const c = {
         id: uid('jc'),
         nominees: names,
@@ -653,15 +767,14 @@ export async function createCommission({ nominees }) {
         createdAt: Date.now(),
       };
       db.commissions.push(c);
-      return c.id;
-    })
-  );
+      return c;
 }
 
 export async function openSlateBallot(commissionId) {
-  return respond(
-    mutate((db) => {
-      const c = db.commissions.find((x) => x.id === commissionId);
+  return respond(mutate((db) => openSlateInDb(db, db.commissions.find((x) => x.id === commissionId))));
+}
+
+function openSlateInDb(db, c) {
       if (c.status !== 'draft') return false;
       const b = {
         id: uid('b'),
@@ -683,8 +796,6 @@ export async function openSlateBallot(commissionId) {
       c.slateBallotId = b.id;
       c.status = 'slate';
       return true;
-    })
-  );
 }
 
 function afterSlateBallot(db, b) {
