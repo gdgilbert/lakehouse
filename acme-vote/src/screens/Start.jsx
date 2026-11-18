@@ -19,12 +19,11 @@ export default function Start() {
       <div className="hero">
         <Logo large />
         <div className="eyebrow">National Business Meeting</div>
-        <h1>Double Majority Voting</h1>
+        <h1>Delegate Voting</h1>
         <div className="rule" />
         <p>Association of Churches for Missions &amp; Evangelism</p>
       </div>
       <div className="panel">
-        <div className="section-title" style={{ marginTop: 0 }}>A tutorial on the proposed voting rules</div>
         <button className="btn gold start-btn" onClick={() => nav.push('delegateSignIn')}>Start the tutorial</button>
         {FEATURES.manager && (
           <button className="role-card" style={{ marginTop: 14 }} onClick={manager}>

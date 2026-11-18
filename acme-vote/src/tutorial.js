@@ -37,8 +37,8 @@ export function startTips(mode = 'path') {
     placement: 'bottom',
     pages: [
       {
-        title: 'Welcome',
-        body: 'This tutorial shows how Double Majority Voting would work at the ACME National Business Meeting. You will vote as the delegate for one Member Church on each kind of ballot. Notes like this one explain each step.',
+        title: 'A tutorial on Double Majority Voting',
+        body: 'This is a tutorial on how Double Majority Voting would work at the ACME National Business Meeting. You will vote as the delegate for one Member Church on each kind of ballot. Notes like this one explain each step.',
       },
       {
         title: 'The main idea',

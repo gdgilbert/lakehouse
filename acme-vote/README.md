@@ -25,7 +25,7 @@ A built copy is committed in `acme-vote/demo/`, so the demo can be served withou
 
 ## Using the demo
 
-**The app currently runs as a tutorial.** The Manager role is hidden. The opening screen has one button, **Start the tutorial**, which signs you in as the delegate for Grace Fellowship Church and walks you through every kind of ballot. Tip cards appear at each step (**Got it** shrinks a card to a chip you can tap to reread it while you stay on that screen): first telling you what to do, then explaining how each ballot is counted, then explaining what just happened and why the rule is useful. Each tip appears once.
+**The app currently runs as a tutorial.** The Manager role is hidden. The app itself is styled as a plain ACME delegate voting app; the first tip says it is a tutorial on Double Majority Voting. The opening screen has one button, **Start the tutorial**, which signs you in as the delegate for Grace Fellowship Church and walks you through every kind of ballot. Tip cards appear at each step (**Got it** shrinks a card to a chip you can tap to reread it while you stay on that screen): first telling you what to do, then explaining how each ballot is counted, then explaining what just happened and why the rule is useful. Each tip appears once.
 
 The guided tutorial follows a set path. After you vote, **See the result** fills in the other churches' votes so that each ballot shows a particular case:
 
@@ -40,7 +40,7 @@ Elections come in the order set by Bylaws XII §15: the President, then the Judi
 
 The exact numbers vary from run to run, but each outcome is fixed. At the end, **Try it yourself** runs the same ballots again with a choice of result on each (**Demo pass** / **Demo fail**, or **Someone elected** / **No one elected**), and **Run the guided tutorial again** starts the path over. The **minimize** button (top right of a card) shrinks it to a small **Tip** chip where you tapped, so you can see the screen. Tap the chip to reopen the tip on the same page, or drag it out of the way. An open tip card can be moved by dragging the grip bar along its top edge. **Hide tips** on any card turns them off; the **My church** tab can turn them back on or start the guided tutorial over.
 
-If the page reloads (for example, when a new version is published or the phone reloads the tab), the app returns to the screen you were on.
+If the page reloads (for example, when a new version is published or the phone reloads the tab), the app returns to the screen you were on, and an open tip returns to the page you were reading.
 
 **Editing the tips (temporary).** While `editTips` is on in `src/features.js`, the artifact's owner sees a pencil button on each tip card. It opens the card's heading and text for editing; **Save** keeps the new wording, **Use original** puts the original back, and edited pages show an **Edited** label. On the published page the edits are stored in the artifact's database (collection `tipEdits`, one document per tip page, with the original wording alongside), so they last across runs and devices and can be read back to make them permanent in `src/tutorial.js`. Only the owner can change them; anyone else the page is shared with sees the edited wording. Running locally, edits are kept in the browser instead. Some tips fill in numbers from each vote; an edit to one of those is saved as written, so the numbers in it stay fixed until the wording is made permanent.
 

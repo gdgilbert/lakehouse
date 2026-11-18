@@ -668,7 +668,15 @@ export function Coach({ tips }) {
   const editing = FEATURES.editTips && tipEdits.canEdit;
   const [draft, setDraft] = useState(null); // { key, title, body } while a page is being edited
   const [saving, setSaving] = useState(false);
-  const [pageState, setPageState] = useState({ id: null, page: 0 });
+  // The page of the open tip is kept for this browser tab, so a reload (for example
+  // when a new version is published) reopens the tip on the same page.
+  const [pageState, setPageStateRaw] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem('acme-vote-tip-page') || 'null') || { id: null, page: 0 }; } catch { return { id: null, page: 0 }; }
+  });
+  const setPageState = (v) => {
+    setPageStateRaw(v);
+    try { sessionStorage.setItem('acme-vote-tip-page', JSON.stringify(v)); } catch { /* ignore */ }
+  };
   const [place, setPlace] = useState({ id: null, top: false });
   const cardRef = useRef(null);
   // The next unread tip; once none is left, the last one read stays available as a chip.
