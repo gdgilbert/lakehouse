@@ -9,6 +9,9 @@ import { FEATURES } from './features.js';
 
 const NAV_KEY = 'acme-vote-nav-v1';
 
+// Depth of each delegate screen, for Back (see nav.push below).
+const LEVELS = { delegateHome: 1, delegateBallot: 2, delegateReceipt: 2, resultDetails: 3 };
+
 const SCREENS = {
   start: Start,
   delegateSignIn: Delegate.SignIn,
@@ -75,7 +78,14 @@ export default function App() {
     () => ({
       canPop: stack ? stack.length > 1 : false,
       current: stack ? stack[stack.length - 1] : null,
-      push: (name, props) => setStack((s) => [...s, { name, props }]),
+      // Delegate screens form a fixed hierarchy (home > ballot or result > stats), so
+      // opening one drops anything at its level or deeper. Back then goes up one level
+      // instead of retracing every screen the viewer looked at.
+      push: (name, props) => setStack((s) => {
+        const level = LEVELS[name];
+        const kept = level ? s.filter((x) => !(LEVELS[x.name] >= level)) : s;
+        return [...kept, { name, props }];
+      }),
       replace: (name, props) => setStack((s) => [...s.slice(0, -1), { name, props }]),
       pop: () => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s)),
       popTo: (name) => setStack((s) => {
