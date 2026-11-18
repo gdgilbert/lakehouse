@@ -281,14 +281,18 @@ export async function closeBallot(id) {
     mutate((db) => {
       const b = db.ballots.find((x) => x.id === id);
       if (b.status !== 'open') return null;
-      b.status = 'closed';
-      b.closedAt = Date.now();
-      b.result = computeResult(db, b);
-      if (b.electionId) afterElectionBallot(db, b);
-      if (b.commissionId) afterSlateBallot(db, b);
-      return b.result;
+      return closeInDb(db, b);
     })
   );
+}
+
+function closeInDb(db, b) {
+  b.status = 'closed';
+  b.closedAt = Date.now();
+  b.result = computeResult(db, b);
+  if (b.electionId) afterElectionBallot(db, b);
+  if (b.commissionId) afterSlateBallot(db, b);
+  return b.result;
 }
 
 function recordVote(db, ballotId, churchId, choice) {
@@ -345,10 +349,120 @@ export async function demoFillRemaining(ballotId) {
   );
 }
 
-/** Demo only: fill in the churches that have not voted, then close the ballot and count it. */
-export async function demoFinishBallot(ballotId) {
-  await demoFillRemaining(ballotId);
-  return closeBallot(ballotId);
+/**
+ * Demo only: fill in votes for the churches that have not voted so the ballot
+ * comes out the way the presenter wants, then close it and count it.
+ *   motions:   target 'pass' or 'fail'. A failing two-count motion is set up,
+ *              when possible, to pass the church count and fail the weighted
+ *              count, since that is the case the committee most needs to see.
+ *   elections: target 'pass' (someone is elected, preferably the delegate's
+ *              choice) or 'fail' (no one is elected, preferably a split).
+ * The votes are random within those limits, so each run looks different.
+ */
+export async function demoFinishBallot(ballotId, target = 'pass', favoredChoice = null) {
+  return respond(
+    mutate((db) => {
+      const b = db.ballots.find((x) => x.id === ballotId);
+      if (!b || b.status !== 'open') return null;
+      const remaining = db.churches.filter((c) => eligible(c, b.region) && !b.votes[c.id]);
+      const choices = choiceList(b);
+      const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+      const favored = favoredChoice && choices.includes(favoredChoice) ? favoredChoice : pick(choices);
+
+      const plan = (attempt) => {
+        const strict = attempt < 400; // first look for the more illustrative result
+        const r = Math.random();
+        if (b.kind === 'motion') {
+          if (target === 'pass') {
+            const pYes = 0.6 + 0.4 * r;
+            return (c) => (Math.random() < 0.05 ? 'abstain' : Math.random() < pYes ? 'yes' : 'no');
+          }
+          if (strict && b.countRule === 'both') {
+            // small churches lean yes, large-weight churches lean no
+            return (c) => {
+              if (Math.random() < 0.04) return 'abstain';
+              const w = churchWeight(c).votes;
+              return Math.random() < (w <= 2 ? 0.85 : 0.15) ? 'yes' : 'no';
+            };
+          }
+          const pYes = 0.15 + 0.4 * r;
+          return () => (Math.random() < 0.05 ? 'abstain' : Math.random() < pYes ? 'yes' : 'no');
+        }
+        // elections
+        if (target === 'pass') {
+          const p = 0.55 + 0.4 * r;
+          return () => (Math.random() < 0.04 ? 'abstain' : Math.random() < p ? favored : pick(choices));
+        }
+        if (strict && choices.length >= 2) {
+          const [a, bb] = [favored, pick(choices.filter((x) => x !== favored))];
+          return (c) => {
+            if (Math.random() < 0.04) return 'abstain';
+            const w = churchWeight(c).votes;
+            const lean = w <= 2 ? a : bb;
+            return Math.random() < 0.8 ? lean : pick(choices);
+          };
+        }
+        return () => (Math.random() < 0.04 ? 'abstain' : pick(choices));
+      };
+
+      const ok = (result, attempt) => {
+        const strict = attempt < 400;
+        if (b.kind === 'motion') {
+          if (target === 'pass') return result.passed;
+          if (result.passed) return false;
+          if (strict && b.countRule === 'both') return result.churchPass && !result.weightedPass;
+          return true;
+        }
+        if (target === 'pass') return result.outcome === 'elected' && (!strict || result.winner === favored);
+        if (result.outcome === 'elected' || result.outcome === 'repeat') return false;
+        if (!strict) return true;
+        const rows = result.standings.rows;
+        const ch = rows.find((x) => x.carriesChurch);
+        const wt = rows.find((x) => x.carriesWeighted);
+        return Boolean(ch && wt && ch.id !== wt.id) || b.round >= 3;
+      };
+
+      let chosen = null;
+      for (let attempt = 0; attempt < 800 && !chosen; attempt++) {
+        const fn = plan(attempt);
+        const trial = { ...b.votes };
+        for (const c of remaining) {
+          trial[c.id] = { choice: fn(c), weight: churchWeight(c).votes, at: Date.now(), receipt: receiptCode() };
+        }
+        if (ok(computeResult(db, { ...b, votes: trial }), attempt)) chosen = trial;
+      }
+      if (!chosen) {
+        // The votes already cast make the requested result impossible; fill at random.
+        chosen = { ...b.votes };
+        for (const c of remaining) {
+          chosen[c.id] = { choice: pick(choices), weight: churchWeight(c).votes, at: Date.now(), receipt: receiptCode() };
+        }
+      }
+      b.votes = chosen;
+      return closeInDb(db, b);
+    })
+  );
+}
+
+/** Everything needed to chart a closed ballot: the result plus each church's vote. */
+export async function getBallotDetails(id) {
+  const db = load();
+  const b = db.ballots.find((x) => x.id === id);
+  if (!b) return fail('Ballot not found.');
+  if (b.status !== 'closed') return fail('Details are available after voting closes.');
+  const rows = db.churches
+    .filter((c) => eligible(c, b.region))
+    .map((c) => {
+      const v = b.votes[c.id];
+      return {
+        churchId: c.id,
+        name: c.name,
+        region: c.region,
+        weight: v ? v.weight : churchWeight(c).votes,
+        choice: v ? v.choice : null, // null = did not vote
+      };
+    });
+  return respond({ ...summarize(db, b), result: b.result, rows });
 }
 
 // ---------------------------------------------------------------------------

@@ -216,19 +216,29 @@ function countExplanation(ballot, church) {
   };
 }
 
-function DemoResultsButton({ ballotId }) {
+function DemoResultsButton({ ballot }) {
   const nav = useNav();
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(null);
+  const isElection = ballot.kind === 'candidates';
+  const finish = async (target) => {
+    setBusy(target);
+    await api.demoFinishBallot(ballot.id, target, ballot.myVote?.choice);
+    nav.replace('delegateBallot', { ballotId: ballot.id });
+  };
   return (
     <div className="demo-panel">
       <p className="tiny" style={{ margin: '0 0 8px', color: 'var(--amber)' }}>
         Demo only. Fills in votes for the other churches and closes the ballot, as the manager would.
+        Choose how it comes out.
       </p>
-      <button className="btn secondary" disabled={busy} onClick={async () => {
-        setBusy(true);
-        await api.demoFinishBallot(ballotId);
-        nav.replace('delegateBallot', { ballotId });
-      }}>{busy ? 'Counting…' : 'Show results'}</button>
+      <div className="demo-choice">
+        <button className="btn secondary small" style={{ width: '100%' }} disabled={!!busy} onClick={() => finish('pass')}>
+          {busy === 'pass' ? 'Counting…' : isElection ? 'Someone elected' : 'Demo pass'}
+        </button>
+        <button className="btn secondary small" style={{ width: '100%' }} disabled={!!busy} onClick={() => finish('fail')}>
+          {busy === 'fail' ? 'Counting…' : isElection ? 'No one elected' : 'Demo fail'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -292,7 +302,7 @@ export function BallotScreen({ ballotId }) {
             Receipt {ballot.myVote.receipt}. Results appear when the manager closes the ballot.
           </Banner>
         )}
-        {ballot.status === 'open' && ballot.myVote && <DemoResultsButton ballotId={ballot.id} />}
+        {ballot.status === 'open' && ballot.myVote && <DemoResultsButton ballot={ballot} />}
 
         {ballot.status === 'open' && !ballot.myVote && (
           <>
@@ -346,7 +356,11 @@ export function BallotScreen({ ballotId }) {
 
 export function Receipt({ ballotId, receipt, choice, weight, at }) {
   const nav = useNav();
-  const [ballot] = useData(() => api.getBallot(ballotId), [ballotId]);
+  const [session] = useData(() => api.getSession());
+  const [ballot] = useData(
+    () => (session ? api.getBallot(ballotId, { churchId: session.churchId }) : Promise.resolve(null)),
+    [ballotId, session?.churchId]
+  );
   return (
     <div className="screen">
       <AppBar title="Vote recorded" back={false} />
@@ -367,7 +381,7 @@ export function Receipt({ ballotId, receipt, choice, weight, at }) {
           <div className="small muted" style={{ marginBottom: 6 }}>Receipt number</div>
           <span className="code-box">{receipt}</span>
         </div>
-        {ballot?.status === 'open' && <DemoResultsButton ballotId={ballotId} />}
+        {ballot?.status === 'open' && <DemoResultsButton ballot={ballot} />}
         <button className="btn" onClick={nav.pop}>Back to ballots</button>
       </div>
     </div>

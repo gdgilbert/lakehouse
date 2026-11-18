@@ -4,6 +4,7 @@ import * as api from './server/api.js';
 import Start from './screens/Start.jsx';
 import * as Delegate from './screens/Delegate.jsx';
 import * as Manager from './screens/Manager.jsx';
+import ResultDetails from './screens/ResultDetails.jsx';
 
 const SCREENS = {
   start: Start,
@@ -19,6 +20,7 @@ const SCREENS = {
   newCommission: Manager.NewCommission,
   commission: Manager.CommissionScreen,
   church: Manager.ChurchScreen,
+  resultDetails: ResultDetails,
 };
 
 function StatusBar() {

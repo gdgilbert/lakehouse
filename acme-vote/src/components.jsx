@@ -290,9 +290,10 @@ function BarRow({ label, value, total, unit, tone, mark }) {
 
 const markFor = { majority: 50, twoThirds: 66.67, threeQuarters: 75 };
 
-function MotionCount({ title, count, pass, unit, decides, threshold }) {
+function MotionCount({ title, count, pass, unit, decides, threshold, ballotId }) {
+  const nav = useNav();
   return (
-    <div className="card count-block">
+    <div className="card count-block tappable" onClick={() => nav.push('resultDetails', { ballotId })}>
       <h3>
         {title}
         {decides ? (
@@ -311,6 +312,19 @@ function MotionCount({ title, count, pass, unit, decides, threshold }) {
   );
 }
 
+function ChartsLink({ ballotId }) {
+  const nav = useNav();
+  return (
+    <button type="button" className="results-link" onClick={() => nav.push('resultDetails', { ballotId })}>
+      <span>
+        <b>Charts and details</b>
+        <span className="sub">Both counts, votes by weight and Region, and every church&rsquo;s vote</span>
+      </span>
+      <Icon name="results" />
+    </button>
+  );
+}
+
 export function ResultView({ ballot }) {
   const r = ballot.result;
   if (!r) return null;
@@ -322,10 +336,11 @@ export function ResultView({ ballot }) {
         ) : (
           <Banner tone="red" title="Did not pass">{r.explanation}</Banner>
         )}
+        <ChartsLink ballotId={ballot.id} />
         <MotionCount title="Church count" count={r.tally.church} pass={r.churchPass} unit="churches"
-          decides threshold={ballot.threshold} />
+          decides threshold={ballot.threshold} ballotId={ballot.id} />
         <MotionCount title="Weighted count" count={r.tally.weighted} pass={r.weightedPass} unit="votes"
-          decides={ballot.countRule === 'both'} threshold={ballot.threshold} />
+          decides={ballot.countRule === 'both'} threshold={ballot.threshold} ballotId={ballot.id} />
       </>
     );
   }
@@ -333,6 +348,7 @@ export function ResultView({ ballot }) {
 }
 
 function ElectionResult({ ballot, r }) {
+  const nav = useNav();
   const name = (id) => ballot.options.find((o) => o.id === id)?.label || id;
   const { rows, tally: t } = r.standings;
   let banner;
@@ -342,7 +358,8 @@ function ElectionResult({ ballot, r }) {
   return (
     <>
       {banner}
-      <div className="card">
+      <ChartsLink ballotId={ballot.id} />
+      <div className="card tappable" onClick={() => nav.push('resultDetails', { ballotId: ballot.id })}>
         <table className="standings">
           <thead>
             <tr><th>Candidate</th><th>Church</th><th>Weighted</th><th>Combined</th></tr>

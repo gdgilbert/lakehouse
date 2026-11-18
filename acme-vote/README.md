@@ -39,7 +39,8 @@ The opening screen asks you to choose a role: **Delegate** or **Manager**. This 
 
 - Sign in with the church's delegate code. The sample churches use 0000-0001 through 0000-0017. Tap **Show demo codes** to see which code belongs to which church.
 - The **Ballots** tab lists open ballots. Each ballot explains how the church's vote counts: on a church-count-only ballot, every church has a single vote whatever its weight; on a ballot that must pass both counts, the church casts 1 vote in the church count and its full weight in the weighted count. The delegate chooses one option (or abstains), reviews it, and submits. A vote cannot be changed after it is submitted. The app shows a receipt number.
-- After voting, **Show results** (demo only) fills in votes for the other churches at random and closes the ballot, so a delegate can see a result without switching to the manager.
+- After voting, the demo-only buttons **Demo pass** and **Demo fail** (on an election, **Someone elected** and **No one elected**) fill in votes for the other churches and close the ballot, so a delegate can see a result without switching to the manager. The votes are random but steered to the chosen outcome. A failing two-count motion is set up, when possible, to pass the church count and fail the weighted count. A failing election is set up, when possible, as a split between the two counts. The manager has the same buttons on an open ballot.
+- Every result has a **Charts and details** link (tapping the result cards also opens it), with four views: **Overview** (both counts against the threshold, and why they differ), **By weight** (how churches with 1, 2, 3 and 4 weighted votes voted), **By Region**, and **Churches** (every church's vote and weight).
 - The **Results** tab lists closed ballots and their results.
 - The **My church** tab shows the church's weighted votes and the figures they are based on.
 

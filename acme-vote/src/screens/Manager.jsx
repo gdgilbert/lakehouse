@@ -280,6 +280,12 @@ export function BallotScreen({ ballotId }) {
               <details className="demo-panel">
                 <summary>Demo: record votes for churches</summary>
                 <p className="tiny muted">For the demo only. Records a vote as if that church&rsquo;s delegate had voted.</p>
+                <div className="demo-choice" style={{ marginBottom: 8 }}>
+                  <button className="btn small secondary" style={{ width: '100%' }}
+                    onClick={() => api.demoFinishBallot(ballot.id, 'pass')}>{ballot.kind === 'candidates' ? 'Finish: someone elected' : 'Finish: demo pass'}</button>
+                  <button className="btn small secondary" style={{ width: '100%' }}
+                    onClick={() => api.demoFinishBallot(ballot.id, 'fail')}>{ballot.kind === 'candidates' ? 'Finish: no one elected' : 'Finish: demo fail'}</button>
+                </div>
                 <button className="btn small secondary" style={{ marginBottom: 8 }}
                   onClick={() => api.demoFillRemaining(ballot.id)}>Fill all remaining at random</button>
                 {notVoted.map((c) => (
