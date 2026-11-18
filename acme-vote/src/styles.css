@@ -701,3 +701,32 @@ table.standings .win { font-weight: 700; color: var(--green); }
 /* churches and their names share five even columns, so the names sit under their churches */
 .squash-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); justify-items: center; }
 .squash-names { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+/* ---------- Step-by-step slides ---------- */
+.slides-cap { transition: color 0.4s; }
+.slides-cap.new { animation: capIn 0.6s ease-out both; color: #fff; }
+.slides-cap:not(.new) { color: rgba(255,255,255,0.72); }
+@keyframes capIn { from { opacity: 0; } }
+.slide-reveal { opacity: 0; transform: translateY(4px); transition: opacity 0.5s, transform 0.5s; }
+.slide-reveal.on { opacity: 1; transform: none; }
+
+.slide-morph-row.givers { grid-template-columns: 40px 96px 1fr 56px; }
+.slide-giver-icon { position: relative; display: flex; justify-content: center; align-items: flex-end; height: 40px; }
+.slide-giver-icon .squash-ha { left: 0; right: auto; margin: 0; transform-origin: 15% 100%; }
+.slide-giver-icon .squash-ha::after { left: 8px; right: auto; }
+.slide-morph-bar.flash { animation: barFlash 0.45s ease-in-out 4 alternate both !important; }
+@keyframes barFlash { from { background: #6f8db8; } to { background: #f1c75b; box-shadow: 0 0 12px rgba(241,199,91,0.7); } }
+
+/* the gauge: at 1, then climbs to 4 on the next step */
+.slide-gauge.stepwise .slide-gauge-track span { animation: none; transition: background 0.5s; }
+.slide-gauge.stepwise .slide-gauge-track span.lit { background: rgba(193,154,63,0.45); }
+.slide-gauge.stepwise .slide-gauge-dot { animation: none; left: 12.5%; }
+.slide-gauge.stepwise.climb .slide-gauge-dot { animation: gaugeClimb 3.6s cubic-bezier(0.45, 0, 0.55, 1) both; }
+@keyframes gaugeClimb { 0%, 8% { left: 12.5%; } 30%, 36% { left: 37.5%; } 61%, 67% { left: 62.5%; } 92%, 100% { left: 87.5%; } }
+@media (prefers-reduced-motion: reduce) { .slides-cap.new, .slide-morph-bar.flash, .slide-gauge.stepwise.climb .slide-gauge-dot { animation: none !important; } .slide-gauge.stepwise.climb .slide-gauge-dot { left: 87.5%; } }
+
+/* a speech bubble sitting on a bar */
+.bar-bubble { position: absolute; right: 8px; top: 50%; z-index: 3; transform: translateY(-50%); white-space: nowrap;
+  background: #fff; color: var(--navy-dark); font-family: var(--font-head); font-style: italic; font-weight: 600; font-size: 14px;
+  padding: 1px 8px 2px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.4); animation: barBubble 0.5s cubic-bezier(0.2, 0.8, 0.2, 1.6) both; }
+@keyframes barBubble { from { transform: translateY(-50%) scale(0); opacity: 0; } }
