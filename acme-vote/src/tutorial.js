@@ -348,7 +348,7 @@ export function resultTips(b, { hasNext, onRestart }) {
       {
         title: 'You have finished the tutorial',
         body: 'You have seen every kind of ballot: church count only, both counts at a majority, 75% and two-thirds, elections with runoffs, the Judicial Commission slate, and a regional ballot. In each case the rules ask for agreement from most churches and, where money or governance is at stake, from the churches that fund the work.',
-        action: { label: 'Start over', onClick: onRestart },
+        action: { label: 'Run the tutorial again', onClick: onRestart },
       },
     ] }];
   }

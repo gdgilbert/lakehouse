@@ -380,3 +380,7 @@ table.standings .win { font-weight: 700; color: var(--green); }
 @media (prefers-reduced-motion: reduce) { .coach, .coach-target { animation: none; } }
 .screen.no-tabbar .coach { bottom: 14px; }
 .start-btn { margin-top: 4px; }
+
+.tutorial-end { background: var(--navy-dark); color: #fff; border-radius: var(--radius); padding: 18px 16px; text-align: center; border-top: 3px solid var(--gold); }
+.tutorial-end h3 { color: #fff; font-style: italic; font-weight: 400; font-size: 22px; margin: 8px 0 4px; }
+.tutorial-end p { margin: 0 0 14px; font-weight: 300; color: rgba(255,255,255,0.85); }

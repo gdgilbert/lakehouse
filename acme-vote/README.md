@@ -25,7 +25,7 @@ A built copy is committed in `acme-vote/demo/`, so the demo can be served withou
 
 ## Using the demo
 
-**The app currently runs as a tutorial.** The Manager role is hidden. The opening screen has one button, **Start the tutorial**, which signs you in as the delegate for Grace Fellowship Church and walks you through every kind of ballot. Tip cards appear at each step: first telling you what to do, then explaining how each ballot is counted, then explaining what just happened and why the rule is useful. Each tip appears once. **Hide tips** on any card turns them off; the **My church** tab can turn them back on or start the tutorial over. **Start over** on the opening screen does the same.
+**The app currently runs as a tutorial.** The Manager role is hidden. The opening screen has one button, **Start the tutorial**, which signs you in as the delegate for Grace Fellowship Church and walks you through every kind of ballot. Tip cards appear at each step: first telling you what to do, then explaining how each ballot is counted, then explaining what just happened and why the rule is useful. Each tip appears once. When the last ballot is done, a **Run the tutorial again** button appears on the result and on the Ballots tab. **Hide tips** on any card turns them off; the **My church** tab can turn them back on or start the tutorial over. **Start over** on the opening screen does the same.
 
 All tutorial wording is in `src/tutorial.js`. To bring back the Manager role, set `manager: true` in `src/features.js`. The rest of this section describes both roles.
 

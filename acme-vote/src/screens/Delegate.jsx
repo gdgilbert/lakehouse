@@ -94,7 +94,7 @@ export function Home({ churchId }) {
     <div className="screen">
       <AppBar logo back={false} right={church && <>{church.name}<br />{church.region}</>} />
       <div className="content">
-        {tab === 'ballots' && <BallotsTab open={open} />}
+        {tab === 'ballots' && <BallotsTab open={open} closedCount={closed.length} />}
         {tab === 'results' && <ResultsTab closed={closed} />}
         {tab === 'church' && church && <ChurchTab church={church} />}
       </div>
@@ -108,8 +108,9 @@ export function Home({ churchId }) {
   );
 }
 
-function BallotsTab({ open }) {
+function BallotsTab({ open, closedCount }) {
   const nav = useNav();
+  if (open.length === 0 && closedCount > 0) return <TutorialEnd />;
   return (
     <>
       <div className="section-title">Open ballots</div>
@@ -156,6 +157,23 @@ function resultLine(b) {
   if (r.outcome === 'elected') return `Elected: ${b.options.find((o) => o.id === r.winner)?.label}`;
   if (r.outcome === 'disqualified') return 'Candidates disqualified';
   return 'No one elected on this ballot';
+}
+
+/** Shown when every ballot in the tutorial is done. */
+function TutorialEnd() {
+  const nav = useNav();
+  return (
+    <div className="tutorial-end">
+      <span className="eyebrow-sm">End of the tutorial</span>
+      <h3>You have voted on every kind of ballot</h3>
+      <p>Run it again to try different choices and results.</p>
+      <button className="btn gold" onClick={async () => {
+        await api.resetDemo();
+        await api.signOut();
+        nav.reset('start');
+      }}>Run the tutorial again</button>
+    </div>
+  );
 }
 
 function TutorialControls() {
@@ -320,6 +338,7 @@ export function BallotScreen({ ballotId }) {
         </div>
 
         {ballot.status === 'closed' && <NextBallot currentId={ballot.id} churchId={churchId} screen="delegateBallot" />}
+        {ballot.status === 'closed' && allBallots && !hasNext && !(allBallots || []).some((x) => x.status === 'open' && x.eligible) && <TutorialEnd />}
         {ballot.status === 'closed' && <ResultView ballot={ballot} />}
         {ballot.status === 'closed' && ballot.myVote && (
           <p className="small muted center">
