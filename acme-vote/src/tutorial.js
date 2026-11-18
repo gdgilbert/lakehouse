@@ -31,13 +31,15 @@ export function ballotKind(b) {
 // Opening, sign-in, home
 // ---------------------------------------------------------------------------
 
+const countWord = (n) => ['zero', 'one', 'two', 'three', 'four', 'five', 'six'][n] || String(n);
+
 export function startTips() {
   return [{
     id: 'start',
     target: '.start-btn',
     placement: 'bottom',
     pages: [{
-      title: 'A tutorial on Double Majority Voting',
+      title: 'Introducing Double Majority Voting',
       body: 'This is a tutorial on how Double Majority Voting would work at the ACME National Business Meeting. Tap Start the tutorial. A short slideshow explains the idea, and then you vote on five ballots as the delegate for one church.',
     }],
   }];
@@ -84,7 +86,7 @@ export function beforeVoteTips(b, church, mode = 'path') {
     tips.push({ id: 'before:procedural', pages: [
       {
         title: 'One church, one vote',
-        body: `This is a procedural motion: a question about running the meeting. It is decided by the church count, where every church that votes casts 1 vote. ${church.name} has ${votes} on other ballots, but here it has 1, the same as every other church.`,
+        body: `This is a procedural motion: a question about running the meeting. It is decided by the church count alone, where every church that votes casts 1 vote. ${church.name} has ${votes} on other ballots, but here it has 1, the same as every other church.`,
       },
       {
         title: 'Your turn',
@@ -97,7 +99,7 @@ export function beforeVoteTips(b, church, mode = 'path') {
     const p = church.contributionPct == null ? null : fmt(church.contributionPct);
     tips.push({ id: 'before:budget', pages: [
       {
-        title: 'A double majority',
+        title: 'A Double Majority',
         body: `Approving the budget needs a double majority: it must pass both counts. In the church count, ${church.name} casts 1 vote. In the weighted count, it casts ${w}. Both go to the choice you make.`,
       },
       {
@@ -134,7 +136,7 @@ export function beforeVoteTips(b, church, mode = 'path') {
       tips.push({ id: 'before:election:1', pages: [
         {
           title: 'Electing an At-Large Director',
-          body: `The President has presented ${b.options.length} nominees for this At-Large seat. Each seat is elected separately. To be elected, a candidate needs a double majority: a majority of the votes cast in both counts.`,
+          body: `The churches have nominated ${countWord(b.options.length)} candidates for this At-Large seat. To be elected, a candidate needs a double majority: a majority of the votes cast in both counts.`,
         },
         {
           title: 'If no one wins',
@@ -287,6 +289,9 @@ const NEXT_PAGE = {
   action: { label: 'Go to the next ballot', onClick: () => document.querySelector('.next-ballot')?.click() },
 };
 
+/** `next` with the Next page's wording replaced (for the results that have their own). */
+const nextWith = (next, body) => next.map((pg) => (pg === NEXT_PAGE ? { ...pg, body } : pg));
+
 function motionNumbers(b) {
   const r = b.result;
   const c = r.tally.church;
@@ -309,7 +314,7 @@ function bothCountsSentence(b) {
       : `It passed both counts: Yes had ${n.cPct}% of the church count and ${n.wPct}% of the weighted count. It needed ${need}.`;
   }
   if (r.churchPass) {
-    return `Yes had ${n.cPct}% of the church count, enough to pass, but only ${n.wPct}% of the weighted count.` +
+    return `Yes had ${n.cPct}% of the church count (${n.cYes} of ${n.cCast}), enough to pass, but only ${n.wPct}% of the weighted count.` +
       (wMaj ? '' : ' The churches that give a larger share of their budgets mostly voted No.') +
       ` It needed ${need} in both counts, so it fails.`;
   }
@@ -349,7 +354,7 @@ export function resultTips(b, { hasNext, mode = 'path' }) {
         title: 'Why count this way',
         body: 'Procedural questions are about how the meeting runs, not about money or the bylaws. One church, one vote keeps them quick and gives every church an equal voice.',
       },
-      ...next,
+      ...nextWith(next, 'The next ballot is open. At a real meeting, a Ballot open bar appears at the top of every screen whenever there is a ballot your church has not voted on. Tap it, or tap Go to the next ballot, or explore this page and this ballot\u2019s stats. Then go to the next ballot when you\u2019re ready.'),
     ] }, { id: `after:procedural:${b.id}`, pages: [
       {
         title: 'What happened',
@@ -492,7 +497,7 @@ function storyBefore(b, church) {
     return [{ id: 'before:agree', pages: [
       {
         title: 'Counted two ways',
-        body: `This budget is counted twice. In the church count, ${church.name} casts 1 vote, like every church. In the weighted count it casts ${church.weight}` +
+        body: `This budget question uses Double Majority Voting. In the church count, ${church.name} casts 1 vote, like every church. In the weighted count it casts ${church.weight}` +
           (p ? `, because it gave ${p}% of its budget to ACME last year.` : '.') +
           ' To pass, the budget needs a majority in both counts.',
       },
@@ -542,7 +547,7 @@ function storyAfter(b, next) {
         title: 'Most votes look like this',
         body: 'When churches broadly agree, both counts give the same answer, and Double Majority Voting changes nothing. It matters only when the two counts disagree. The next three ballots show what happens then.',
       },
-      ...next,
+      ...nextWith(next, 'The next ballot is open. At a real meeting, a Ballot open bar appears at the top of every screen whenever there is a ballot your church has not voted on. Tap it, or tap Go to the next ballot, or explore this ballot\u2019s stats.'),
     ] }];
   }
   if (kind === 'size') {
@@ -586,7 +591,7 @@ export function chartsTips() {
     id: 'charts',
     pages: [{
       title: 'Charts and details',
-      body: 'Overview compares the two counts with the share needed to pass. Church and Weighted show each count on its own, including by Region; Weighted also shows how churches with 1, 2, 3 and 4 weighted votes voted, which is where you can see why the counts differ. Churches lists every church’s vote. Tap any bar to see its numbers.',
+      body: 'The Overview tab compares the two counts with the share needed to pass. The Church and Weighted tabs show each count on its own, including by Region; Weighted also shows how churches with 1, 2, 3 and 4 weighted votes voted, which is where you can see why the counts differ. (On the ballot to adopt the agenda, there are no weighted stats because this was a one church one vote ballot.) The Churches tab lists every church\u2019s vote. Tap any bar to see its numbers.',
     }],
   }];
 }

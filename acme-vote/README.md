@@ -47,11 +47,11 @@ The sample churches are grouped to make these stories clear (see `GROUPS` in `sr
 
 Tip cards appear at each step (**Got it** shrinks a card to a chip you can tap to reread it while you stay on that screen). Each tip appears once. The **minimize** button shrinks a card to a chip where you tapped; tap the chip to reopen it, or drag it out of the way. An open tip card can be moved by dragging the grip bar along its top edge. **Hide tips** turns them off; the **My church** tab can turn them back on or start the tutorial over.
 
-**To start everything over quickly,** double-tap the ACME logo (or the screen title in the header). That clears votes, results and tutorial progress and returns to the opening screen; edited tip wording is kept.
+**To start everything over quickly,** double-tap the ACME logo (or the screen title in the header). That clears votes, results and tutorial progress and returns to the opening screen.
 
 If the page reloads (for example, when a new version is published or the phone reloads the tab), the app returns to the screen you were on, and an open tip returns to the page you were reading.
 
-**Editing the tips (temporary).** While `editTips` is on in `src/features.js`, the artifact's owner sees a pencil button on each tip card. It opens the card's heading and text for editing; **Save** keeps the new wording, **Use original** puts the original back, and edited pages show an **Edited** label. On the published page the edits are stored in the artifact's database (collection `tipEdits`, one document per tip page, with the original wording alongside), so they last across runs and devices and can be read back to make them permanent in `src/tutorial.js`. Only the owner can change them; anyone else the page is shared with sees the edited wording. Running locally, edits are kept in the browser instead. Some tips fill in numbers from each vote; an edit to one of those is saved as written, so the numbers in it stay fixed until the wording is made permanent.
+**Editing the tips (turned off).** The owner's wording edits from the review runs are now written into `src/tutorial.js`, and `editTips` in `src/features.js` is off, so the tip cards can no longer be edited. Setting it back to true brings the pencil button back; edits are then stored in the artifact's database (collection `tipEdits`).
 
 All tutorial wording is in `src/tutorial.js`. To bring back the Manager role, set `manager: true` in `src/features.js`. The rest of this section describes both roles.
 

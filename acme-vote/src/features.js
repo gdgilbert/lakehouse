@@ -6,5 +6,5 @@ export const FEATURES = {
   // editTips: the artifact's owner can edit each tutorial tip's heading and
   // text on the card itself. Edits are saved in the artifact's database
   // (see src/tipStore.js). Turn off once the wording is final.
-  editTips: true,
+  editTips: false,
 };
