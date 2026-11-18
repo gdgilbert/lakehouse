@@ -463,10 +463,81 @@ function slowScrollTo(el, zoneTop, zoneBottom) {
   return stop;
 }
 
+const CHIP_KEY = 'acme-vote-tip-chip-v1';
+
+/**
+ * The minimized tip. It appears where the viewer tapped minimize, or where they
+ * last dragged it. Tap to reopen the tip; drag to move it.
+ */
+function TipChip({ label, at, onOpen }) {
+  const ref = useRef(null);
+  const drag = useRef(null);
+  const [pos, setPos] = useState(null); // { x, y }: top-left corner, relative to the screen area
+
+  const clamp = (x, y) => {
+    const el = ref.current;
+    const box = el && el.offsetParent;
+    if (!el || !box) return { x, y };
+    const maxX = box.clientWidth - el.offsetWidth - 6;
+    const maxY = box.clientHeight - el.offsetHeight - 6;
+    return { x: Math.max(6, Math.min(maxX, x)), y: Math.max(6, Math.min(maxY, y)) };
+  };
+
+  // Place it before it is drawn: the spot it was last dragged to, else where minimize was tapped.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(CHIP_KEY) || 'null'); } catch { /* ignore */ }
+    if (saved && typeof saved.x === 'number') setPos(clamp(saved.x, saved.y));
+    else if (at) setPos(clamp(at.cx - el.offsetWidth / 2, at.cy - el.offsetHeight / 2));
+    else setPos(clamp(9999, 9999));
+  }, []);
+
+  const down = (e) => {
+    if (!pos) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { px: e.clientX, py: e.clientY, x: pos.x, y: pos.y, moved: false };
+  };
+  const move = (e) => {
+    const d = drag.current;
+    if (!d) return;
+    const dx = e.clientX - d.px;
+    const dy = e.clientY - d.py;
+    if (!d.moved && Math.hypot(dx, dy) < 8) return; // a tap, not a drag
+    d.moved = true;
+    setPos(clamp(d.x + dx, d.y + dy));
+  };
+  const up = (e) => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d) return;
+    e.preventDefault();
+    if (d.moved) {
+      try { localStorage.setItem(CHIP_KEY, JSON.stringify(pos)); } catch { /* ignore */ }
+    } else {
+      onOpen();
+    }
+  };
+
+  return (
+    <button ref={ref} type="button" className={`coach-pill${drag.current && drag.current.moved ? ' dragging' : ''}`}
+      style={pos ? { left: pos.x, top: pos.y } : { visibility: 'hidden' }}
+      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { drag.current = null; }}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}
+      aria-label={`${label}. Tap to open, drag to move.`} title="Tap to open. Drag to move.">
+      <Icon name="lightbulb" size={18} />
+      <span>{label}</span>
+    </button>
+  );
+}
+
 export function Coach({ tips }) {
   const [tut] = useData(() => api.getTutorial());
   const [closing, setClosing] = useState(null);
   const [collapsed, setCollapsed] = useState(null); // id of the tip that is minimized
+  const [chipAt, setChipAt] = useState(null); // where the minimize button was tapped
   const tipEdits = useTipEdits();
   const editing = FEATURES.editTips && tipEdits.canEdit;
   const [draft, setDraft] = useState(null); // { key, title, body } while a page is being edited
@@ -535,7 +606,7 @@ export function Coach({ tips }) {
     const t = setTimeout(() => setShield(false), 450);
     return () => clearTimeout(t);
   }, [shield]);
-  const press = (fn) => (e) => { e.preventDefault(); e.stopPropagation(); setShield(true); fn(); };
+  const press = (fn) => (e) => { e.preventDefault(); e.stopPropagation(); setShield(true); fn(e); };
   const shieldEl = shield ? <div className="coach-shield" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} /> : null;
 
   // Highlight what the tip points to. Scroll only if it is off screen.
@@ -565,15 +636,22 @@ export function Coach({ tips }) {
     return (
       <>
         {shieldEl}
-        <button className="coach-pill" onClick={press(() => setCollapsed(null))}
-          aria-label="Open the tip">
-          <Icon name="lightbulb" size={18} />
-          <span>Tip{tip.pages.length > 1 ? ` ${page + 1} of ${tip.pages.length}` : ''}</span>
-        </button>
+        <TipChip label={`Tip${tip.pages.length > 1 ? ` ${page + 1} of ${tip.pages.length}` : ''}`}
+          at={chipAt} onOpen={() => { setShield(true); setCollapsed(null); }} />
       </>
     );
   }
   const done = () => { setClosing(tip.id); api.markTipSeen(tip.id); (tip.alsoMarks || []).forEach((x) => api.markTipSeen(x)); };
+  // Minimize: the chip appears where the minimize button was tapped.
+  const minimize = (e) => {
+    const box = cardRef.current && cardRef.current.offsetParent;
+    if (box && e && e.currentTarget) {
+      const br = box.getBoundingClientRect();
+      const r = e.currentTarget.getBoundingClientRect();
+      setChipAt({ cx: (r.left + r.right) / 2 - br.left, cy: (r.top + r.bottom) / 2 - br.top });
+    }
+    setCollapsed(tip.id);
+  };
 
   const key = editKey(tip.id, Math.min(page, tip.pages.length - 1));
   const isDraft = draft && draft.key === key;
@@ -651,7 +729,7 @@ export function Coach({ tips }) {
             </button>
           )}
           <button className="coach-hide" onClick={press(() => api.setTipsOff(true))}>Hide tips</button>
-          <button className="coach-min" onClick={press(() => setCollapsed(tip.id))} aria-label="Minimize the tip" title="Minimize">
+          <button className="coach-min" onClick={press((e) => minimize(e))} aria-label="Minimize the tip" title="Minimize">
             <Icon name="minus" size={18} stroke={2.5} />
           </button>
         </span>

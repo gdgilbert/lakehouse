@@ -410,16 +410,15 @@ table.standings .win { font-weight: 700; color: var(--green); }
   display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 .coach-min:active { background: var(--gold-soft); }
 .coach-pill {
-  /* sits in the header bar, top right, so it never covers the screen's content */
-  position: absolute; right: 10px; top: calc(env(safe-area-inset-top) + 11px); z-index: 15; display: inline-flex; align-items: center; gap: 6px;
-  background: var(--gold); color: #fff; border: 0; border-radius: 999px; padding: 7px 13px 7px 10px;
-  font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); cursor: pointer; animation: coachIn 0.2s ease-out;
+  /* placed by script where the viewer tapped minimize, or where they dragged it */
+  position: absolute; z-index: 15; display: inline-flex; align-items: center; gap: 6px;
+  background: var(--gold); color: #fff; border: 2px solid #fff; border-radius: 999px; padding: 8px 14px 8px 11px;
+  font-weight: 600; font-size: 14px; box-shadow: 0 6px 16px rgba(15, 20, 29, 0.35); cursor: grab;
+  touch-action: none; user-select: none; -webkit-user-select: none; animation: coachIn 0.2s ease-out;
 }
+.coach-pill.dragging { cursor: grabbing; box-shadow: 0 10px 24px rgba(15, 20, 29, 0.45); }
 .coach-pill svg { color: #fff; }
-.start .coach-pill { top: 14px; }
 @media (prefers-reduced-motion: reduce) { .coach-pill { animation: none; } }
-/* make room for the minimized tip in the header */
-.screen:has(.coach-pill) .appbar .right { padding-right: 76px; }
 
 /* Editing a tip */
 .coach-editing { max-height: calc(100% - 80px); }
