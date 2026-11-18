@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import * as api from './server/api.js';
 import { BALLOT_TYPES, COUNT_RULES, THRESHOLDS, fmt } from './server/rules.js';
 
@@ -416,48 +416,64 @@ function ElectionResult({ ballot, r }) {
  */
 export function Coach({ tips }) {
   const [tut] = useData(() => api.getTutorial());
-  const [page, setPage] = useState(0);
   const [closing, setClosing] = useState(null);
-  const [top, setTop] = useState(false);
+  const [pageState, setPageState] = useState({ id: null, page: 0 });
+  const [place, setPlace] = useState({ id: null, top: false });
   const tip = tut && !tut.off ? (tips || []).find((t) => t && !tut.seen.includes(t.id) && t.id !== closing) : null;
+  const page = tip && pageState.id === tip.id ? pageState.page : 0;
   const pg = tip ? tip.pages[Math.min(page, tip.pages.length - 1)] : null;
   const target = pg ? pg.target || tip.target : null;
+  const setPage = (n) => setPageState({ id: tip.id, page: n });
 
-  useEffect(() => { setPage(0); }, [tip?.id]);
+  // Decide once per tip, before it is drawn, whether it sits at the top or the
+  // bottom of the screen: at the top when what it points to is in the lower
+  // half, so the tip never covers it. It stays put while the pages change.
+  useLayoutEffect(() => {
+    if (!tip || place.id === tip.id) return;
+    const sel = tip.target || (tip.pages.find((x) => x.target) || {}).target;
+    const el = sel ? document.querySelector(sel) : null;
+    let top = false;
+    if (tip.placement) top = tip.placement === 'top';
+    else if (el) {
+      const fr = (el.closest('.device') || document.body).getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      top = (r.top + r.bottom) / 2 - fr.top > fr.height * 0.5;
+    }
+    setPlace({ id: tip.id, top });
+  });
 
-  // Highlight the element the tip points to.
-  // Highlight the element the tip points to, and move the tip to the top of
-  // the screen when that element is in the lower half, so it is not covered.
+  // Highlight what the tip points to. Scroll only if it is off screen.
   useEffect(() => {
-    setTop(false);
     if (!target) return undefined;
-    let el = null;
-    const t = setTimeout(() => {
-      el = document.querySelector(target);
-      if (el) {
-        el.classList.add('coach-target');
-        el.scrollIntoView({ block: 'nearest' });
-        const frame = el.closest('.device') || document.body;
-        const fr = frame.getBoundingClientRect();
-        const r = el.getBoundingClientRect();
-        setTop((r.top + r.bottom) / 2 - fr.top > fr.height * 0.5);
-      }
-    }, 120);
-    return () => { clearTimeout(t); if (el) el.classList.remove('coach-target'); };
-  }, [target, tip?.id, page]);
+    const el = document.querySelector(target);
+    if (!el) return undefined;
+    el.classList.add('coach-target');
+    const fr = (el.closest('.device') || document.body).getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    if (r.top < fr.top + 56 || r.bottom > fr.bottom) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return () => el.classList.remove('coach-target');
+  }, [target, tip?.id]);
 
-  if (!tip) return null;
+  if (!tip || place.id !== tip.id) return null;
   const last = page >= tip.pages.length - 1;
   const done = () => { setClosing(tip.id); api.markTipSeen(tip.id); (tip.alsoMarks || []).forEach((x) => api.markTipSeen(x)); };
 
   return (
-    <div className={`coach${top ? ' coach-top' : ''}`} role="dialog" aria-label={pg.title}>
+    <div className={`coach${place.top ? ' coach-top' : ''}`} role="dialog" aria-label={pg.title}>
       <div className="coach-head">
         <span className="eyebrow-sm">Tutorial{tip.pages.length > 1 ? ` · ${page + 1} of ${tip.pages.length}` : ''}</span>
         <button className="coach-hide" onClick={() => api.setTipsOff(true)}>Hide tips</button>
       </div>
-      <h3>{pg.title}</h3>
-      <p>{pg.body}</p>
+      {/* Every page sits in the same grid cell, so the card is as tall as its
+          longest page and does not change height between pages. */}
+      <div className="coach-pages">
+        {tip.pages.map((x, i) => (
+          <div key={`${tip.id}:${i}`} className={`coach-body${i === page ? ' on' : ''}`} aria-hidden={i !== page}>
+            <h3>{x.title}</h3>
+            <p>{x.body}</p>
+          </div>
+        ))}
+      </div>
       <div className="coach-actions">
         {page > 0 && <button className="coach-back" onClick={() => setPage(page - 1)}>Back</button>}
         {pg.action && (

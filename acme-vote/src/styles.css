@@ -360,24 +360,32 @@ table.standings .win { font-weight: 700; color: var(--green); }
 .eyebrow-sm { display: block; font-size: 11.5px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); }
 
 /* ---------- Tutorial tips ---------- */
+/* A warm white card with a gold border, so it stands out on both the dark
+   screens (opening screen, header) and the light ones. */
 .coach {
   position: absolute; left: 10px; right: 10px; bottom: 70px; z-index: 15;
-  background: var(--navy-dark); color: #fff; border-radius: 6px; padding: 14px 16px 12px;
-  box-shadow: 0 12px 30px rgba(15, 20, 29, 0.35); border-top: 3px solid var(--gold);
-  animation: rise 0.22s ease; max-height: 62%; overflow-y: auto;
+  background: #fffaf0; color: var(--text); border: 2px solid var(--gold); border-radius: 6px; padding: 14px 16px 12px;
+  box-shadow: 0 14px 34px rgba(15, 20, 29, 0.32), 0 2px 6px rgba(15, 20, 29, 0.12);
+  animation: coachIn 0.24s ease-out; max-height: 62%; overflow-y: auto;
 }
+.coach .eyebrow-sm { color: #8a6a1f; }
 .coach-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.coach-hide { background: none; border: 0; color: rgba(255,255,255,0.6); font-size: 12.5px; cursor: pointer; padding: 4px; text-decoration: underline; text-underline-offset: 3px; }
-.coach h3 { color: #fff; font-style: italic; font-weight: 400; font-size: 21px; margin: 6px 0 4px; }
-.coach p { margin: 0; font-size: 15px; line-height: 1.5; font-weight: 300; color: rgba(255,255,255,0.9); }
+.coach-hide { background: none; border: 0; color: var(--muted); font-size: 12.5px; cursor: pointer; padding: 4px; text-decoration: underline; text-underline-offset: 3px; }
+.coach h3 { color: var(--navy-dark); font-style: italic; font-weight: 400; font-size: 21px; margin: 6px 0 4px; }
+.coach p { margin: 0; font-size: 15px; line-height: 1.5; font-weight: 400; color: var(--text); }
 .coach-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .coach-actions .btn.small { min-height: 38px; }
-.coach-action.btn.secondary { background: transparent; color: #fff; border-color: rgba(255,255,255,0.4); }
-.coach-back { background: none; border: 0; color: rgba(255,255,255,0.75); margin-right: auto; cursor: pointer; font-size: 14px; padding: 6px 4px; }
-.coach-top { bottom: auto; top: 62px; }
+.coach-action.btn.secondary { background: transparent; color: var(--navy-dark); border-color: var(--navy-dark); }
+.coach-back { background: none; border: 0; color: var(--muted); margin-right: auto; cursor: pointer; font-size: 14px; padding: 6px 4px; }
+.coach-top { bottom: auto; top: 66px; }
+.start .coach { bottom: 12px; }
 .coach-target { outline: 3px solid var(--gold) !important; outline-offset: -3px; animation: coachPulse 1.4s ease-in-out infinite; }
 @keyframes coachPulse { 50% { outline-color: rgba(193,154,63,0.35); } }
-@media (prefers-reduced-motion: reduce) { .coach, .coach-target { animation: none; } }
+@keyframes coachIn { from { opacity: 0; transform: translateY(6px); } }
+.coach-pages { display: grid; }
+.coach-body { grid-area: 1 / 1; visibility: hidden; opacity: 0; }
+.coach-body.on { visibility: visible; opacity: 1; transition: opacity 0.2s ease-out; }
+@media (prefers-reduced-motion: reduce) { .coach, .coach-target { animation: none; } .coach-body.on { transition: none; } }
 .screen.no-tabbar .coach { bottom: 14px; }
 .start-btn { margin-top: 4px; }
 

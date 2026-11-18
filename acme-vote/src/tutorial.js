@@ -34,6 +34,7 @@ export function startTips(mode = 'path') {
   return [{
     id: 'start',
     target: '.start-btn',
+    placement: 'bottom',
     pages: [
       {
         title: 'Welcome',
@@ -45,9 +46,8 @@ export function startTips(mode = 'path') {
       },
       {
         title: 'How the tutorial works',
-        body: 'Your church is one of 17. The other churches\u2019 votes are set so that you can see each rule at work. At the end, you can try it yourself and choose how each vote comes out.',
+        body: 'Your church is one of 17. The other churches\u2019 votes are set so that you can see each rule at work. At the end, you can try it yourself and choose how each vote comes out. Tap Start the tutorial when you are ready.',
       },
-      { title: 'Ready?', body: 'Tap Start the tutorial.' },
     ],
   }];
 }
