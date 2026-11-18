@@ -116,9 +116,9 @@ function SquashChurch({ size, ratio, crushed, cracks }) {
  * crack), then the press lifts and each gets one ballot.
  */
 function SlideOneVote() {
-  const [stage, setStage] = useState(0); // 0 standing, 1 pressing, 2 crushed, 3 ballots
+  const [stage, setStage] = useState(0); // 0 standing, 1 pressing, 2 crushed, 3 ballots, 4 the smallest laughs
   useEffect(() => {
-    const ts = [3200, 5200, 7600].map((t, i) => setTimeout(() => setStage(i + 1), t));
+    const ts = [3200, 5200, 7600, 9800].map((t, i) => setTimeout(() => setStage(i + 1), t));
     return () => ts.forEach(clearTimeout);
   }, []);
   const sizes = FIVE.map((c) => churchPx(c.budget));
@@ -137,6 +137,7 @@ function SlideOneVote() {
             return (
               <div className={`squash-item${stage === 1 && ratio < 0.95 ? ' quiver' : ''}`} key={c.short} style={ms(200 + k * 180)}>
                 {stage >= 3 && <i className="slide-drop squash-ballot" style={{ bottom: smallest + 4, ...ms(k * 220) }} />}
+                {stage >= 4 && ratio === 1 && <span className="squash-ha" style={{ bottom: smallest + 26 }}>Ha!</span>}
                 <SquashChurch size={sizes[k]} ratio={ratio} crushed={stage >= 1} cracks={crackCount(ratio)} />
               </div>
             );

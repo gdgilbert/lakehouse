@@ -690,3 +690,14 @@ table.standings .win { font-weight: 700; color: var(--green); }
 .squash-names { display: flex; justify-content: space-around; }
 .squash-names b { font-family: var(--font-head); font-style: italic; font-weight: 400; font-size: 14px; flex: 1; text-align: center; }
 @media (prefers-reduced-motion: reduce) { .squash-church, .squash-press { transition: none; } .squash-item.quiver { animation: none; } }
+
+/* the smallest church laughs once the others are flattened */
+.squash-ha { position: absolute; right: 50%; margin-right: -6px; white-space: nowrap; z-index: 3;
+  background: #fff; color: var(--navy-dark); font-family: var(--font-head); font-style: italic; font-weight: 600; font-size: 15px;
+  padding: 2px 8px 3px; border-radius: 10px; transform-origin: 85% 100%; animation: haPop 0.5s cubic-bezier(0.2, 0.8, 0.2, 1.6) both; }
+.squash-ha::after { content: ''; position: absolute; right: 6px; bottom: -6px; border: 6px solid transparent; border-top-color: #fff; border-bottom: 0; }
+@keyframes haPop { from { transform: scale(0) rotate(-12deg); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .squash-ha { animation: none; } }
+/* churches and their names share five even columns, so the names sit under their churches */
+.squash-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); justify-items: center; }
+.squash-names { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
