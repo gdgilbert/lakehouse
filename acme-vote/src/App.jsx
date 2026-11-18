@@ -82,7 +82,7 @@ export default function App() {
         const i = s.map((x) => x.name).lastIndexOf(name);
         return i >= 0 ? s.slice(0, i + 1) : s;
       }),
-      reset: (name, props) => { resetSticky(); setStack(name === 'start' ? [{ name: 'start' }] : [{ name: 'start' }, { name, props }]); },
+      reset: (name, props) => { if (name === 'start') resetSticky(); setStack(name === 'start' ? [{ name: 'start' }] : [{ name: 'start' }, { name, props }]); },
     }),
     [stack]
   );

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AppBar, Banner, Coach, useData } from '../components.jsx';
+import { AppBar, Banner, Coach, DelegateTabs, useData } from '../components.jsx';
 import { chartsTips } from '../tutorial.js';
 import * as api from '../server/api.js';
 import { REGIONS, THRESHOLDS, fmt } from '../server/rules.js';
@@ -181,6 +181,76 @@ function Overview({ d, choices }) {
   );
 }
 
+/** Everything about one count: the share of votes cast, and that count by Region
+ *  (and, for the weighted count, how churches of each weight voted). */
+function CountTab({ d, choices, which }) {
+  const [pick, setPick] = useState(null);
+  const weighted = which === 'weighted';
+  const r = d.result;
+  const counted = choices.filter((c) => !c.muted);
+  const cast = d.rows.filter((x) => x.choice && x.choice !== 'abstain').reduce((s, x) => s + (weighted ? x.weight : 1), 0);
+  const abstained = d.rows.filter((x) => x.choice === 'abstain').reduce((s, x) => s + (weighted ? x.weight : 1), 0);
+  const needed = NEEDED[d.threshold];
+  const unit = (n) => (weighted ? plural(n, 'vote', 'votes') : plural(n, 'church', 'churches'));
+  const decides = !weighted || d.countRule === 'both';
+  let verdict = null;
+  if (r.kind === 'motion') verdict = !decides ? 'Does not decide' : (weighted ? r.weightedPass : r.churchPass) ? 'Passed' : 'Did not pass';
+
+  return (
+    <>
+      <div className="stats">
+        <Stat label={weighted ? 'Weighted votes cast' : 'Churches voting'} value={cast} />
+        <Stat label="Abstained" value={abstained} sub="not counted" />
+        <Stat label="Needed" value={{ majority: '>50%', twoThirds: '⅔', threeQuarters: '75%' }[d.threshold]} sub="of votes cast" />
+      </div>
+      <div className="card">
+        <h3 className="chart-title" style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+          {weighted ? 'Weighted count' : 'Church count'}
+          {verdict && <span className={`chip ${verdict === 'Passed' ? 'green' : verdict === 'Did not pass' ? 'red' : 'gray'}`}>{verdict}</span>}
+        </h3>
+        <p className="tiny muted" style={{ margin: '0 0 8px' }}>
+          {weighted
+            ? 'Each church cast 1 to 4 votes, based on its giving to ACME as a share of its own budget.'
+            : 'Each church that voted had 1 vote.'}
+        </p>
+        {r.kind === 'motion' ? (
+          <>
+            <Legend items={counted} />
+            <SegBar scale={cast || 1} mark={needed} onPick={setPick} segments={counted.map((c) => {
+              const v = sum(d.rows, c.id, weighted);
+              return { key: c.id, value: v, color: c.color, tip: `${c.label}: ${unit(v)} (${fmt(cast ? (v / cast) * 100 : 0)}%)` };
+            })} />
+            <div className="chart-row-head" style={{ marginTop: 6 }}>
+              {counted.map((c) => {
+                const v = sum(d.rows, c.id, weighted);
+                return <span key={c.id}><b>{c.label}</b> {unit(v)} · {fmt(cast ? (v / cast) * 100 : 0)}%</span>;
+              })}
+            </div>
+          </>
+        ) : (
+          r.standings.rows.map((row) => {
+            const c = choices.find((x) => x.id === row.id);
+            const pctV = weighted ? row.weightedPct : row.churchPct;
+            const v = weighted ? row.weightedVotes : row.churchVotes;
+            const carried = weighted ? row.carriesWeighted : row.carriesChurch;
+            return (
+              <div className="chart-row" key={row.id}>
+                <div className="chart-row-head"><b>{c.label}{carried ? ' ✓' : ''}</b><span>{unit(v)} · {fmt(pctV)}%</span></div>
+                <SegBar height={14} scale={100} mark={needed} onPick={setPick}
+                  segments={[{ key: row.id, value: pctV, color: c.color, tip: `${c.label}: ${unit(v)} (${fmt(pctV)}%)` }]} />
+              </div>
+            );
+          })
+        )}
+        <div className="tiny muted" style={{ marginTop: 6 }}>The dark line marks {THRESHOLDS[d.threshold].label.toLowerCase()}.</div>
+        <Readout text={pick} />
+      </div>
+      {weighted && <ByWeight d={d} choices={choices} />}
+      {!d.region && <ByRegion d={d} choices={choices} which={which} />}
+    </>
+  );
+}
+
 function ByWeight({ d, choices }) {
   const [pick, setPick] = useState(null);
   const groups = [1, 2, 3, 4].map((w) => ({ w, rows: d.rows.filter((x) => x.weight === w) })).filter((g) => g.rows.length);
@@ -231,13 +301,14 @@ function ByWeight({ d, choices }) {
   );
 }
 
-function ByRegion({ d, choices }) {
+function ByRegion({ d, choices, which }) {
   const [pick, setPick] = useState(null);
+  const weightedView = which === 'weighted';
   const counted = choices.filter((c) => !c.muted);
   const regions = REGIONS.map((name) => ({ name, rows: d.rows.filter((x) => x.region === name) })).filter((g) => g.rows.length);
   return (
     <div className="card">
-      <h3 className="chart-title">Share of votes cast, by Region</h3>
+      <h3 className="chart-title">{weightedView ? 'Weighted count' : 'Church count'} by Region</h3>
       <Legend items={counted} />
       {regions.map((g) => {
         const cc = g.rows.filter((x) => x.choice && x.choice !== 'abstain');
@@ -250,15 +321,10 @@ function ByRegion({ d, choices }) {
         });
         return (
           <div className="region-block" key={g.name}>
-            <div className="chart-row-head"><b>{g.name}</b><span>{cCast} of {plural(g.rows.length, 'church', 'churches')} voted</span></div>
+            <div className="chart-row-head"><b>{g.name}</b><span>{weightedView ? `${wCast} weighted votes cast` : `${cCast} of ${plural(g.rows.length, 'church', 'churches')} voted`}</span></div>
             {cCast === 0 ? <div className="tiny muted">No votes cast.</div> : (
               <>
-                {d.countRule === 'both' && <div className="mini-label">Church</div>}
-                <SegBar height={12} scale={cCast} segments={segs(false, cCast)} onPick={setPick} />
-                {d.countRule === 'both' && <>
-                  <div className="mini-label">Weighted</div>
-                  <SegBar height={12} scale={wCast} segments={segs(true, wCast)} onPick={setPick} />
-                </>}
+                <SegBar height={14} scale={weightedView ? wCast : cCast} segments={segs(weightedView, weightedView ? wCast : cCast)} onPick={setPick} />
               </>
             )}
           </div>
@@ -296,15 +362,16 @@ function Churches({ d, choices }) {
 // Screen
 // ---------------------------------------------------------------------------
 
-const TABS = [['overview', 'Overview'], ['weight', 'By weight'], ['region', 'By region'], ['churches', 'Churches']];
+const TABS = [['overview', 'Overview'], ['church', 'Church'], ['weighted', 'Weighted'], ['churches', 'Churches']];
 
-export default function ResultDetails({ ballotId }) {
+export default function ResultDetails({ ballotId, focus = 'overview' }) {
   const [d, error] = useData(() => api.getBallotDetails(ballotId), [ballotId]);
-  const [tab, setTab] = useState('overview');
-  if (error) return <div className="screen"><AppBar title="Charts" /><div className="content"><Banner tone="red">{error.message}</Banner></div></div>;
-  if (!d) return <div className="screen"><AppBar title="Charts" /></div>;
+  const [tab, setTab] = useState(focus);
+  if (error) return <div className="screen"><AppBar title="Charts" /><div className="content"><Banner tone="red">{error.message}</Banner></div><DelegateTabs current="results" /></div>;
+  if (!d) return <div className="screen"><AppBar title="Charts" /><div className="content" /><DelegateTabs current="results" /></div>;
   const choices = choicesFor(d);
-  const showRegion = !d.region;
+  const tabs = TABS.filter(([k]) => d.countRule === 'both' || k !== 'weighted');
+  const shown = tabs.some(([k]) => k === tab) ? tab : 'overview';
   return (
     <div className="screen">
       <AppBar title="Charts" />
@@ -317,16 +384,17 @@ export default function ResultDetails({ ballotId }) {
           </div>
         </div>
         <div className="segmented">
-          {TABS.filter(([k]) => (showRegion || k !== 'region') && (d.countRule === 'both' || k !== 'weight')).map(([k, l]) => (
-            <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>
+          {tabs.map(([k, l]) => (
+            <button key={k} className={shown === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>
           ))}
         </div>
-        {tab === 'overview' && <Overview d={d} choices={choices} />}
-        {tab === 'weight' && <ByWeight d={d} choices={choices} />}
-        {tab === 'region' && <ByRegion d={d} choices={choices} />}
-        {tab === 'churches' && <Churches d={d} choices={choices} />}
+        {shown === 'overview' && <Overview d={d} choices={choices} />}
+        {shown === 'church' && <CountTab d={d} choices={choices} which="church" />}
+        {shown === 'weighted' && <CountTab d={d} choices={choices} which="weighted" />}
+        {shown === 'churches' && <Churches d={d} choices={choices} />}
       </div>
       <Coach tips={chartsTips()} />
+      <DelegateTabs current="results" />
     </div>
   );
 }

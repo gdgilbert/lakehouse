@@ -156,6 +156,31 @@ export function TabBar({ tabs, current, onChange }) {
 }
 
 // Bottom sheet. Close it by swiping down, tapping outside it, or the X button.
+/**
+ * The delegate's three bottom tabs, on every delegate screen. Tapping one goes
+ * home and opens that tab. On the home screen itself, onChange switches tabs.
+ */
+export function DelegateTabs({ current, onChange }) {
+  const nav = useNav();
+  const [session] = useData(() => api.getSession());
+  const churchId = session?.role === 'delegate' ? session.churchId : null;
+  const [ballots] = useData(() => (churchId ? api.listBallots({ churchId }) : Promise.resolve([])), [churchId]);
+  if (!churchId) return null;
+  const toVote = (ballots || []).filter((b) => b.status === 'open' && b.eligible && !b.myVote).length;
+  const go = (id) => {
+    if (onChange) { onChange(id); return; }
+    setStickyValue('delegate-tab', id);
+    nav.reset('delegateHome', { churchId });
+  };
+  return (
+    <TabBar current={current} onChange={go} tabs={[
+      { id: 'ballots', label: 'Ballots', icon: 'ballot', count: toVote },
+      { id: 'results', label: 'Results', icon: 'results' },
+      { id: 'church', label: 'My church', icon: 'church' },
+    ]} />
+  );
+}
+
 export function Sheet({ onClose, children }) {
   const ref = useRef(null);
   const start = useRef(null);
@@ -394,14 +419,18 @@ const markFor = { majority: 50, twoThirds: 66.67, threeQuarters: 75 };
 function MotionCount({ title, count, pass, unit, decides, threshold, ballotId }) {
   const nav = useNav();
   return (
-    <div className="card count-block tappable" onClick={() => nav.push('resultDetails', { ballotId })}>
+    <div className="card count-block tappable" onClick={() => nav.push('resultDetails', { ballotId, focus: unit === 'votes' ? 'weighted' : 'church' })}
+      role="link" aria-label={`${title}: see the details`}>
       <h3>
         {title}
-        {decides ? (
-          pass ? <span className="chip green">Passed</span> : <span className="chip red">Did not pass</span>
-        ) : (
-          <span className="chip gray">Does not decide</span>
-        )}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          {decides ? (
+            pass ? <span className="chip green">Passed</span> : <span className="chip red">Did not pass</span>
+          ) : (
+            <span className="chip gray">Does not decide</span>
+          )}
+          <span className="chev"><Icon name="chev" size={18} /></span>
+        </span>
       </h3>
       <BarRow label="Yes" value={count.by.yes} total={count.cast} unit={unit} mark={markFor[threshold]} />
       <BarRow label="No" value={count.by.no} total={count.cast} unit={unit} tone="gray" />
@@ -501,6 +530,12 @@ function ElectionResult({ ballot, r }) {
           {t.church.abstain > 0 && ` ${t.church.abstain} ${unitFor(t.church.abstain, 'churches')} abstained (not counted).`} Green marks a count the
           candidate carried ({THRESHOLDS[ballot.threshold].label.toLowerCase()}). Combined score = church % + weighted %.
         </div>
+      </div>
+      <div className="list">
+        <Row title="Church count details" sub="Each candidate's share, and by Region"
+          onClick={() => nav.push('resultDetails', { ballotId: ballot.id, focus: 'church' })} />
+        <Row title="Weighted count details" sub="Each candidate's share, by weight and by Region"
+          onClick={() => nav.push('resultDetails', { ballotId: ballot.id, focus: 'weighted' })} />
       </div>
     </>
   );
@@ -954,6 +989,12 @@ export const resetSticky = () => {
   sticky.clear();
   try { Object.keys(sessionStorage).filter((k) => k.startsWith('acme-sticky-')).forEach((k) => sessionStorage.removeItem(k)); } catch { /* ignore */ }
 };
+/** Set a sticky value from outside the screen that uses it (e.g. the bottom tabs). */
+export function setStickyValue(key, x) {
+  sticky.set(key, x);
+  try { sessionStorage.setItem(`acme-sticky-${key}`, JSON.stringify(x)); } catch { /* ignore */ }
+}
+
 export function useStickyState(key, initial) {
   const [v, setV] = useState(() => {
     if (sticky.has(key)) return sticky.get(key);

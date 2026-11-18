@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   AppBar, Banner, Choice, Empty, Icon, ResultView, Row, RuleChips, Sheet, StatusChip, TabBar,
-  WeightPips, choiceLabel, money, time, typeLabel, useData, useNav, useStickyState, Coach, Toggle, HoldButton,
+  WeightPips, choiceLabel, money, time, typeLabel, useData, useNav, useStickyState, Coach, Toggle, HoldButton, DelegateTabs, setStickyValue,
 } from '../components.jsx';
 import * as api from '../server/api.js';
 import { fmt } from '../server/rules.js';
@@ -25,6 +25,7 @@ export function SignIn() {
     setError('');
     try {
       const church = await api.signInDelegate(code);
+      setStickyValue('delegate-tab', 'ballots');
       nav.replace('delegateHome', { churchId: church.id });
     } catch (err) {
       setError(err.message);
@@ -94,29 +95,25 @@ export function Home({ churchId }) {
     <div className="screen">
       <AppBar logo back={false} right={church && <>{church.name}<br />{church.region}</>} />
       <div className="content">
-        {tab === 'ballots' && <BallotsTab open={open} closedCount={closed.length} />}
+        {tab === 'ballots' && <BallotsTab open={open} closed={closed} />}
         {tab === 'results' && <ResultsTab closed={closed} />}
         {tab === 'church' && church && <ChurchTab church={church} />}
       </div>
       {tab === 'ballots' && open.length > 0 && <Coach tips={homeTips()} />}
-      <TabBar current={tab} onChange={setTab} tabs={[
-        { id: 'ballots', label: 'Ballots', icon: 'ballot', count: toVote },
-        { id: 'results', label: 'Results', icon: 'results' },
-        { id: 'church', label: 'My church', icon: 'church' },
-      ]} />
+      <DelegateTabs current={tab} onChange={setTab} />
     </div>
   );
 }
 
-function BallotsTab({ open, closedCount }) {
+function BallotsTab({ open, closed }) {
   const nav = useNav();
-  if (open.length === 0 && closedCount > 0) return <TutorialEnd />;
   return (
     <>
+      {open.length === 0 && closed.length > 0 && <TutorialEnd />}
       <div className="section-title">Open ballots</div>
       {open.length === 0 ? (
         <div className="card">
-          <Empty icon="ballot">No ballots are open right now. This screen updates when the manager opens one.</Empty>
+          <Empty icon="ballot">No ballots are open right now. This screen updates when voting opens on the next one.</Empty>
         </div>
       ) : (
         <div className="list">
@@ -126,6 +123,17 @@ function BallotsTab({ open, closedCount }) {
               onClick={() => nav.push('delegateBallot', { ballotId: b.id })} />
           ))}
         </div>
+      )}
+      {closed.length > 0 && (
+        <>
+          <div className="section-title">Completed ballots</div>
+          <div className="list">
+            {closed.map((b) => (
+              <Row key={b.id} title={b.title} sub={resultLine(b)}
+                onClick={() => nav.push('delegateBallot', { ballotId: b.id })} />
+            ))}
+          </div>
+        </>
       )}
     </>
   );
@@ -167,6 +175,7 @@ function TutorialEnd() {
   const free = tut?.mode === 'free';
   const tryIt = async () => {
     await api.resetDemo({ mode: 'free' });
+    setStickyValue('delegate-tab', 'ballots');
     nav.reset('delegateHome', { churchId: session?.churchId });
   };
   const guided = async () => {
@@ -431,6 +440,7 @@ export function BallotScreen({ ballotId }) {
       </div>
 
       {!confirming && <Coach tips={tips} />}
+      <DelegateTabs current={ballot.status === 'closed' ? 'results' : 'ballots'} />
       {confirming && (
         <Sheet onClose={() => !busy && setConfirming(false)}>
           <h2>Confirm your vote</h2>
@@ -491,6 +501,7 @@ export function Receipt({ ballotId, receipt, choice, weight, at }) {
         <button className="btn" onClick={nav.pop}>Back to ballots</button>
       </div>
       {ballot?.status === 'open' && tut && <Coach tips={afterVoteTips(ballot, tut.mode)} />}
+      <DelegateTabs current="ballots" />
     </div>
   );
 }

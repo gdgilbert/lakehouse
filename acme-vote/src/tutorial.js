@@ -366,8 +366,8 @@ export function resultTips(b, { hasNext, mode = 'path' }) {
       },
       {
         title: 'See the details',
-        body: 'Tap Charts and details, then By weight, to see how churches with 1, 2, 3 and 4 weighted votes voted. Come back here when you are done.',
-        target: '.results-link',
+        body: 'Tap the Weighted count card to see how churches with 1, 2, 3 and 4 weighted votes voted, or the Church count card for one vote per church. Come back here when you are done.',
+        target: '.result-group .count-block ~ .count-block',
       },
       ...next,
     ] }];
@@ -480,7 +480,7 @@ export function chartsTips() {
     id: 'charts',
     pages: [{
       title: 'Charts and details',
-      body: 'Overview compares the counts with the share needed to pass. By weight shows how churches with 1, 2, 3 and 4 weighted votes voted; this is where you can see why the counts differ. By region shows each Region, and Churches lists every church’s vote. Tap any bar to see its numbers.',
+      body: 'Overview compares the two counts with the share needed to pass. Church and Weighted show each count on its own, including by Region; Weighted also shows how churches with 1, 2, 3 and 4 weighted votes voted, which is where you can see why the counts differ. Churches lists every church’s vote. Tap any bar to see its numbers.',
     }],
   }];
 }
