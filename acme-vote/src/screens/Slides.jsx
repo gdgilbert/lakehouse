@@ -123,7 +123,7 @@ function SquashChurch({ size, ratio, crushed, cracks }) {
 
 /** One church, one vote: standing, then the press, then one ballot each and Grace laughs. */
 function VizOneVote({ step }) {
-  const laugh = useTimeline([4200], step === 2 ? 'laugh' : 'no') >= 1 && step === 2; // well after the ballots land
+  const laugh = useTimeline([2600], step === 2 ? 'laugh' : 'no') >= 1 && step === 2; // shortly after the last ballot lands
   const sizes = FIVE.map((c) => churchPx(c.budget));
   const smallest = Math.min(...sizes);
   const tallest = Math.max(...sizes);
@@ -159,6 +159,7 @@ function VizGivers({ step }) {
   const beat = useTimeline([1600, 3400, 4600], step === 0 ? 'a' : 'b');
   const flash = step === 0 && beat >= 1 && beat < 2;
   const punks = step === 0 && beat >= 3;
+  const stayGold = step >= 1 || beat >= 1; // once they have flashed, the two biggest bars stay gold
   const flip = useTimeline([1800], step === 1 ? 'flip' : 'x') >= 1 && step >= 1;
   const share = step >= 2 || flip;
   const maxGives = Math.max(...FIVE.map((c) => c.gives));
@@ -179,7 +180,7 @@ function VizGivers({ step }) {
           </div>
           <div className="slide-morph-track">
             {share && [2, 3, 4].map((t) => <i key={t} className="slide-meter-line" style={{ left: `${(t / 5) * 100}%` }} />)}
-            <span className={`slide-morph-bar${flash && top2.includes(c.short) ? ' flash' : ''}`}
+            <span className={`slide-morph-bar${top2.includes(c.short) ? `${flash ? ' flash' : ''}${stayGold ? ' gold' : ''}` : ''}`}
               style={{ width: `${share ? (c.pct / 5) * 100 : (c.gives / maxGives) * 100}%`, transitionDelay: share ? td(i * 90) : '0ms', ...ms(300 + i * 140) }} />
           </div>
           <span className="slide-morph-value">{share ? `${c.pct.toFixed(1)}%` : dollars(c.gives)}</span>

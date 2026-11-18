@@ -803,3 +803,7 @@ table.standings .win { font-weight: 700; color: var(--green); }
 .dp-group.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .dp-group.one { grid-template-columns: minmax(0, 1fr); }
 .dp-row.split::after { content: ''; position: absolute; left: 20%; right: 10%; bottom: 0; height: 7px; border: 1.5px solid var(--gold); border-top: 0; border-radius: 0 0 4px 4px; opacity: 0.8; animation: slideRise 0.75s both; }
+
+/* the two biggest givers flash, ending on gold, and stay gold */
+.slide-morph-bar.flash { animation: barFlash 0.6s ease-in-out 5 alternate both !important; }
+.slide-morph-bar.gold { background: var(--gold); }
