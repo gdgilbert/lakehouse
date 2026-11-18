@@ -807,3 +807,9 @@ table.standings .win { font-weight: 700; color: var(--green); }
 /* the two biggest givers flash, ending on gold, and stay gold */
 .slide-morph-bar.flash { animation: barFlash 0.6s ease-in-out 5 alternate both !important; }
 .slide-morph-bar.gold { background: var(--gold); }
+
+/* Full screen button (shown only where the browser allows it) */
+.fs-btn { display: inline-flex; align-items: center; gap: 6px; background: none; border: 1px solid currentColor; border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; color: var(--navy); }
+.fs-btn.on-dark { color: rgba(255,255,255,0.8); border-color: rgba(255,255,255,0.35); }
+.panel .fs-btn { margin: 14px auto 0; display: flex; }
+.slides-top-right { display: inline-flex; align-items: center; gap: 14px; }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Coach, Icon, Logo, Sheet, useNav } from '../components.jsx';
+import { Coach, FullscreenButton, Icon, Logo, Sheet, useNav } from '../components.jsx';
 import { FEATURES } from '../features.js';
 import { startTips } from '../tutorial.js';
 import * as api from '../server/api.js';
@@ -25,6 +25,7 @@ export default function Start() {
       </div>
       <div className="panel">
         <button className="btn gold start-btn" onClick={() => nav.push('intro')}>Start the tutorial</button>
+        <FullscreenButton className="on-dark" />
         {FEATURES.manager && (
           <button className="role-card" style={{ marginTop: 14 }} onClick={manager}>
             <span className="ico"><Icon name="gavel" size={22} /></span>

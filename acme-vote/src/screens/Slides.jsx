@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Logo, useNav } from '../components.jsx';
+import { Logo, useNav, FullscreenButton } from '../components.jsx';
 import * as api from '../server/api.js';
 
 // Two short slideshows that bracket the ballot tutorial. Each slide is a series
@@ -586,7 +586,10 @@ function Slideshow({ slides, lastLabel, onDone, onSkip }) {
     <div className="slides">
       <div className="slides-top">
         <Logo />
-        {onSkip && !lastSlide && <button className="slides-skip" onClick={onSkip}>Skip</button>}
+        <span className="slides-top-right">
+          <FullscreenButton className="on-dark" />
+          {onSkip && !lastSlide && <button className="slides-skip" onClick={onSkip}>Skip</button>}
+        </span>
       </div>
       <div className="slides-stage">
       <div className="slides-body" key={`${i}-${replay}`}>

@@ -1093,3 +1093,34 @@ export function useToast() {
   const node = msg ? <div className="toast" role="status">{msg}</div> : null;
   return [node, setMsg];
 }
+
+/** Full screen, where the browser allows it (Android Chrome, desktop browsers; not
+ *  iPhone Safari, and not inside a frame that forbids it). Hidden when unavailable
+ *  or already full screen. */
+const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement;
+const fsEnabled = () => {
+  try { return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled); } catch { return false; }
+};
+export function FullscreenButton({ className = '' }) {
+  const [on, setOn] = React.useState(() => !!fsElement());
+  React.useEffect(() => {
+    const f = () => setOn(!!fsElement());
+    document.addEventListener('fullscreenchange', f);
+    document.addEventListener('webkitfullscreenchange', f);
+    return () => { document.removeEventListener('fullscreenchange', f); document.removeEventListener('webkitfullscreenchange', f); };
+  }, []);
+  if (on || !fsEnabled()) return null;
+  const go = () => {
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    try { const r = req && req.call(el, { navigationUI: 'hide' }); if (r && r.catch) r.catch(() => {}); } catch { /* not allowed here */ }
+  };
+  return (
+    <button className={`fs-btn ${className}`} onClick={go} aria-label="Full screen">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+      </svg>
+      Full screen
+    </button>
+  );
+}
