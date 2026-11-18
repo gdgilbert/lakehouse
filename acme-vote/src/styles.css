@@ -666,3 +666,6 @@ table.standings .win { font-weight: 700; color: var(--green); }
 .slide-morph-value { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
 .slide-morph-note { margin-top: 4px; text-align: center; font-family: var(--font-head); font-style: italic; font-size: 18px; color: var(--gold); min-height: 48px; }
 @media (prefers-reduced-motion: reduce) { .slide-morph-bar { transition: none; } }
+
+.slides-replay-btn { align-self: flex-end; width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.85); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; animation: none !important; }
+.slides-replay-btn:active { background: rgba(255,255,255,0.15); }

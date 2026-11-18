@@ -103,12 +103,11 @@ function SlideOneVote() {
  */
 function SlideDollarsToShare() {
   const [stage, setStage] = useState(0); // 0 dollars, 1 budgets shown, 2 share of budget, 3 done
-  const [run, setRun] = useState(0);
   useEffect(() => {
     setStage(0);
-    const ts = [2600, 4600, 6600].map((t, i) => setTimeout(() => setStage(i + 1), t));
+    const ts = [4500, 8500, 10500].map((t, i) => setTimeout(() => setStage(i + 1), t)); // dollars, budgets, share, done
     return () => ts.forEach(clearTimeout);
-  }, [run]);
+  }, []);
   const maxGives = Math.max(...FIVE.map((c) => c.gives));
   const share = stage >= 2;
   return (
@@ -133,7 +132,6 @@ function SlideDollarsToShare() {
         {stage === 1 && '…but look at the size of their budgets.'}
         {stage >= 2 && 'As a share of what they have, the order turns over.'}
       </div>
-      {stage >= 3 && <button className="slides-replay" onClick={() => setRun(run + 1)}>Play again</button>}
     </div>
   );
 }
@@ -197,32 +195,34 @@ function SlideBoth() {
   );
 }
 
-/** An animated example: who votes Yes, then each count fills, then the verdict. */
+/** An animated example: who votes Yes, then each count fills, then the verdict.
+ *  Each step waits long enough to be read. */
 function Example({ yes, label, start }) {
   const yesC = FIVE.filter((c) => yes.includes(c.short));
   const churchYes = yesC.length;
   const weightYes = yesC.reduce((s, c) => s + c.votes, 0);
   const cPass = churchYes * 2 > FIVE.length;
   const wPass = weightYes * 2 > TOTAL_VOTES;
+  const t = { who: start + 600, church: start + 2200, churchLabel: start + 3200, weighted: start + 4400, weightedLabel: start + 5400, stamp: start + 6800 };
   return (
     <div className="slide-example" style={ms(start)}>
       <div className="slide-example-head">{label}</div>
       <div className="slide-example-who">
         {FIVE.map((c, i) => (
-          <span key={c.short} className={yes.includes(c.short) ? 'yes' : 'no'} style={ms(start + 250 + i * 90)}>{c.short}</span>
+          <span key={c.short} className={yes.includes(c.short) ? 'yes' : 'no'} style={ms(t.who + i * 160)}>{c.short}</span>
         ))}
       </div>
       <div className="slide-mini">
         <span>Church count</span>
-        <div className="slide-mini-bar"><i className={cPass ? 'pass' : 'fail'} style={{ width: `${(churchYes / FIVE.length) * 100}%`, ...ms(start + 900) }} /><em /></div>
-        <b className={cPass ? 'pass' : 'fail'} style={ms(start + 1500)}>{churchYes} of 5 · {cPass ? 'Yes' : 'No'}</b>
+        <div className="slide-mini-bar"><i className={cPass ? 'pass' : 'fail'} style={{ width: `${(churchYes / FIVE.length) * 100}%`, ...ms(t.church) }} /><em /></div>
+        <b className={cPass ? 'pass' : 'fail'} style={ms(t.churchLabel)}>{churchYes} of 5 · {cPass ? 'Yes' : 'No'}</b>
       </div>
       <div className="slide-mini">
         <span>Weighted</span>
-        <div className="slide-mini-bar"><i className={wPass ? 'pass' : 'fail'} style={{ width: `${(weightYes / TOTAL_VOTES) * 100}%`, ...ms(start + 1200) }} /><em /></div>
-        <b className={wPass ? 'pass' : 'fail'} style={ms(start + 1800)}>{weightYes} of {TOTAL_VOTES} · {wPass ? 'Yes' : 'No'}</b>
+        <div className="slide-mini-bar"><i className={wPass ? 'pass' : 'fail'} style={{ width: `${(weightYes / TOTAL_VOTES) * 100}%`, ...ms(t.weighted) }} /><em /></div>
+        <b className={wPass ? 'pass' : 'fail'} style={ms(t.weightedLabel)}>{weightYes} of {TOTAL_VOTES} · {wPass ? 'Yes' : 'No'}</b>
       </div>
-      <div className="slide-stamp" style={ms(start + 2300)}>Fails</div>
+      <div className="slide-stamp" style={ms(t.stamp)}>Fails</div>
     </div>
   );
 }
@@ -258,8 +258,8 @@ const INTRO = [
     body: 'Either count alone can be unfair. Counting churches alone, churches that give little can outvote those that give much. Counting weight alone, a few committed churches can outvote everyone else. Together, neither group can decide for the other.',
     viz: () => (
       <div className="slide-examples">
-        <Example yes={['Emmanuel', 'Covenant', 'Hope']} label="Three churches that give less vote Yes" start={300} />
-        <Example yes={['Harbor', 'Grace']} label="Two churches that give more vote Yes" start={2900} />
+        <Example yes={['Emmanuel', 'Covenant', 'Hope']} label="Three churches that give less vote Yes" start={400} />
+        <Example yes={['Harbor', 'Grace']} label="Two churches that give more vote Yes" start={8600} />
       </div>
     ),
   },
@@ -282,13 +282,12 @@ const INTRO = [
 /** All five churches climb to 4% and 4 votes, then the weighted count collapses to one church, one vote. */
 function SlideEveryone() {
   const [stage, setStage] = useState(0); // 0 start, 1-3 climbing, 4 all at four, 5 flash, 6 collapsed
-  const [run, setRun] = useState(0);
   useEffect(() => {
     setStage(0);
-    const times = [700, 1400, 2100, 2700, 3700, 4900];
+    const times = [1800, 3400, 5000, 6600, 8600, 10600]; // climb x3, all at four, flash, collapse
     const ts = times.map((t, i) => setTimeout(() => setStage(i + 1), t));
     return () => ts.forEach(clearTimeout);
-  }, [run]);
+  }, []);
   const votesAt = (c) => {
     if (stage >= 6) return 1;
     const pct = pctAt(c);
@@ -312,7 +311,6 @@ function SlideEveryone() {
         {stage >= 4 && stage < 6 && 'Every church has 4 weighted votes.'}
         {stage >= 6 && 'Equal weight is one church, one vote again.'}
       </div>
-      {stage >= 6 && <button className="slides-replay" onClick={() => setRun(run + 1)}>Play again</button>}
     </div>
   );
 }
@@ -389,8 +387,18 @@ const OUTRO = [
   },
 ];
 
+function ReplayIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 12a9 9 0 1 0 2.64-6.36L3 8.3" />
+      <path d="M3 3v5.3h5.3" />
+    </svg>
+  );
+}
+
 function Slideshow({ slides, lastLabel, onDone, onSkip }) {
   const [i, setI] = useState(0);
+  const [replay, setReplay] = useState(0); // bumping this restarts the slide's animation
   const s = slides[i];
   const last = i === slides.length - 1;
   return (
@@ -402,12 +410,15 @@ function Slideshow({ slides, lastLabel, onDone, onSkip }) {
       <div className="slides-body" key={i}>
         <h1 className="slides-title">{s.title}</h1>
         <p className="slides-text">{s.body}</p>
-        <div className="slides-viz">{s.viz()}</div>
+        <div className="slides-viz" key={replay}>{s.viz()}</div>
+        <button className="slides-replay-btn" onClick={() => setReplay(replay + 1)} aria-label="Replay the animation" title="Replay">
+          <ReplayIcon />
+        </button>
       </div>
       <div className="slides-bottom">
-        <button className="slides-back" onClick={() => setI(i - 1)} style={{ visibility: i > 0 ? 'visible' : 'hidden' }}>Back</button>
+        <button className="slides-back" onClick={() => { setI(i - 1); setReplay(0); }} style={{ visibility: i > 0 ? 'visible' : 'hidden' }}>Back</button>
         <div className="slides-dots">{slides.map((_, k) => <i key={k} className={k === i ? 'on' : ''} />)}</div>
-        <button className="btn gold slides-next" onClick={() => (last ? onDone() : setI(i + 1))}>{last ? lastLabel : 'Next'}</button>
+        <button className="btn gold slides-next" onClick={() => { if (last) onDone(); else { setI(i + 1); setReplay(0); } }}>{last ? lastLabel : 'Next'}</button>
       </div>
     </div>
   );
