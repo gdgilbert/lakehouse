@@ -13,6 +13,7 @@ const pct = (n, d) => (d > 0 ? fmt((n / d) * 100) : '0.0');
 
 /** Which kind of ballot this is, for choosing the right explanation. */
 export function ballotKind(b) {
+  if (b.story && b.story !== 'procedural') return b.story;
   if (b.commissionId) return 'slate';
   if (b.electionId) {
     if (b.title.startsWith('Judicial Commission, Seat')) return 'seat';
@@ -30,25 +31,15 @@ export function ballotKind(b) {
 // Opening, sign-in, home
 // ---------------------------------------------------------------------------
 
-export function startTips(mode = 'path') {
+export function startTips() {
   return [{
     id: 'start',
     target: '.start-btn',
     placement: 'bottom',
-    pages: [
-      {
-        title: 'A tutorial on Double Majority Voting',
-        body: 'This is a tutorial on how Double Majority Voting would work at the ACME National Business Meeting. You will vote as the delegate for one Member Church on each kind of ballot. Notes like this one explain each step.',
-      },
-      {
-        title: 'The main idea',
-        body: 'Under Double Majority Voting, most decisions are counted two ways: once with one vote per church, and once with each church’s votes weighted by its giving to ACME as a share of its own budget. A motion or candidate must win in both counts. Some ballots, such as procedural motions, use only the first count. The tutorial shows when each is used and why.',
-      },
-      {
-        title: 'How the tutorial works',
-        body: 'Your church is one of 17. The other churches\u2019 votes are set so that you can see each rule at work. At the end, you can try it yourself and choose how each vote comes out. Tap Start the tutorial when you are ready.',
-      },
-    ],
+    pages: [{
+      title: 'A tutorial on Double Majority Voting',
+      body: 'This is a tutorial on how Double Majority Voting would work at the ACME National Business Meeting. Tap Start the tutorial. A short slideshow explains the idea, and then you vote on five ballots as the delegate for one church.',
+    }],
   }];
 }
 
@@ -80,7 +71,10 @@ export function homeTips() {
 // ---------------------------------------------------------------------------
 
 export function beforeVoteTips(b, church, mode = 'path') {
+  if (mode === 'free') return [];
   const guided = mode === 'path';
+  const storyTips = storyBefore(b, church);
+  if (storyTips) return storyTips;
   const kind = ballotKind(b);
   const w = church.weight;
   const votes = plural(w, 'weighted vote', 'weighted votes');
@@ -232,6 +226,16 @@ const SUGGEST = {
 
 export function afterVoteTips(b, mode = 'path') {
   const kind = ballotKind(b);
+  if (mode === 'free') {
+    return [{
+      id: 'free:groups',
+      target: '.group-votes',
+      pages: [{
+        title: 'You decide how the others vote',
+        body: 'Choose how each kind of church votes, then tap See the result. The Counted different ways card shows what each way of counting would have decided.',
+      }],
+    }];
+  }
   if (mode === 'path') {
     return [{
       id: 'voted:first',
@@ -323,14 +327,16 @@ function electionNames(b) {
 }
 
 export function resultTips(b, { hasNext, mode = 'path' }) {
+  if (mode === 'free') return [];
   const kind = ballotKind(b);
   const r = b.result;
   // On the last result of the tutorial, the final page sums it up.
   const next = hasNext ? [NEXT_PAGE] : [{
-    title: mode === 'path' ? 'You have finished the tutorial' : 'That was the last ballot',
-    body: 'You have seen every kind of ballot at the National Business Meeting under Double Majority Voting: church count only, a double majority, 75% and two-thirds in both counts, the Judicial Commission slate, and an election that went to a runoff and a third ballot. In each case the rules ask for agreement from most churches and, where money or governance is at stake, from the churches that fund the work.' +
-      (mode === 'path' ? ' Tap Try it yourself to vote again and choose each result.' : ''),
+    title: 'That was the last ballot',
+    body: 'You have seen both protections of Double Majority Voting. Tap Finish for a short summary, Run it yourself to set the votes yourself, or Start the tutorial again.',
   }];
+  const storyTips = storyAfter(b, next);
+  if (storyTips) return storyTips;
 
   if (r.kind === 'motion' && kind === 'procedural') {
     const n = motionNumbers(b);
@@ -473,6 +479,106 @@ export function resultTips(b, { hasNext, mode = 'path' }) {
   }
 
   return [{ id, pages: [{ title: 'What happened', body: r.explanation }, ...next] }];
+}
+
+// ---------------------------------------------------------------------------
+// The story ballots
+// ---------------------------------------------------------------------------
+
+function storyBefore(b, church) {
+  const kind = ballotKind(b);
+  const p = church.contributionPct == null ? null : fmt(church.contributionPct);
+  if (kind === 'agree') {
+    return [{ id: 'before:agree', pages: [
+      {
+        title: 'Counted two ways',
+        body: `This budget is counted twice. In the church count, ${church.name} casts 1 vote, like every church. In the weighted count it casts ${church.weight}` +
+          (p ? `, because it gave ${p}% of its budget to ACME last year.` : '.') +
+          ' To pass, the budget needs a majority in both counts.',
+      },
+      { title: 'Your turn', body: 'Vote however you like, then see the result.' },
+    ] }];
+  }
+  if (kind === 'size') {
+    return [{ id: 'before:size', pages: [
+      {
+        title: 'Big churches, small churches',
+        body: 'The three largest churches want this office. Together they give $72,600 a year, more dollars than any other group. But each gives under 2% of its own budget, so each has 1 weighted vote. Small churches like yours give fewer dollars but a larger share, and have 4 each.',
+      },
+      { title: 'Your turn', body: 'Vote however you like, then see the result.' },
+    ] }];
+  }
+  if (kind === 'spend') {
+    return [{ id: 'before:spend', pages: [
+      {
+        title: 'Many churches, small gifts',
+        body: 'Most churches support this campaign: the large churches and the small churches that give under 2%. The churches that give the largest share of their budgets, including yours, mostly oppose it.',
+      },
+      { title: 'Your turn', body: 'Vote however you like, then see the result.' },
+    ] }];
+  }
+  if (kind === 'impose') {
+    return [{ id: 'before:impose', pages: [
+      {
+        title: 'Your side this time',
+        body: 'This time the committed churches, including yours, support the proposal. Most other churches oppose it. Watch what Double Majority Voting does when the committed churches are the ones pushing.',
+      },
+      { title: 'Your turn', body: 'Vote however you like, then see the result.' },
+    ] }];
+  }
+  return null;
+}
+
+function storyAfter(b, next) {
+  const kind = ballotKind(b);
+  const r = b.result;
+  if (!r || r.kind !== 'motion') return null;
+  const n = motionNumbers(b);
+  const ways = { title: 'Counted different ways', body: 'The Counted different ways card on this result shows what each way of counting would have decided. Only Double Majority Voting counts both.', target: '.counted-ways' };
+  if (kind === 'agree') {
+    return [{ id: 'after:agree', pages: [
+      { title: 'What happened', body: `It passed both counts: ${n.cPct}% of churches and ${n.wPct}% of weighted votes voted Yes.` },
+      {
+        title: 'Most votes look like this',
+        body: 'When churches broadly agree, both counts give the same answer, and Double Majority Voting changes nothing. It matters only when the two counts disagree. The next three ballots show what happens then.',
+      },
+      ...next,
+    ] }];
+  }
+  if (kind === 'size') {
+    return [{ id: 'after:size', pages: [
+      { title: 'What happened', body: `It failed. Only ${n.cPct}% of churches and ${n.wPct}% of weighted votes voted Yes.` },
+      {
+        title: 'If dollars decided',
+        body: 'The churches voting Yes gave most of the dollars. If votes were counted by dollars, the large churches would have leased the office. Under Double Majority Voting, a large church has 1 church vote like every church, and weighted votes that reflect the share of its budget it gives, not its size.',
+      },
+      ways,
+      ...next,
+    ] }];
+  }
+  if (kind === 'spend') {
+    return [{ id: 'after:spend', pages: [
+      { title: 'What happened', body: `Most churches voted Yes (${n.cPct}% of the church count), but only ${n.wPct}% of weighted votes were Yes. It needed both, so it failed.` },
+      {
+        title: 'Why that is fair',
+        body: 'Counting churches alone, it would have passed. But the churches voting Yes give a small share of their budgets, and the money for this campaign comes mostly from churches that voted No. The weighted count keeps churches that give little from spending what others give.',
+      },
+      ways,
+      ...next,
+    ] }];
+  }
+  if (kind === 'impose') {
+    return [{ id: 'after:impose', pages: [
+      { title: 'What happened', body: `The weighted count was ${n.wPct}% Yes, but only ${n.cPct}% of churches voted Yes. It needed both, so it failed.` },
+      {
+        title: 'Your side lost, and that is the point',
+        body: 'Counting weighted votes alone, the committed churches, yours included, would have carried it. But most churches voted No. The church count keeps a few committed churches from overruling everyone else.',
+      },
+      ways,
+      ...next,
+    ] }];
+  }
+  return null;
 }
 
 export function chartsTips() {

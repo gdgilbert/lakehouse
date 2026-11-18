@@ -173,28 +173,25 @@ function TutorialEnd() {
   const [tut] = useData(() => api.getTutorial());
   const [session] = useData(() => api.getSession());
   const free = tut?.mode === 'free';
-  const tryIt = async () => {
+  const runIt = async () => {
     await api.resetDemo({ mode: 'free' });
     setStickyValue('delegate-tab', 'ballots');
     nav.reset('delegateHome', { churchId: session?.churchId });
   };
-  const guided = async () => {
+  const again = async () => {
     await api.resetDemo({ mode: 'path' });
     await api.signOut();
-    nav.reset('start');
+    nav.reset('intro');
   };
   return (
     <div className="tutorial-end">
-      <span className="eyebrow-sm">{free ? 'All ballots done' : 'End of the tutorial'}</span>
-      <h3>You have voted on every kind of ballot</h3>
-      <p>
-        {free
-          ? 'Go again with different results, or take the guided tutorial again.'
-          : 'Now try it yourself: vote on the same ballots and choose how each one comes out.'}
-      </p>
+      <span className="eyebrow-sm">{free ? 'All ballots done' : 'End of the ballots'}</span>
+      <h3>{free ? 'That was the last ballot' : 'You have seen both protections'}</h3>
+      <p>Finish for a short summary, run the ballots yourself and set how the other churches vote, or start the tutorial again.</p>
       <div className="btn-stack">
-        <button className="btn gold" onClick={tryIt}>{free ? 'Try it yourself again' : 'Try it yourself'}</button>
-        <button className="btn secondary end-secondary" onClick={guided}>{free ? 'Run the guided tutorial' : 'Run the guided tutorial again'}</button>
+        <button className="btn gold" onClick={() => nav.push('outro')}>Finish</button>
+        <button className="btn secondary end-secondary" onClick={runIt}>{free ? 'Run it yourself again' : 'Run it yourself'}</button>
+        <button className="btn secondary end-secondary" onClick={again}>Start the tutorial again</button>
       </div>
     </div>
   );
@@ -284,6 +281,38 @@ function countExplanation(ballot, church) {
   };
 }
 
+/** Run it yourself: set how each kind of church votes, then see the result. */
+function GroupVotes({ ballot }) {
+  const nav = useNav();
+  const [groups] = useData(() => api.getGroups());
+  const [choices, setChoices] = useState({ 'large-low': 'yes', 'small-low': 'yes', mid: 'split', 'small-high': 'no' });
+  const [busy, setBusy] = useState(false);
+  if (!groups) return null;
+  const go = async () => {
+    setBusy(true);
+    await api.demoFinishGroups(ballot.id, choices);
+    nav.replace('delegateBallot', { ballotId: ballot.id });
+  };
+  return (
+    <div className="demo-panel group-votes">
+      <p className="tiny" style={{ margin: 0, color: 'var(--amber)' }}>
+        Run it yourself. Choose how the other churches vote, then see the result.
+      </p>
+      {Object.entries(groups).map(([key, label]) => (
+        <div className="group-vote" key={key}>
+          <span>{label}</span>
+          <div className="segmented">
+            {[['yes', 'Yes'], ['no', 'No'], ['split', 'Split'], ['abstain', 'Abstain']].map(([v, l]) => (
+              <button key={v} className={choices[key] === v ? 'on' : ''} onClick={() => setChoices({ ...choices, [key]: v })}>{l}</button>
+            ))}
+          </div>
+        </div>
+      ))}
+      <button className="btn gold" disabled={busy} onClick={go}>{busy ? 'Counting…' : 'See the result'}</button>
+    </div>
+  );
+}
+
 function DemoResultsButton({ ballot }) {
   const nav = useNav();
   const [busy, setBusy] = useState(null);
@@ -307,10 +336,11 @@ function DemoResultsButton({ ballot }) {
       </div>
     );
   }
+  if (ballot.kind === 'motion' && ballot.countRule === 'both') return <GroupVotes ballot={ballot} />;
   return (
     <div className="demo-panel">
       <p className="tiny" style={{ margin: '0 0 8px', color: 'var(--amber)' }}>
-        Try it yourself. Fills in votes for the other churches and closes the ballot.
+        Run it yourself. Fills in votes for the other churches and closes the ballot.
         Choose how it comes out.
       </p>
       <div className="demo-choice">

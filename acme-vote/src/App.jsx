@@ -5,6 +5,7 @@ import Start from './screens/Start.jsx';
 import * as Delegate from './screens/Delegate.jsx';
 import * as Manager from './screens/Manager.jsx';
 import ResultDetails from './screens/ResultDetails.jsx';
+import { Intro, Outro } from './screens/Slides.jsx';
 import { FEATURES } from './features.js';
 
 const NAV_KEY = 'acme-vote-nav-v1';
@@ -27,6 +28,8 @@ const SCREENS = {
   commission: Manager.CommissionScreen,
   church: Manager.ChurchScreen,
   resultDetails: ResultDetails,
+  intro: Intro,
+  outro: Outro,
 };
 
 function StatusBar() {

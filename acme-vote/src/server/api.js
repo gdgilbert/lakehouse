@@ -12,9 +12,9 @@ import {
   evaluateElectionRound,
   evaluateMotion,
 } from './rules.js';
-import { MEASURING_YEAR, seedBallots, seedChurches } from './seed.js';
+import { GROUPS, MEASURING_YEAR, seedBallots, seedChurches } from './seed.js';
 
-const DB_KEY = 'acme-vote-db-v2'; // v2: simple demo codes 0000-0001 and up
+const DB_KEY = 'acme-vote-db-v3'; // v3: story churches and ballots
 const SESSION_KEY = 'acme-vote-session-v2';
 const CHANGE_EVENT = 'acme-vote-db-change';
 
@@ -100,7 +100,7 @@ export function subscribe(cb) {
 export async function resetDemo({ mode = 'path' } = {}) {
   const db = freshDb();
   db.demo.mode = mode;
-  if (mode === 'free') db.demo.tutorial.seen = ['start', 'signin', 'home', 'voted:first'];
+  if (mode === 'free') db.demo.tutorial.seen = ['start', 'signin', 'home', 'voted:first', 'charts'];
   save(db);
   return respond(true);
 }
@@ -386,37 +386,70 @@ function sessionRegion(db) {
 }
 
 // Each step opens one ballot of a different kind.
-// Elections follow the order in Bylaws Article XII, Section 15: the President,
-// then the Judicial Commission, then the At-Large Directors.
+// The tutorial's story ballots, in order. Each one opens when the one before it
+// closes. Their stories (see STORY_VOTES) show what Double Majority Voting does.
 const DEMO_STEPS = [
-  (db) => { // budget approval (VIII §7): both counts, majority
+  (db) => { // everyone agrees: passes both counts easily
     const b = db.ballots.find((x) => x.id === 'b-demo-2');
     if (b && b.status === 'draft') { b.status = 'open'; b.openedAt = Date.now(); return true; }
     return false;
   },
-  (db) => addMotion(db, { // amendment (XII §14): both counts, 75%
-    type: 'amendment', countRule: 'both', threshold: 'threeQuarters',
-    title: 'Amend Article VIII, Section 1',
-    description: 'Require the National Business Meeting to be held during the National Conference, rather than before, during, or after it.',
+  (db) => addMotion(db, { // size does not buy votes
+    story: 'size', type: 'spending', countRule: 'both', threshold: 'majority',
+    title: 'Lease a downtown office',
+    description: 'Spend $250,000 of reserves over five years to lease a downtown office for ACME staff.',
   }),
-  (db) => db.demo.mode !== 'path' && addMotion(db, { // procedural: church count only (free mode only)
-    type: 'procedural', countRule: 'church', threshold: 'majority',
-    title: 'Recess until 1:30 p.m.',
-    description: 'Recess for lunch and resume the business meeting at 1:30 p.m.',
+  (db) => addMotion(db, { // churches that give little cannot spend what others give
+    story: 'spend', type: 'spending', countRule: 'both', threshold: 'majority',
+    title: 'Fund an advertising campaign',
+    description: 'Spend $180,000 of next year\u2019s grant budget on a national radio and online advertising campaign for ACME.',
   }),
-  (db) => addMotion(db, { // President's third consecutive term (III §10(b)): two-thirds
-    type: 'election', countRule: 'both', threshold: 'twoThirds',
-    title: 'President: third consecutive term',
-    description: 'The Board of Directors has nominated Thomas Avery, who is completing his second consecutive term as President. Under Article III, Section 10(b), election to a third consecutive term requires two-thirds of the votes cast.',
-  }),
-  (db) => { // Judicial Commission slate (IV §2)
-    const c = createCommissionInDb(db, ['Richard Hale', 'Kevin Ortiz', 'Gregory Lane', 'Martin Cho', 'Edward Banks']);
-    openSlateInDb(db, c);
-  },
-  (db) => addElection(db, { // At-Large Director (III §3, VIII §6), three nominees presented by the President
-    office: 'At-Large Director, Seat 1', names: ['Andrew Mills', 'Jonathan Pierce', 'Timothy Walsh'],
+  (db) => addMotion(db, { // committed churches cannot overrule most churches
+    story: 'impose', type: 'spending', countRule: 'both', threshold: 'majority',
+    title: 'Give the conference budget to missions',
+    description: 'Cancel the next National Conference and give its $200,000 budget to missionary grants instead.',
   }),
 ];
+
+// How the other churches vote on each story ballot in the guided tutorial.
+// (w = the church's weighted votes.) The margins are wide enough that the
+// delegate's own vote, whatever it is, does not change the outcome.
+const STORY_VOTES = {
+  procedural: (c) => (['c07', 'c17'].includes(c.id) ? 'no' : 'yes'),
+  // passes both counts
+  agree: (c) => (c.id === 'c07' ? 'no' : c.id === 'c15' ? 'abstain' : 'yes'),
+  // the large churches and their allies give the most dollars, but lose both counts
+  size: (c, w) => (c.group === 'large-low' ? 'yes' : c.group === 'small-high' ? 'no'
+    : c.group === 'mid' ? (w === 2 ? 'yes' : 'no') : (['c04', 'c07'].includes(c.id) ? 'yes' : 'no')),
+  // most churches vote Yes, but they give little: passes the church count, fails the weighted count
+  spend: (c, w) => (c.group === 'small-high' ? 'no' : c.group === 'mid' ? (w === 2 ? 'yes' : 'no') : 'yes'),
+  // the committed churches vote Yes: passes the weighted count, fails the church count
+  impose: (c, w) => (c.group === 'small-high' ? 'yes' : c.group === 'mid' ? (w === 3 ? 'yes' : 'no') : 'no'),
+};
+
+/** Run it yourself: fill in the other churches' votes by group, then close the ballot.
+ *  choices: { [group]: 'yes' | 'no' | 'split' | 'abstain' } */
+export async function demoFinishGroups(ballotId, choices) {
+  return respond(
+    mutate((db) => {
+      const b = db.ballots.find((x) => x.id === ballotId);
+      if (!b || b.status !== 'open') return null;
+      const seen = {};
+      for (const c of db.churches) {
+        if (!eligible(c, b.region) || b.votes[c.id]) continue;
+        const pick = choices[c.group] || 'abstain';
+        seen[c.group] = (seen[c.group] || 0) + 1;
+        const choice = pick === 'split' ? (seen[c.group] % 2 ? 'yes' : 'no') : pick;
+        b.votes[c.id] = { choice, weight: churchWeight(c).votes, at: Date.now(), receipt: receiptCode() };
+      }
+      return closeInDb(db, b);
+    })
+  );
+}
+
+export async function getGroups() {
+  return respond(GROUPS);
+}
 
 const FLOOR_NAMES = ['Scott Turner', 'Brian Kelly', 'Adam Ross', 'Ryan Hughes', 'Neil Foster'];
 
@@ -523,6 +556,14 @@ export async function demoFinishBallot(ballotId, target = 'pass', favoredChoice 
     mutate((db) => {
       const b = db.ballots.find((x) => x.id === ballotId);
       if (!b || b.status !== 'open') return null;
+      if (target === 'script' && STORY_VOTES[b.story]) {
+        for (const c of db.churches) {
+          if (!eligible(c, b.region) || b.votes[c.id]) continue;
+          const w = churchWeight(c).votes;
+          b.votes[c.id] = { choice: STORY_VOTES[b.story](c, w), weight: w, at: Date.now(), receipt: receiptCode() };
+        }
+        return closeInDb(db, b);
+      }
       if (target === 'script') target = scriptedTarget(b);
       const remaining = db.churches.filter((c) => eligible(c, b.region) && !b.votes[c.id]);
       const choices = choiceList(b);
@@ -634,6 +675,8 @@ export async function getBallotDetails(id) {
         name: c.name,
         region: c.region,
         weight: v ? v.weight : churchWeight(c).votes,
+        contributions: c.contributions,
+        group: c.group,
         choice: v ? v.choice : null, // null = did not vote
       };
     });

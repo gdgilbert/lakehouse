@@ -25,20 +25,25 @@ A built copy is committed in `acme-vote/demo/`, so the demo can be served withou
 
 ## Using the demo
 
-**The app currently runs as a tutorial.** The Manager role is hidden. The app itself is styled as a plain ACME delegate voting app; the first tip says it is a tutorial on Double Majority Voting. The opening screen has one button, **Start the tutorial**, which signs you in as the delegate for Grace Fellowship Church and walks you through every kind of ballot. Tip cards appear at each step (**Got it** shrinks a card to a chip you can tap to reread it while you stay on that screen): first telling you what to do, then explaining how each ballot is counted, then explaining what just happened and why the rule is useful. Each tip appears once.
+**The app currently runs as a tutorial on Double Majority Voting.** The Manager role is hidden. The app is styled as a plain ACME delegate voting app; the first tip says it is a tutorial.
 
-The guided tutorial follows a set path. After you vote, **See the result** fills in the other churches' votes so that each ballot shows a particular case:
+1. **Opening slideshow.** **Start the tutorial** plays a short slideshow, moved along with one button, using five of the sample churches: one church, one vote; votes by dollars; weighted votes by commitment; counting both; and why either count alone can be unfair. **Skip** goes straight to the ballots.
+2. **Ballots.** You sign in as the delegate for Grace Fellowship Church (a small church that gives 4.5% of its budget, so 4 weighted votes) and vote on five ballots. After each vote, **See the result** fills in the other churches' votes so each ballot tells a story:
 
-1. Adopt the agenda (church count only): passes.
-2. Approve next year's budget (both counts, Bylaws VIII §7): passes the church count but fails the weighted count.
-3. Amend Article VIII, Section 1 (75% in both counts, XII §14): passes both.
-4. President's third consecutive term (two-thirds in both counts, III §10(b)): a majority votes Yes but it falls short of two-thirds.
-5. Judicial Commission slate (IV §2): passes.
-6. At-Large Director, Seat 1 (III §3, VIII §6): no one elected on ballot 1, the runoff splits between the two counts, and ballot 3 is decided by combined score.
+   | Ballot | Story | Church count | Weighted | By dollars | Double Majority Voting |
+   |---|---|---|---|---|---|
+   | Adopt the agenda | Procedural: one church, one vote | passes | | | passes |
+   | Approve next year's budget | When churches agree, nothing changes | passes | passes | passes | passes |
+   | Lease a downtown office | Size does not buy votes | fails | fails | passes | fails |
+   | Fund an advertising campaign | Churches that give little cannot spend what others give | passes | fails | passes | fails |
+   | Give the conference budget to missions | Committed churches cannot overrule everyone else | fails | passes | fails | fails |
 
-Elections come in the order set by Bylaws XII §15: the President, then the Judicial Commission, then the At-Large Directors. Only business of the National Business Meeting (VIII §4) appears; Regional elections such as Regional Director and Moderator happen at Regional Business Meetings and are not part of the tutorial.
+   The outcomes hold whatever the delegate votes. Each two-count result has a **Counted different ways** card showing what one church, one vote; weighted votes only; votes by dollars; and Double Majority Voting would each decide, with a sentence on what the difference shows.
+3. **End.** After the last ballot: **Finish** (a short closing slideshow: what you saw, big does not mean powerful, commitment is a choice, and a closing line), **Run it yourself** (the same ballots, where you set how each kind of church votes: large churches giving under 2%, small churches giving under 2%, mid-size churches giving 2% to 4%, small churches giving 4% or more), or **Start the tutorial again**.
 
-The exact numbers vary from run to run, but each outcome is fixed. At the end, **Try it yourself** runs the same ballots again with a choice of result on each (**Demo pass** / **Demo fail**, or **Someone elected** / **No one elected**), and **Run the guided tutorial again** starts the path over. The **minimize** button (top right of a card) shrinks it to a small **Tip** chip where you tapped, so you can see the screen. Tap the chip to reopen the tip on the same page, or drag it out of the way. An open tip card can be moved by dragging the grip bar along its top edge. **Hide tips** on any card turns them off; the **My church** tab can turn them back on or start the guided tutorial over.
+The sample churches are grouped to make these stories clear (see `GROUPS` in `src/server/seed.js`); the votes for each story are set in `STORY_VOTES` in `src/server/api.js`.
+
+Tip cards appear at each step (**Got it** shrinks a card to a chip you can tap to reread it while you stay on that screen). Each tip appears once. The **minimize** button shrinks a card to a chip where you tapped; tap the chip to reopen it, or drag it out of the way. An open tip card can be moved by dragging the grip bar along its top edge. **Hide tips** turns them off; the **My church** tab can turn them back on or start the tutorial over.
 
 If the page reloads (for example, when a new version is published or the phone reloads the tab), the app returns to the screen you were on, and an open tip returns to the page you were reading.
 
@@ -60,8 +65,8 @@ The opening screen asks you to choose a role: **Delegate** or **Manager**. This 
 
 - Sign in with the church's delegate code. The sample churches use 0000-0001 through 0000-0017. Tap **Show demo codes** to see which code belongs to which church.
 - The **Ballots** tab lists open ballots. Each ballot explains how the church's vote counts: on a church-count-only ballot, every church has a single vote whatever its weight; on a ballot that must pass both counts, the church casts 1 vote in the church count and its full weight in the weighted count. The delegate chooses one option (or abstains), reviews it, and submits it by pressing and holding the submit button for two seconds (the button fills while held; letting go early cancels). A vote cannot be changed after it is submitted. The app shows a receipt number.
-- After voting, the demo-only buttons **Demo pass** and **Demo fail** (on an election, **Someone elected** and **No one elected**) fill in votes for the other churches and close the ballot, so a delegate can see a result without switching to the manager. The votes are random but steered to the chosen outcome. A failing two-count motion is set up, when possible, to pass the church count and fail the weighted count. A failing election is set up, when possible, as a split between the two counts. The manager has the same buttons on an open ballot.
-- **Sample ballot sequence.** When a ballot closes, the demo opens the next sample ballot, each of a different kind, and a **Ballot open** bar appears at the top of every delegate screen until the church votes on it. The order is: adopt the agenda (procedural, church count only), approve the budget (both counts, majority), an amendment (both counts, 75%), a recess (procedural; Try it yourself only), a President's third consecutive term (two-thirds), the Judicial Commission slate (and, if it fails, the five seats one at a time), and an At-Large Director seat with three nominees. An undecided election goes straight to its next ballot: runoff, ballot 3, ballot 4. Turn this off in the manager's Settings tab.
+- After voting, **See the result** (guided tutorial) or the group controls (Run it yourself) fill in the other churches' votes and close the ballot, so a delegate sees a result without a manager. The Manager screens, when turned on, can record votes for any church.
+- **Ballot sequence.** When a ballot closes, the next story ballot opens, and a **Ballot open** bar appears at the top of every delegate screen until the church votes on it.
 - Every result has a **Charts and details** link with four views: **Overview** (both counts against the threshold, and why they differ), **Church** (the church count, including by Region), **Weighted** (the weighted count, how churches with 1, 2, 3 and 4 weighted votes voted, and by Region), and **Churches** (every church's vote and weight). Tapping the **Church count** or **Weighted count** card on a result opens that view directly. Church-count-only ballots have no Weighted view.
 - Whenever a ballot is open that the church has not voted on, a **Ballot open** bar sits under the header on every delegate screen (except that ballot's own screen); tapping it goes to the ballot. A finished ballot's result is shown in one box.
 - The bottom buttons (**Ballots**, **Results**, **My church**) stay on every delegate screen; **Ballots** is home, listing open ballots and then completed ones. Back goes up one level (stats to result, result to home) rather than retracing every screen visited.

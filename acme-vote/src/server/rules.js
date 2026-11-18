@@ -33,6 +33,7 @@ export const BALLOT_TYPES = {
   budget: { label: 'Budget approval', countRule: 'both', threshold: 'majority' },
   amendment: { label: 'Amendment', countRule: 'both', threshold: 'threeQuarters' },
   procedural: { label: 'Procedural motion', countRule: 'church', threshold: 'majority' },
+  spending: { label: 'Spending motion', countRule: 'both', threshold: 'majority' },
 };
 
 // ---------------------------------------------------------------------------

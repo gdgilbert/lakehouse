@@ -24,7 +24,7 @@ export default function Start() {
         <p>Association of Churches for Missions &amp; Evangelism</p>
       </div>
       <div className="panel">
-        <button className="btn gold start-btn" onClick={() => nav.push('delegateSignIn')}>Start the tutorial</button>
+        <button className="btn gold start-btn" onClick={() => nav.push('intro')}>Start the tutorial</button>
         {FEATURES.manager && (
           <button className="role-card" style={{ marginTop: 14 }} onClick={manager}>
             <span className="ico"><Icon name="gavel" size={22} /></span>
