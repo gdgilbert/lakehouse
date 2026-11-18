@@ -8,7 +8,7 @@ import ResultDetails from './screens/ResultDetails.jsx';
 import { Intro, Outro } from './screens/Slides.jsx';
 import { FEATURES } from './features.js';
 
-const NAV_KEY = 'acme-vote-nav-v1';
+const NAV_KEY = 'acme-vote-nav-v2'; // v2: story ballots (older saved screens point at ballots that no longer exist)
 
 // Depth of each delegate screen, for Back (see nav.push below).
 const LEVELS = { delegateHome: 1, delegateBallot: 2, delegateReceipt: 2, resultDetails: 3 };
