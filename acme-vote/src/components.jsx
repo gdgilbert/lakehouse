@@ -488,16 +488,16 @@ export function NextBallot({ currentId, churchId, screen }) {
 
 /**
  * The same votes counted four ways, to show why Double Majority Voting counts
- * both: each single count, votes by dollars given, and Double Majority Voting.
+ * both: each single count, and Double Majority Voting.
  */
 export function CountedWays({ ballot }) {
   const r = ballot.result;
   const verdict = (ok) => <span className={`chip ${ok ? 'green' : 'red'}`}>{ok ? 'Passes' : 'Fails'}</span>;
   let lesson;
   if (r.churchPass && !r.weightedPass) {
-    lesson = 'Counting churches alone, this would have passed, though the churches voting Yes give a small share of their budgets. The weighted count keeps churches that give little from outvoting the churches that give much.';
+    lesson = 'Counting churches alone, this would have passed, though the churches voting Yes give a small share of their budgets. The weighted count keeps churches at lower commitment levels from outvoting churches at higher levels.';
   } else if (r.weightedPass && !r.churchPass) {
-    lesson = 'Counting weighted votes alone, this would have passed, though most churches voted No. The church count keeps a few committed churches from overruling everyone else.';
+    lesson = 'Counting weighted votes alone, this would have passed, though most churches voted No. The church count keeps a few churches at higher commitment levels from overruling everyone else.';
   } else if (ballot.story === 'size' && !r.passed) {
     lesson = 'The three largest churches backed this. Size counted for nothing: each had one church vote, and one weighted vote because each gives under 2% of its budget.';
   } else {

@@ -282,8 +282,8 @@ function Example({ yes, label }) {
 function VizWhyBoth({ step }) {
   return (
     <div className="slide-examples">
-      {step >= 1 && <Example yes={['Emmanuel', 'Covenant', 'Hope']} label="Three churches that give less vote Yes" />}
-      {step >= 2 && <Example yes={['Harbor', 'Grace']} label="Two churches that give more vote Yes" />}
+      {step >= 1 && <Example yes={['Emmanuel', 'Covenant', 'Hope']} label="Three churches at lower commitment levels vote Yes" />}
+      {step >= 2 && <Example yes={['Harbor', 'Grace']} label="Two churches at higher commitment levels vote Yes" />}
     </div>
   );
 }
@@ -353,7 +353,7 @@ const INTRO = [
     steps: [
       ['The simplest answer: every church gets one vote, large or small.'],
       ['That presses every church down to the same size…'],
-      ['…and counts it the same, whether it gives a little or a lot to the work they share.'],
+      ['…and counts it the same, however much of its budget it gives to the shared work.'],
     ],
     viz: (step) => <VizOneVote step={step} />,
   },
@@ -361,7 +361,7 @@ const INTRO = [
     title: 'Who gives the most?',
     steps: [
       ['Counted in dollars, the large churches give the most.'],
-      ['But every church gives out of its own budget.', { t: 'Measured against what each church has, the order turns over: the smallest church gives the most.', delay: 4400 }],
+      ['But every church gives out of its own budget.', { t: 'Measured against what each church has, the order turns over: the smallest church gives the largest share.', delay: 4400 }],
     ],
     viz: (step) => <VizGivers step={step} />,
   },
@@ -383,8 +383,8 @@ const INTRO = [
     title: 'Why both?',
     steps: [
       ['Either count alone can be unfair.'],
-      ['Counting churches alone, churches that give little can outvote those that give much.'],
-      ['Counting weight alone, a few committed churches can outvote everyone else.'],
+      ['Counting churches alone, churches at lower commitment levels can outvote churches at higher levels.'],
+      ['Counting weight alone, a few churches at higher commitment levels can outvote everyone else.'],
       ['Together, neither group can decide for the other.'],
     ],
     viz: (step) => <VizWhyBoth step={step} />,
@@ -395,7 +395,7 @@ const INTRO = [
       ['Now three very different churches vote Yes: the two largest, and the smallest.'],
       ['Together they make a majority of the church count: 3 of 5.'],
       ['And together they make a majority of the weighted count: 6 of 11.'],
-      ['Large and small, giving little and giving much, they agree. It wins both counts, so it passes.'],
+      ['Large and small, at the lowest commitment level and the highest, they agree. It wins both counts, so it passes.'],
     ],
     viz: (step) => <VizDoublePass step={step} />,
   },
@@ -413,8 +413,8 @@ const INTRO = [
 const LESSONS = [
   ['When churches agree, both counts agree.', 'The budget passed easily.'],
   ['Size does not buy votes.', 'The three largest churches wanted the office. Each had one church vote and one weighted vote, like any church that gives under 2%.'],
-  ['Churches that give little cannot outvote those that give much.', 'Counting churches alone, the ad campaign would have passed. The weighted count stopped it.'],
-  ['Committed churches cannot overrule everyone else.', 'Counting weight alone, the conference money would have gone to missions. The church count stopped it.'],
+  ['Churches at lower commitment levels cannot outvote churches at higher levels.', 'Counting churches alone, the ad campaign would have passed. The weighted count stopped it.'],
+  ['Churches at higher commitment levels cannot overrule everyone else.', 'Counting weight alone, the conference money would have gone to missions. The church count stopped it.'],
 ];
 
 function VizLessons({ step }) {
@@ -512,7 +512,7 @@ const OUTRO = [
   },
   {
     title: 'If every church gave 4%',
-    steps: [['Here are the five churches as they are.'], ['Now every church gives more, until each gives 4% and has 4 weighted votes.'], ['Equal weight is one church, one vote again.']],
+    steps: [['Here are the five churches as they are.'], ['Now every church gives a larger share of its budget, until each gives 4% and has 4 weighted votes.'], ['Equal weight is one church, one vote again.']],
     viz: (step) => <VizEveryone step={step} />,
   },
   {

@@ -399,12 +399,12 @@ const DEMO_STEPS = [
     title: 'Lease a downtown office',
     description: 'Spend $250,000 of reserves over five years to lease a downtown office for ACME staff.',
   }),
-  (db) => addMotion(db, { // churches that give little cannot spend what others give
+  (db) => addMotion(db, { // churches at lower commitment levels cannot outvote those at higher levels
     story: 'spend', delegateChoice: 'no', type: 'spending', countRule: 'both', threshold: 'majority',
     title: 'Fund an advertising campaign',
     description: 'Spend $180,000 of next year\u2019s grant budget on a national radio and online advertising campaign for ACME.',
   }),
-  (db) => addMotion(db, { // committed churches cannot overrule most churches
+  (db) => addMotion(db, { // churches at higher commitment levels cannot overrule most churches
     story: 'impose', delegateChoice: 'yes', type: 'spending', countRule: 'both', threshold: 'majority',
     title: 'Give the conference budget to missions',
     description: 'Cancel the next National Conference and give its $200,000 budget to missionary grants instead.',
@@ -423,7 +423,7 @@ const STORY_VOTES = {
     : c.group === 'mid' ? (w === 2 ? 'yes' : 'no') : (['c04', 'c07'].includes(c.id) ? 'yes' : 'no')),
   // most churches vote Yes, but they give little: passes the church count, fails the weighted count
   spend: (c, w) => (c.group === 'small-high' ? 'no' : c.group === 'mid' ? (w === 2 ? 'yes' : 'no') : 'yes'),
-  // the committed churches vote Yes: passes the weighted count, fails the church count
+  // the churches at higher commitment levels vote Yes: passes the weighted count, fails the church count
   impose: (c, w) => (c.group === 'small-high' ? 'yes' : c.group === 'mid' ? (w === 3 ? 'yes' : 'no') : 'no'),
 };
 

@@ -37,8 +37,8 @@ A **Full screen** button on the opening screen and the slideshow hides the brows
    | Adopt the agenda | Procedural: one church, one vote | Yes | passes | | passes |
    | Approve next year's budget | When churches agree, nothing changes | Yes | passes | passes | passes |
    | Lease a downtown office | Size does not buy votes | No | fails | fails | fails |
-   | Fund an advertising campaign | Churches that give little cannot outvote those that give much | No | passes | fails | fails |
-   | Give the conference budget to missions | Committed churches cannot overrule everyone else | Yes | fails | passes | fails |
+   | Fund an advertising campaign | Churches at lower commitment levels cannot outvote churches at higher levels | No | passes | fails | fails |
+   | Give the conference budget to missions | Churches at higher commitment levels cannot overrule everyone else | Yes | fails | passes | fails |
 
    In this first run-through the delegate is asked to vote as shown, so each ballot tells its story; tapping another answer does not select it; a short note asks for the needed vote and explains that Run it yourself is open afterward. Each two-count result has a **Counted different ways** card showing what one church, one vote and weighted votes alone would each decide next to Double Majority Voting, with a sentence on what the difference shows.
 3. **End.** After the last ballot: **Finish** (a short closing slideshow: what you saw, big does not mean powerful, commitment is a choice, what happens if every church gives 4% or more (the weighted count becomes one church, one vote again), and a closing line), **Run it yourself** (the same ballots; vote however you like, and the other churches vote at random, so results differ each run), or **Start the tutorial again**.

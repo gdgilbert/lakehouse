@@ -364,7 +364,7 @@ export function resultTips(b, { hasNext, mode = 'path' }) {
       { title: 'What happened', body: bothCountsSentence(b) },
       {
         title: 'Why a double majority',
-        body: 'Each count guards against a different problem. The church count keeps a small group of churches from deciding the fellowship’s spending over the objection of most churches. The weighted count keeps a majority of churches from directing money that comes mostly from others.',
+        body: 'Each count guards against a different problem. The church count keeps a small group of churches from deciding the fellowship’s spending over the objection of most churches. The weighted count keeps churches at lower commitment levels from outvoting churches at higher levels.',
       },
       {
         title: 'What a double majority means',
@@ -521,7 +521,7 @@ function storyBefore(b, church) {
     return [{ id: 'before:impose', pages: [
       {
         title: 'Your side this time',
-        body: 'This time the committed churches, including yours, support the proposal. Most other churches oppose it. Watch what Double Majority Voting does when the committed churches are the ones pushing.',
+        body: 'This time the churches at higher commitment levels, including yours, support the proposal. Most other churches oppose it. Watch what Double Majority Voting does when the churches at higher commitment levels are the ones pushing.',
       },
       { title: 'Your turn', body: 'Grace Fellowship supports giving this money to missions. Vote Yes, then see the result.' },
     ] }];
@@ -561,7 +561,7 @@ function storyAfter(b, next) {
       { title: 'What happened', body: `Most churches voted Yes (${n.cPct}% of the church count), but only ${n.wPct}% of weighted votes were Yes. It needed both, so it failed.` },
       {
         title: 'Why that is fair',
-        body: 'Counting churches alone, it would have passed. But the churches voting Yes give a small share of their budgets, and the money for this campaign comes mostly from churches that voted No. The weighted count keeps churches that give little from spending what others give.',
+        body: 'Counting churches alone, it would have passed. But the churches voting Yes give a small share of their budgets, and the churches that give the largest share mostly voted No. The weighted count keeps churches at lower commitment levels from outvoting churches at higher levels.',
       },
       ways,
       ...next,
@@ -572,7 +572,7 @@ function storyAfter(b, next) {
       { title: 'What happened', body: `The weighted count was ${n.wPct}% Yes, but only ${n.cPct}% of churches voted Yes. It needed both, so it failed.` },
       {
         title: 'Your side lost, and that is the point',
-        body: 'Counting weighted votes alone, the committed churches, yours included, would have carried it. But most churches voted No. The church count keeps a few committed churches from overruling everyone else.',
+        body: 'Counting weighted votes alone, the churches at higher commitment levels, yours included, would have carried it. But most churches voted No. The church count keeps a few churches at higher commitment levels from overruling everyone else.',
       },
       ways,
       ...next,
