@@ -23,7 +23,7 @@ const C = (id, name, city, region, delegate, budget, contributions, opts = {}) =
 //   small-low   small churches that give under 2% [1 each]
 //   mid         mid-size churches that give 2% to under 4% [2 or 3]
 //   small-high  small churches that give 4% or more [4 each]
-// The three large churches give the most dollars, but the fewest weighted votes.
+// The three large churches have the biggest budgets, but the fewest weighted votes.
 export const GROUPS = {
   'large-low': 'Large churches giving under 2%',
   'small-low': 'Small churches giving under 2%',
@@ -59,6 +59,7 @@ export function seedBallots() {
     {
       id: 'b-demo-1',
       story: 'procedural',
+      delegateChoice: 'yes',
       kind: 'motion',
       type: 'procedural',
       title: 'Adopt the agenda',
@@ -73,6 +74,7 @@ export function seedBallots() {
     {
       id: 'b-demo-2',
       story: 'agree',
+      delegateChoice: 'yes',
       kind: 'motion',
       type: 'budget',
       title: 'Approve next year\u2019s budget',

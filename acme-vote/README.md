@@ -27,19 +27,19 @@ A built copy is committed in `acme-vote/demo/`, so the demo can be served withou
 
 **The app currently runs as a tutorial on Double Majority Voting.** The Manager role is hidden. The app is styled as a plain ACME delegate voting app; the first tip says it is a tutorial.
 
-1. **Opening slideshow.** **Start the tutorial** plays a short slideshow, moved along with one button, using five of the sample churches: one church, one vote; votes by dollars; weighted votes by commitment; counting both; and why either count alone can be unfair. **Skip** goes straight to the ballots.
+1. **Opening slideshow.** **Start the tutorial** plays a short slideshow, moved along with one button, using five of the sample churches: their sizes, one church, one vote, how much of its budget each gives, weighted votes by commitment, counting both, and animated examples of why either count alone can be unfair. **Skip** goes straight to the ballots.
 2. **Ballots.** You sign in as the delegate for Grace Fellowship Church (a small church that gives 4.5% of its budget, so 4 weighted votes) and vote on five ballots. After each vote, **See the result** fills in the other churches' votes so each ballot tells a story:
 
-   | Ballot | Story | Church count | Weighted | By dollars | Double Majority Voting |
+   | Ballot | Story | Grace votes | Church count | Weighted | Double Majority Voting |
    |---|---|---|---|---|---|
-   | Adopt the agenda | Procedural: one church, one vote | passes | | | passes |
-   | Approve next year's budget | When churches agree, nothing changes | passes | passes | passes | passes |
-   | Lease a downtown office | Size does not buy votes | fails | fails | passes | fails |
-   | Fund an advertising campaign | Churches that give little cannot spend what others give | passes | fails | passes | fails |
-   | Give the conference budget to missions | Committed churches cannot overrule everyone else | fails | passes | fails | fails |
+   | Adopt the agenda | Procedural: one church, one vote | Yes | passes | | passes |
+   | Approve next year's budget | When churches agree, nothing changes | Yes | passes | passes | passes |
+   | Lease a downtown office | Size does not buy votes | No | fails | fails | fails |
+   | Fund an advertising campaign | Churches that give little cannot outvote those that give much | No | passes | fails | fails |
+   | Give the conference budget to missions | Committed churches cannot overrule everyone else | Yes | fails | passes | fails |
 
-   The outcomes hold whatever the delegate votes. Each two-count result has a **Counted different ways** card showing what one church, one vote; weighted votes only; votes by dollars; and Double Majority Voting would each decide, with a sentence on what the difference shows.
-3. **End.** After the last ballot: **Finish** (a short closing slideshow: what you saw, big does not mean powerful, commitment is a choice, and a closing line), **Run it yourself** (the same ballots, where you set how each kind of church votes: large churches giving under 2%, small churches giving under 2%, mid-size churches giving 2% to 4%, small churches giving 4% or more), or **Start the tutorial again**.
+   In this first run-through the delegate is asked to vote as shown, so each ballot tells its story; choosing otherwise brings up a short note explaining why and that Run it yourself is open afterward. Each two-count result has a **Counted different ways** card showing what one church, one vote and weighted votes alone would each decide next to Double Majority Voting, with a sentence on what the difference shows.
+3. **End.** After the last ballot: **Finish** (a short closing slideshow: what you saw, big does not mean powerful, commitment is a choice, what happens if every church gives 4% or more (the weighted count becomes one church, one vote again), and a closing line), **Run it yourself** (the same ballots, where you set how each kind of church votes: large churches giving under 2%, small churches giving under 2%, mid-size churches giving 2% to 4%, small churches giving 4% or more), or **Start the tutorial again**.
 
 The sample churches are grouped to make these stories clear (see `GROUPS` in `src/server/seed.js`); the votes for each story are set in `STORY_VOTES` in `src/server/api.js`.
 

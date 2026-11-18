@@ -465,33 +465,20 @@ export function NextBallot({ currentId, churchId, screen }) {
  * both: each single count, votes by dollars given, and Double Majority Voting.
  */
 export function CountedWays({ ballot }) {
-  const [d] = useData(() => api.getBallotDetails(ballot.id), [ballot.id]);
-  if (!d || !d.rows) return null;
   const r = ballot.result;
-  const cast = d.rows.filter((x) => x.choice === 'yes' || x.choice === 'no');
-  const yes = cast.filter((x) => x.choice === 'yes');
-  const sumBy = (list, f) => list.reduce((t, x) => t + f(x), 0);
-  const dYes = sumBy(yes, (x) => x.contributions || 0);
-  const dCast = sumBy(cast, (x) => x.contributions || 0);
-  const dPass = THRESHOLDS[ballot.threshold].test(dYes, dCast);
-  const dPct = dCast ? (dYes / dCast) * 100 : 0;
   const verdict = (ok) => <span className={`chip ${ok ? 'green' : 'red'}`}>{ok ? 'Passes' : 'Fails'}</span>;
-
   let lesson;
   if (r.churchPass && !r.weightedPass) {
-    lesson = 'Counting churches alone, this would have passed, though the churches voting Yes give a small share of their budgets. The weighted count keeps churches that give little from spending what others give.';
+    lesson = 'Counting churches alone, this would have passed, though the churches voting Yes give a small share of their budgets. The weighted count keeps churches that give little from outvoting the churches that give much.';
   } else if (r.weightedPass && !r.churchPass) {
     lesson = 'Counting weighted votes alone, this would have passed, though most churches voted No. The church count keeps a few committed churches from overruling everyone else.';
-  } else if (dPass !== r.passed) {
-    lesson = dPass
-      ? 'Counted by dollars, the largest churches would have decided this. Under Double Majority Voting each has one church vote and weighted votes that match the share of its budget it gives, not its size.'
-      : 'Counted by dollars, this would have failed, because the largest churches voted No. Under Double Majority Voting, size alone does not decide.';
+  } else if (ballot.story === 'size' && !r.passed) {
+    lesson = 'The three largest churches backed this. Size counted for nothing: each had one church vote, and one weighted vote because each gives under 2% of its budget.';
   } else {
     lesson = r.passed
-      ? 'Every method gives the same answer: it passes. When churches broadly agree, Double Majority Voting changes nothing.'
-      : 'Every method gives the same answer: it fails.';
+      ? 'Both counts give the same answer: it passes. When churches broadly agree, Double Majority Voting changes nothing.'
+      : 'Both counts give the same answer: it fails.';
   }
-
   return (
     <div className="counted-ways">
       <h3>Counted different ways</h3>
@@ -502,10 +489,6 @@ export function CountedWays({ ballot }) {
       <div className="cw-row">
         <span>Weighted votes only<span className="cw-sub">{fmt(r.weightedYesPct)}% of weighted votes were Yes</span></span>
         {verdict(r.weightedPass)}
-      </div>
-      <div className="cw-row">
-        <span>Votes by dollars given<span className="cw-sub">Yes churches gave {fmt(dPct)}% of the dollars</span></span>
-        {verdict(dPass)}
       </div>
       <div className="cw-row dmv">
         <span><b>Double Majority Voting</b><span className="cw-sub">Needs both the church count and the weighted count</span></span>

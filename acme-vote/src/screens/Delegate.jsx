@@ -375,6 +375,8 @@ export function BallotScreen({ ballotId }) {
   const mode = tut?.mode || 'path';
   if (!ballot || !church) return <div className="screen"><AppBar title="Ballot" /></div>;
   const hasNext = (allBallots || []).some((x) => x.status === 'open' && x.id !== ballot.id && x.eligible && !x.myVote);
+  // The guided run asks for the vote each story needs.
+  const guidedWrong = mode === 'path' && ballot.delegateChoice && choice && choice !== ballot.delegateChoice;
   const tips = ballot.status === 'closed'
     ? (ballot.result && allBallots ? resultTips(ballot, { hasNext, mode }) : [])
     : ballot.myVote ? afterVoteTips(ballot, mode) : beforeVoteTips(ballot, church, mode);
@@ -462,7 +464,14 @@ export function BallotScreen({ ballotId }) {
               <Choice label="Abstain" desc="An abstention is not counted as a vote cast."
                 selected={choice === 'abstain'} onClick={() => setChoice('abstain')} />
             </div>
-            <button className="btn gold" style={{ marginTop: 18 }} disabled={!choice} onClick={() => setConfirming(true)}>
+            {guidedWrong && (
+              <div className="guide-note" role="status">
+                <b>For this first run-through, please vote {choiceLabel(ballot, ballot.delegateChoice)}.</b>{' '}
+                That lets this ballot show its part of the story. When you finish, you can run the ballots again
+                and vote however you like.
+              </div>
+            )}
+            <button className="btn gold" style={{ marginTop: 18 }} disabled={!choice || guidedWrong} onClick={() => setConfirming(true)}>
               Review vote
             </button>
           </>

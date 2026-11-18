@@ -395,17 +395,17 @@ const DEMO_STEPS = [
     return false;
   },
   (db) => addMotion(db, { // size does not buy votes
-    story: 'size', type: 'spending', countRule: 'both', threshold: 'majority',
+    story: 'size', delegateChoice: 'no', type: 'spending', countRule: 'both', threshold: 'majority',
     title: 'Lease a downtown office',
     description: 'Spend $250,000 of reserves over five years to lease a downtown office for ACME staff.',
   }),
   (db) => addMotion(db, { // churches that give little cannot spend what others give
-    story: 'spend', type: 'spending', countRule: 'both', threshold: 'majority',
+    story: 'spend', delegateChoice: 'no', type: 'spending', countRule: 'both', threshold: 'majority',
     title: 'Fund an advertising campaign',
     description: 'Spend $180,000 of next year\u2019s grant budget on a national radio and online advertising campaign for ACME.',
   }),
   (db) => addMotion(db, { // committed churches cannot overrule most churches
-    story: 'impose', type: 'spending', countRule: 'both', threshold: 'majority',
+    story: 'impose', delegateChoice: 'yes', type: 'spending', countRule: 'both', threshold: 'majority',
     title: 'Give the conference budget to missions',
     description: 'Cancel the next National Conference and give its $200,000 budget to missionary grants instead.',
   }),
@@ -418,7 +418,7 @@ const STORY_VOTES = {
   procedural: (c) => (['c07', 'c17'].includes(c.id) ? 'no' : 'yes'),
   // passes both counts
   agree: (c) => (c.id === 'c07' ? 'no' : c.id === 'c15' ? 'abstain' : 'yes'),
-  // the large churches and their allies give the most dollars, but lose both counts
+  // the large churches and their allies lose both counts
   size: (c, w) => (c.group === 'large-low' ? 'yes' : c.group === 'small-high' ? 'no'
     : c.group === 'mid' ? (w === 2 ? 'yes' : 'no') : (['c04', 'c07'].includes(c.id) ? 'yes' : 'no')),
   // most churches vote Yes, but they give little: passes the church count, fails the weighted count

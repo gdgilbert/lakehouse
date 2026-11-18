@@ -88,7 +88,7 @@ export function beforeVoteTips(b, church, mode = 'path') {
       },
       {
         title: 'Your turn',
-        body: 'Choose Yes or No, then tap Review vote. To submit, press and hold the button for two seconds; this keeps a vote from being sent by a stray tap. You can also abstain. An abstention is not counted as a vote cast, so it does not help or hurt either side.',
+        body: 'Vote Yes to adopt the agenda, then tap Review vote. To submit, press and hold the button for two seconds; this keeps a vote from being sent by a stray tap.',
       },
     ] });
   }
@@ -108,7 +108,7 @@ export function beforeVoteTips(b, church, mode = 'path') {
       },
       {
         title: 'Share, not size',
-        body: 'Weight depends on the share of a church’s own budget, not on dollars. A small church that gives 4% has the same 4 votes as a large church that gives 4%.',
+        body: 'Weight depends on the share of a church’s own budget, not on its size. A small church that gives 4% has the same 4 votes as a large church that gives 4%.',
       },
       guided
         ? { title: 'Your turn', body: 'Vote however you like, then compare the two counts on the result.' }
@@ -496,16 +496,16 @@ function storyBefore(b, church) {
           (p ? `, because it gave ${p}% of its budget to ACME last year.` : '.') +
           ' To pass, the budget needs a majority in both counts.',
       },
-      { title: 'Your turn', body: 'Vote however you like, then see the result.' },
+      { title: 'Your turn', body: 'Grace Fellowship supports this budget. Vote Yes, then see the result.' },
     ] }];
   }
   if (kind === 'size') {
     return [{ id: 'before:size', pages: [
       {
         title: 'Big churches, small churches',
-        body: 'The three largest churches want this office. Together they give $72,600 a year, more dollars than any other group. But each gives under 2% of its own budget, so each has 1 weighted vote. Small churches like yours give fewer dollars but a larger share, and have 4 each.',
+        body: 'The three largest churches want this office. They have the biggest budgets in the Fellowship. But each gives under 2% of its own budget, so each has 1 weighted vote. Small churches like yours give a larger share, and have 4 each.',
       },
-      { title: 'Your turn', body: 'Vote however you like, then see the result.' },
+      { title: 'Your turn', body: 'Grace Fellowship would rather keep this money for church planting. Vote No, then see the result.' },
     ] }];
   }
   if (kind === 'spend') {
@@ -514,7 +514,7 @@ function storyBefore(b, church) {
         title: 'Many churches, small gifts',
         body: 'Most churches support this campaign: the large churches and the small churches that give under 2%. The churches that give the largest share of their budgets, including yours, mostly oppose it.',
       },
-      { title: 'Your turn', body: 'Vote however you like, then see the result.' },
+      { title: 'Your turn', body: 'Grace Fellowship would rather the grant money go to church plants. Vote No, then see the result.' },
     ] }];
   }
   if (kind === 'impose') {
@@ -523,7 +523,7 @@ function storyBefore(b, church) {
         title: 'Your side this time',
         body: 'This time the committed churches, including yours, support the proposal. Most other churches oppose it. Watch what Double Majority Voting does when the committed churches are the ones pushing.',
       },
-      { title: 'Your turn', body: 'Vote however you like, then see the result.' },
+      { title: 'Your turn', body: 'Grace Fellowship supports giving this money to missions. Vote Yes, then see the result.' },
     ] }];
   }
   return null;
@@ -534,7 +534,7 @@ function storyAfter(b, next) {
   const r = b.result;
   if (!r || r.kind !== 'motion') return null;
   const n = motionNumbers(b);
-  const ways = { title: 'Counted different ways', body: 'The Counted different ways card on this result shows what each way of counting would have decided. Only Double Majority Voting counts both.', target: '.counted-ways' };
+  const ways = { title: 'Counted different ways', body: 'The Counted different ways card on this result shows what each count alone would have decided. Double Majority Voting needs both.', target: '.counted-ways' };
   if (kind === 'agree') {
     return [{ id: 'after:agree', pages: [
       { title: 'What happened', body: `It passed both counts: ${n.cPct}% of churches and ${n.wPct}% of weighted votes voted Yes.` },
@@ -549,8 +549,8 @@ function storyAfter(b, next) {
     return [{ id: 'after:size', pages: [
       { title: 'What happened', body: `It failed. Only ${n.cPct}% of churches and ${n.wPct}% of weighted votes voted Yes.` },
       {
-        title: 'If dollars decided',
-        body: 'The churches voting Yes gave most of the dollars. If votes were counted by dollars, the large churches would have leased the office. Under Double Majority Voting, a large church has 1 church vote like every church, and weighted votes that reflect the share of its budget it gives, not its size.',
+        title: 'Size does not buy votes',
+        body: 'The three largest churches backed this, and it still failed. A large church has 1 church vote like every church, and weighted votes that reflect the share of its budget it gives, not its size.',
       },
       ways,
       ...next,
