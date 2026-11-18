@@ -563,7 +563,8 @@ function Captions({ steps, step }) {
   );
 }
 
-// The sentence for a step appears first; its animation starts this long after.
+// The sentence for a step appears first; its animation starts this long after
+// (at once for a step with no sentence).
 const LEAD = 2600;
 
 function Slideshow({ slides, lastLabel, onDone, onSkip }) {
@@ -576,6 +577,9 @@ function Slideshow({ slides, lastLabel, onDone, onSkip }) {
   const instant = React.useRef(false); // stepping back shows the earlier state at once
   useEffect(() => {
     if (instant.current) { instant.current = false; setVizStep(step); return undefined; }
+    // A step with no sentence has nothing to read first, so its animation starts at once.
+    const wordless = (slides[i].steps[step] || []).length === 0;
+    if (wordless) { setVizStep(step); return undefined; }
     const t = setTimeout(() => setVizStep(step), LEAD);
     return () => clearTimeout(t);
   }, [step, i, replay]);
