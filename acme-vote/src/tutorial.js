@@ -266,8 +266,9 @@ export function afterVoteTips(b, mode = 'path') {
 
 const NEXT_PAGE = {
   title: 'Next',
-  body: 'Tap Next ballot is open, at the top of the screen, to go on.',
+  body: 'The next ballot is open. Tap Go to the next ballot, or tap the Next ballot is open bar on the screen.',
   target: '.next-ballot',
+  action: { label: 'Go to the next ballot', onClick: () => document.querySelector('.next-ballot')?.click() },
 };
 
 function motionNumbers(b) {

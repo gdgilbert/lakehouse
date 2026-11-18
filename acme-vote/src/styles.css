@@ -393,3 +393,13 @@ table.standings .win { font-weight: 700; color: var(--green); }
 .tutorial-end h3 { color: #fff; font-style: italic; font-weight: 400; font-size: 22px; margin: 8px 0 4px; }
 .tutorial-end p { margin: 0 0 14px; font-weight: 300; color: rgba(255,255,255,0.85); }
 .tutorial-end .end-secondary { background: transparent; color: #fff; border-color: rgba(255,255,255,0.4); }
+.coach-measuring { visibility: hidden; animation: none; }
+.coach-shield { position: absolute; inset: 0; z-index: 14; }
+/* Short screens: a more compact tip card. */
+@media (max-height: 700px) {
+  .coach { padding: 10px 12px 9px; max-height: 56%; }
+  .coach h3 { font-size: 18px; margin: 3px 0 2px; }
+  .coach p { font-size: 13.5px; line-height: 1.4; }
+  .coach-actions { margin-top: 8px; }
+  .coach-actions .btn.small { min-height: 34px; }
+}

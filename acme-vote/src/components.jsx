@@ -468,19 +468,51 @@ export function Coach({ tips }) {
   // Decide once per tip, before it is drawn, whether it sits at the top or the
   // bottom of the screen: at the top when what it points to is in the lower
   // half, so the tip never covers it. It stays put while the pages change.
+  // Placement: the card is first drawn invisibly so its height is known, then
+  // put at the top or bottom, whichever does not cover anything the tip points
+  // to. It waits briefly for those items to appear on screen.
+  const firstSeen = useRef({ id: null, at: 0 });
+  const [, setTick] = useState(0);
   useLayoutEffect(() => {
-    if (!tip || place.id === tip.id) return;
-    const sel = tip.target || (tip.pages.find((x) => x.target) || {}).target;
-    const el = sel ? document.querySelector(sel) : null;
+    if (!tip || place.id === tip.id || !cardRef.current) return;
+    if (firstSeen.current.id !== tip.id) firstSeen.current = { id: tip.id, at: Date.now() };
+    const sels = [...new Set([tip.target, ...tip.pages.map((x) => x.target)].filter(Boolean))];
+    const els = sels.map((x) => document.querySelector(x));
+    if (!tip.placement && els.some((x) => !x) && Date.now() - firstSeen.current.at < 700) {
+      const t = setTimeout(() => setTick((n) => n + 1), 100);
+      return () => clearTimeout(t);
+    }
     let top = false;
     if (tip.placement) top = tip.placement === 'top';
-    else if (el) {
-      const fr = (el.closest('.device') || document.body).getBoundingClientRect();
-      const r = el.getBoundingClientRect();
-      top = (r.top + r.bottom) / 2 - fr.top > fr.height * 0.5;
+    else {
+      const card = cardRef.current;
+      const h = card.offsetHeight;
+      const fr = (card.closest('.device') || document.body).getBoundingClientRect();
+      const bottomGap = parseFloat(getComputedStyle(card).bottom) || 70;
+      const zones = {
+        bottom: [fr.bottom - bottomGap - h, fr.bottom - bottomGap],
+        top: [fr.top + 66, fr.top + 66 + h],
+      };
+      const overlap = ([a, b]) => els.filter(Boolean).reduce((sum, el) => {
+        const r = el.getBoundingClientRect();
+        return sum + Math.max(0, Math.min(b, r.bottom) - Math.max(a, r.top));
+      }, 0);
+      top = overlap(zones.top) < overlap(zones.bottom);
     }
     setPlace({ id: tip.id, top });
+    return undefined;
   });
+
+  // After a card button is pressed, briefly block taps on the screen underneath,
+  // so a tap cannot fall through to whatever the card was covering.
+  const [shield, setShield] = useState(false);
+  useEffect(() => {
+    if (!shield) return undefined;
+    const t = setTimeout(() => setShield(false), 450);
+    return () => clearTimeout(t);
+  }, [shield]);
+  const press = (fn) => (e) => { e.preventDefault(); e.stopPropagation(); setShield(true); fn(); };
+  const shieldEl = shield ? <div className="coach-shield" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} /> : null;
 
   // Highlight what the tip points to. Scroll only if it is off screen.
   useEffect(() => {
@@ -502,15 +534,18 @@ export function Coach({ tips }) {
     return () => { el.classList.remove('coach-target'); if (cancel) cancel(); };
   }, [target, tip?.id, place.id]);
 
-  if (!tip || place.id !== tip.id) return null;
+  if (!tip) return shieldEl;
+  const measuring = place.id !== tip.id;
   const last = page >= tip.pages.length - 1;
   const done = () => { setClosing(tip.id); api.markTipSeen(tip.id); (tip.alsoMarks || []).forEach((x) => api.markTipSeen(x)); };
 
   return (
-    <div ref={cardRef} className={`coach${place.top ? ' coach-top' : ''}`} role="dialog" aria-label={pg.title}>
+    <>
+    {shieldEl}
+    <div ref={cardRef} className={`coach${!measuring && place.top ? ' coach-top' : ''}${measuring ? ' coach-measuring' : ''}`} role="dialog" aria-label={pg.title}>
       <div className="coach-head">
         <span className="eyebrow-sm">Tutorial{tip.pages.length > 1 ? ` · ${page + 1} of ${tip.pages.length}` : ''}</span>
-        <button className="coach-hide" onClick={() => api.setTipsOff(true)}>Hide tips</button>
+        <button className="coach-hide" onClick={press(() => api.setTipsOff(true))}>Hide tips</button>
       </div>
       {/* Every page sits in the same grid cell, so the card is as tall as its
           longest page and does not change height between pages. */}
@@ -523,13 +558,14 @@ export function Coach({ tips }) {
         ))}
       </div>
       <div className="coach-actions">
-        {page > 0 && <button className="coach-back" onClick={() => setPage(page - 1)}>Back</button>}
+        {page > 0 && <button className="coach-back" onClick={press(() => setPage(page - 1))}>Back</button>}
         {pg.action && (
-          <button className="btn small secondary coach-action" onClick={() => { pg.action.onClick(); done(); }}>{pg.action.label}</button>
+          <button className="btn small secondary coach-action" onClick={press(() => { done(); pg.action.onClick(); })}>{pg.action.label}</button>
         )}
-        <button className="btn small gold" onClick={() => (last ? done() : setPage(page + 1))}>{last ? 'Got it' : 'Next'}</button>
+        <button className="btn small gold" onClick={press(() => (last ? done() : setPage(page + 1)))}>{last ? 'Got it' : 'Next'}</button>
       </div>
     </div>
+    </>
   );
 }
 
