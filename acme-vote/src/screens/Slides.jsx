@@ -22,11 +22,18 @@ const SLOW = 1.7;
 const ms = (n) => ({ animationDelay: `${Math.round(n * SLOW)}ms` });
 const td = (n) => `${Math.round(n * SLOW)}ms`; // a transition delay
 
-/** Moves through stages 1, 2, ... at each delay in `times` after `key` changes; returns the stage. */
-function useTimeline(times, key) {
+// When the current step's animation will be done, as far as timers know
+// (CSS animations are checked directly). The Next button pulses once it is.
+const busy = { until: 0 };
+const markBusy = (ms) => { busy.until = Math.max(busy.until, performance.now() + ms); };
+
+/** Moves through stages 1, 2, ... at each delay in `times` after `key` changes; returns the stage.
+ *  `active` says the timeline is playing now (so Next waits for it). */
+function useTimeline(times, key, active = true) {
   const [stage, setStage] = useState(0);
   useEffect(() => {
     setStage(0);
+    if (active) markBusy(Math.max(...times) * SLOW);
     const ts = times.map((t, i) => setTimeout(() => setStage(i + 1), t * SLOW));
     return () => ts.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -40,6 +47,7 @@ function useCountUp(to, delay = 0, duration = 900) {
   useEffect(() => {
     let raf = 0;
     const start = performance.now() + delay * SLOW;
+    markBusy((delay + duration) * SLOW);
     const step = (now) => {
       const t = Math.max(0, Math.min(1, (now - start) / (duration * SLOW)));
       setV(Math.round(to * (1 - Math.pow(1 - t, 3))));
@@ -123,7 +131,7 @@ function SquashChurch({ size, ratio, crushed, cracks }) {
 
 /** One church, one vote: standing, then the press, then one ballot each and Grace laughs. */
 function VizOneVote({ step }) {
-  const laugh = useTimeline([2600], step === 2 ? 'laugh' : 'no') >= 1 && step === 2; // shortly after the last ballot lands
+  const laugh = useTimeline([2600], step === 2 ? 'laugh' : 'no', step === 2) >= 1 && step === 2; // shortly after the last ballot lands
   const sizes = FIVE.map((c) => churchPx(c.budget));
   const smallest = Math.min(...sizes);
   const tallest = Math.max(...sizes);
@@ -156,11 +164,11 @@ function VizOneVote({ step }) {
 /** Who gives the most: dollar bars (the big two flash and the biggest scoffs), then the budgets and the reversal. */
 function VizGivers({ step }) {
   // the two biggest bars flash gold, a pause, then the biggest giver speaks
-  const beat = useTimeline([1600, 3400, 4600], step === 0 ? 'a' : 'b');
+  const beat = useTimeline([1600, 3400, 4600], step === 0 ? 'a' : 'b', step === 0);
   const flash = step === 0 && beat >= 1 && beat < 2;
   const punks = step === 0 && beat >= 3;
   const stayGold = step >= 1 || beat >= 1; // once they have flashed, the two biggest bars stay gold
-  const flip = useTimeline([1800], step === 1 ? 'flip' : 'x') >= 1 && step >= 1;
+  const flip = useTimeline([1800], step === 1 ? 'flip' : 'x', step === 1) >= 1 && step >= 1;
   const share = step >= 2 || flip;
   const maxGives = Math.max(...FIVE.map((c) => c.gives));
   const top2 = [...FIVE].sort((a, b) => b.gives - a.gives).slice(0, 2).map((c) => c.short);
@@ -197,7 +205,7 @@ function VizGivers({ step }) {
  */
 const BANDS = [['under 2%', 1], ['2\u20133%', 2], ['3\u20134%', 3], ['4%+', 4]];
 function VizWeights({ step }) {
-  const tl = useTimeline([900, 2600, 4400], step === 0 ? 'w' : 'x');
+  const tl = useTimeline([900, 2600, 4400], step === 0 ? 'w' : 'x', step === 0);
   const st = step >= 1 ? 3 : step === 0 ? tl : 0; // 0 bars, 1 cracked, 2 dots, 3 key shown
   return (
     <div className={`slide-morph share weights st${st}${step < 0 ? ' carry' : ''}`}>
@@ -464,8 +472,8 @@ function VizGauge({ step }) {
 
 /** All five churches climb to 4% and 4 votes (step 1), then flash and collapse to one vote each (step 2). */
 function VizEveryone({ step }) {
-  const climb = useTimeline([400, 2000, 3600], step === 1 ? 'climb' : 'x');
-  const collapse = useTimeline([1600], step === 2 ? 'collapse' : 'y');
+  const climb = useTimeline([400, 2000, 3600], step === 1 ? 'climb' : 'x', step === 1);
+  const collapse = useTimeline([1600], step === 2 ? 'collapse' : 'y', step === 2);
   const level = step === 0 ? 0 : step === 1 ? climb : 3; // climbing stages 0..3
   const collapsed = step === 2 && collapse >= 1;
   const flashing = step === 2 && !collapsed;
@@ -563,21 +571,42 @@ function Slideshow({ slides, lastLabel, onDone, onSkip }) {
   const [step, setStep] = useState(0);
   const [replay, setReplay] = useState(0); // bumping this restarts the slide from its first step
   const [vizStep, setVizStep] = useState(-1); // the step the animation is showing; trails `step` by LEAD
+  const [settled, setSettled] = useState(false); // this step's sentence and animation have finished
+  const bodyRef = React.useRef(null);
   const instant = React.useRef(false); // stepping back shows the earlier state at once
   useEffect(() => {
     if (instant.current) { instant.current = false; setVizStep(step); return undefined; }
     const t = setTimeout(() => setVizStep(step), LEAD);
     return () => clearTimeout(t);
   }, [step, i, replay]);
+  // Watch for the step to finish: its animation has started, no timer is pending, and
+  // nothing on the slide is still moving. Then wait a moment and let Next pulse.
+  useEffect(() => {
+    setSettled(false);
+    if (vizStep !== step) return undefined;
+    let quietSince = 0;
+    const t = setInterval(() => {
+      const el = bodyRef.current;
+      const moving = performance.now() < busy.until || (el && el.getAnimations
+        ? el.getAnimations({ subtree: true }).some((a) => a.playState === 'running' && a.effect?.getComputedTiming().iterations !== Infinity)
+        : false);
+      if (moving) { quietSince = 0; return; }
+      if (!quietSince) quietSince = performance.now();
+      else if (performance.now() - quietSince > 700) { setSettled(true); clearInterval(t); }
+    }, 250);
+    return () => clearInterval(t);
+  }, [vizStep, step, i, replay]);
   const s = slides[i];
   const lastStep = step >= s.steps.length - 1;
   const lastSlide = i === slides.length - 1;
   const next = () => {
+    busy.until = 0; // timers from the step being left no longer count
     if (!lastStep) setStep(step + 1);
     else if (!lastSlide) { setI(i + 1); setStep(0); setVizStep(-1); }
     else onDone();
   };
   const back = () => {
+    busy.until = 0;
     instant.current = true;
     if (step > 0) setStep(step - 1);
     else if (i > 0) { setI(i - 1); setStep(slides[i - 1].steps.length - 1); }
@@ -592,20 +621,20 @@ function Slideshow({ slides, lastLabel, onDone, onSkip }) {
         </span>
       </div>
       <div className="slides-stage">
-      <div className="slides-body" key={`${i}-${replay}`}>
+      <div className="slides-body" key={`${i}-${replay}`} ref={bodyRef}>
         <h1 className="slides-title">{s.title}</h1>
         <Captions steps={s.steps} step={step} />
         <div className={`slides-viz${s.carry ? ' carry' : ''}`}>{(vizStep >= 0 || s.carry) && s.viz(Math.min(vizStep, s.steps.length - 1))}</div>
       </div>
       {/* outside the scrolling area, so it never moves */}
-      <button className="slides-replay-btn" onClick={() => { setStep(0); setVizStep(-1); setReplay(replay + 1); }} aria-label="Replay this slide" title="Replay">
+      <button className="slides-replay-btn" onClick={() => { busy.until = 0; setStep(0); setVizStep(-1); setReplay(replay + 1); }} aria-label="Replay this slide" title="Replay">
         <ReplayIcon />
       </button>
       </div>
       <div className="slides-bottom">
         <button className="slides-back" onClick={back} style={{ visibility: i > 0 || step > 0 ? 'visible' : 'hidden' }}>Back</button>
         <div className="slides-dots">{slides.map((_, k) => <i key={k} className={k === i ? 'on' : ''} />)}</div>
-        <button className="btn gold slides-next" onClick={next}>{lastSlide && lastStep ? lastLabel : 'Next'}</button>
+        <button className={`btn gold slides-next${settled ? ' ready' : ''}`} onClick={next}>{lastSlide && lastStep ? lastLabel : 'Next'}</button>
       </div>
     </div>
   );
