@@ -1,5 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import * as api from './server/api.js';
+import { FEATURES } from './features.js';
+import { editKey, removeTipEdit, saveTipEdit, useTipEdits } from './tipStore.js';
 import { BALLOT_TYPES, COUNT_RULES, THRESHOLDS, fmt } from './server/rules.js';
 
 // ---------------------------------------------------------------------------
@@ -46,6 +48,7 @@ const paths = {
   gear: 'M12 15a3 3 0 100-6 3 3 0 000 6z M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 01-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 010-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 014 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 010 4h-.1a1.7 1.7 0 00-1.5 1z',
   plus: 'M12 5v14M5 12h14',
   minus: 'M5 12h14',
+  pencil: 'M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z',
   lightbulb: 'M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z',
   x: 'M6 6l12 12M18 6L6 18',
   info: 'M12 22a10 10 0 100-20 10 10 0 000 20zM12 16v-4M12 8h.01',
@@ -416,6 +419,11 @@ function ElectionResult({ ballot, r }) {
  * ({title, body, target?, action?}) and an optional target selector that is
  * highlighted while the tip is open.
  */
+function alertSaveFailed() {
+  // The viewer's frame shows no alert() dialogs, so log it; the draft stays open for another try.
+  console.warn('The tip could not be saved. Try again.');
+}
+
 /**
  * Scroll the screen so `el` is centered, slowly and with gentle easing.
  * Stops if the viewer touches or scrolls. Returns a function that cancels it.
@@ -459,10 +467,23 @@ export function Coach({ tips }) {
   const [tut] = useData(() => api.getTutorial());
   const [closing, setClosing] = useState(null);
   const [collapsed, setCollapsed] = useState(null); // id of the tip that is minimized
+  const tipEdits = useTipEdits();
+  const editing = FEATURES.editTips && tipEdits.canEdit;
+  const [draft, setDraft] = useState(null); // { key, title, body } while a page is being edited
+  const [saving, setSaving] = useState(false);
   const [pageState, setPageState] = useState({ id: null, page: 0 });
   const [place, setPlace] = useState({ id: null, top: false });
   const cardRef = useRef(null);
-  const tip = tut && !tut.off ? (tips || []).find((t) => t && !tut.seen.includes(t.id) && t.id !== closing) : null;
+  const rawTip = tut && !tut.off ? (tips || []).find((t) => t && !tut.seen.includes(t.id) && t.id !== closing) : null;
+  // Show the edited wording where there is one.
+  const tip = rawTip && FEATURES.editTips ? {
+    ...rawTip,
+    pages: rawTip.pages.map((x, i) => {
+      const e = tipEdits.edits[editKey(rawTip.id, i)];
+      return e ? { ...x, title: e.title, body: e.body, edited: true, originalTitle: x.title, originalBody: x.body }
+        : { ...x, originalTitle: x.title, originalBody: x.body };
+    }),
+  } : rawTip;
   const page = tip && pageState.id === tip.id ? pageState.page : 0;
   const pg = tip ? tip.pages[Math.min(page, tip.pages.length - 1)] : null;
   const target = pg ? pg.target || tip.target : null;
@@ -554,13 +575,81 @@ export function Coach({ tips }) {
   }
   const done = () => { setClosing(tip.id); api.markTipSeen(tip.id); (tip.alsoMarks || []).forEach((x) => api.markTipSeen(x)); };
 
+  const key = editKey(tip.id, Math.min(page, tip.pages.length - 1));
+  const isDraft = draft && draft.key === key;
+  const dynamic = /\d\.\d%/.test(pg.originalBody || '');
+  const startEdit = () => setDraft({ key, title: pg.title, body: pg.body });
+  const saveEdit = async () => {
+    setSaving(true);
+    try {
+      if (draft.title === pg.originalTitle && draft.body === pg.originalBody) await removeTipEdit(key);
+      else {
+        await saveTipEdit(key, {
+          tipId: tip.id, page, title: draft.title.trim(), body: draft.body.trim(),
+          originalTitle: pg.originalTitle, originalBody: pg.originalBody, dynamic,
+        });
+      }
+      setDraft(null);
+    } catch {
+      alertSaveFailed();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (isDraft) {
+    return (
+      <>
+        {shieldEl}
+        <div ref={cardRef} className="coach coach-top coach-editing" role="dialog" aria-label="Edit tip">
+          <div className="coach-head">
+            <span className="eyebrow-sm">Editing tip{tip.pages.length > 1 ? ` · page ${page + 1} of ${tip.pages.length}` : ''}</span>
+          </div>
+          <label className="coach-field">
+            <span>Heading</span>
+            <input id="tip-edit-title" className="input" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
+          </label>
+          <label className="coach-field">
+            <span>Text</span>
+            <textarea id="tip-edit-body" className="input" rows={6} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
+          </label>
+          {dynamic && (
+            <p className="coach-note">
+              This tip fills in numbers from each vote. Write it the way you want it to read. When you finalize the
+              wording, Claude will make the numbers live again.
+            </p>
+          )}
+          <div className="coach-actions">
+            {(pg.edited || draft.title !== pg.originalTitle || draft.body !== pg.originalBody) && (
+              <button className="coach-back" onClick={press(() => setDraft({ ...draft, title: pg.originalTitle, body: pg.originalBody }))}>
+                Use original
+              </button>
+            )}
+            <button className="btn small secondary coach-action" onClick={press(() => setDraft(null))} disabled={saving}>Cancel</button>
+            <button className="btn small gold" onClick={press(saveEdit)} disabled={saving || !draft.title.trim() || !draft.body.trim()}>
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
     {shieldEl}
     <div ref={cardRef} className={`coach${!measuring && place.top ? ' coach-top' : ''}${measuring ? ' coach-measuring' : ''}`} role="dialog" aria-label={pg.title}>
       <div className="coach-head">
-        <span className="eyebrow-sm">Tutorial{tip.pages.length > 1 ? ` · ${page + 1} of ${tip.pages.length}` : ''}</span>
+        <span className="eyebrow-sm">
+          Tutorial{tip.pages.length > 1 ? ` · ${page + 1} of ${tip.pages.length}` : ''}
+          {pg.edited && <span className="coach-edited">Edited</span>}
+        </span>
         <span className="coach-tools">
+          {editing && (
+            <button className="coach-min" onClick={press(startEdit)} aria-label="Edit this tip" title="Edit">
+              <Icon name="pencil" size={16} stroke={2.2} />
+            </button>
+          )}
           <button className="coach-hide" onClick={press(() => api.setTipsOff(true))}>Hide tips</button>
           <button className="coach-min" onClick={press(() => setCollapsed(tip.id))} aria-label="Minimize the tip" title="Minimize">
             <Icon name="minus" size={18} stroke={2.5} />

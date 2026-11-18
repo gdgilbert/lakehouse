@@ -42,6 +42,8 @@ The exact numbers vary from run to run, but each outcome is fixed. At the end, *
 
 If the page reloads (for example, when a new version is published or the phone reloads the tab), the app returns to the screen you were on.
 
+**Editing the tips (temporary).** While `editTips` is on in `src/features.js`, the artifact's owner sees a pencil button on each tip card. It opens the card's heading and text for editing; **Save** keeps the new wording, **Use original** puts the original back, and edited pages show an **Edited** label. On the published page the edits are stored in the artifact's database (collection `tipEdits`, one document per tip page, with the original wording alongside), so they last across runs and devices and can be read back to make them permanent in `src/tutorial.js`. Only the owner can change them; anyone else the page is shared with sees the edited wording. Running locally, edits are kept in the browser instead. Some tips fill in numbers from each vote; an edit to one of those is saved as written, so the numbers in it stay fixed until the wording is made permanent.
+
 All tutorial wording is in `src/tutorial.js`. To bring back the Manager role, set `manager: true` in `src/features.js`. The rest of this section describes both roles.
 
 The opening screen asks you to choose a role: **Delegate** or **Manager**. This choice exists only for the demo.
