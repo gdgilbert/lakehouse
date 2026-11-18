@@ -262,6 +262,50 @@ function VizWhyBoth({ step }) {
   );
 }
 
+/** A double pass carried by different churches: the large churches make the church-count
+ *  majority, Grace's 4 weighted votes make the weighted majority. */
+const PASS_YES = ['Emmanuel', 'Covenant', 'Grace'];
+function VizDoublePass({ step }) {
+  const yes = (c) => PASS_YES.includes(c.short);
+  const churchYes = FIVE.filter(yes).length;
+  const weightYes = FIVE.filter(yes).reduce((t, c) => t + c.votes, 0);
+  const row = (weighted) => (
+    <div className="dp-row">
+      {FIVE.map((c) => {
+        const carry = weighted ? c.short === 'Grace' : (c.short === 'Emmanuel' || c.short === 'Covenant');
+        return (
+          <div className={`dp-church${yes(c) ? ' yes' : ''}${carry ? ' carry' : ''}`} key={c.short}>
+            <span className="dp-dots">
+              {Array.from({ length: weighted ? c.votes : 1 }, (_, k) => <i key={k} style={ms(200 + k * 120)} />)}
+            </span>
+            <span className="dp-name">{c.short}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+  return (
+    <div className="slide-example dp">
+      <div className="slide-example-who">
+        {FIVE.map((c, i) => <span key={c.short} className={yes(c) ? 'yes' : 'no'} style={ms(300 + i * 160)}>{c.short}</span>)}
+      </div>
+      {step >= 1 && (
+        <div className="dp-count" style={ms(100)}>
+          <div className="dp-head"><span>Church count</span><b className="pass" style={ms(1200)}>{churchYes} of 5 · Yes</b></div>
+          {row(false)}
+        </div>
+      )}
+      {step >= 2 && (
+        <div className="dp-count" style={ms(100)}>
+          <div className="dp-head"><span>Weighted count</span><b className="pass" style={ms(1600)}>{weightYes} of {TOTAL_VOTES} · Yes</b></div>
+          {row(true)}
+        </div>
+      )}
+      {step >= 3 && <div className="slide-stamp pass" style={ms(300)}>Passes</div>}
+    </div>
+  );
+}
+
 function VizTry() {
   return (
     <div className="slide-try">
@@ -316,6 +360,16 @@ const INTRO = [
       ['Together, neither group can decide for the other.'],
     ],
     viz: (step) => <VizWhyBoth step={step} />,
+  },
+  {
+    title: 'Passing both',
+    steps: [
+      ['Now three very different churches vote Yes: the two largest, and the smallest.'],
+      ['In the church count, the two large churches make the majority: 3 of 5.'],
+      ['In the weighted count, Grace\u2019s 4 votes carry it: 6 of 11.'],
+      ['It wins both counts, so it passes, with a different set of churches carrying each majority.'],
+    ],
+    viz: (step) => <VizDoublePass step={step} />,
   },
   {
     title: 'Now try it',
