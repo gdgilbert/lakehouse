@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   AppBar, Banner, Choice, Empty, Icon, ResultView, Row, RuleChips, Sheet, StatusChip, TabBar,
-  WeightPips, choiceLabel, money, time, typeLabel, useData, useNav, useStickyState, NextBallot, Coach, Toggle,
+  WeightPips, choiceLabel, money, time, typeLabel, useData, useNav, useStickyState, Coach, Toggle,
 } from '../components.jsx';
 import * as api from '../server/api.js';
 import { fmt } from '../server/rules.js';
@@ -360,28 +360,38 @@ export function BallotScreen({ ballotId }) {
     <div className="screen">
       <AppBar title={ballot.status === 'closed' ? 'Result' : 'Ballot'} />
       <div className="content">
-        <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
-            <h2>{ballot.title}</h2>
-            <StatusChip status={ballot.status} />
-          </div>
-          {ballot.description && <p className="small" style={{ margin: '8px 0 10px' }}>{ballot.description}</p>}
-          <div style={{ marginTop: 10 }}><RuleChips ballot={ballot} /></div>
-        </div>
-
-        {ballot.status === 'closed' && <NextBallot currentId={ballot.id} churchId={churchId} screen="delegateBallot" />}
         {ballot.status === 'closed' && allBallots && !hasNext && !(allBallots || []).some((x) => x.status === 'open' && x.eligible) && <TutorialEnd />}
-        {ballot.status === 'closed' && <ResultView ballot={ballot} />}
-        {ballot.status === 'closed' && ballot.myVote && (
-          <p className="small muted center">
-            {church.name} voted {choiceLabel(ballot, ballot.myVote.choice)}{ballot.countRule === 'both' ? ` (1 church, ${ballot.myVote.weight} weighted)` : ''}.
-          </p>
+        {ballot.status === 'closed' ? (
+          // Everything about the finished ballot, together in one box.
+          <section className="result-group" aria-label={`Result: ${ballot.title}`}>
+            <div className="result-group-head">
+              <span className="eyebrow-sm">Result</span>
+              <h2>{ballot.title}</h2>
+              {ballot.description && <p className="small" style={{ margin: '6px 0 8px' }}>{ballot.description}</p>}
+              <RuleChips ballot={ballot} />
+            </div>
+            <ResultView ballot={ballot} />
+            {ballot.myVote && (
+              <p className="small muted center" style={{ margin: '4px 0 0' }}>
+                {church.name} voted {choiceLabel(ballot, ballot.myVote.choice)}{ballot.countRule === 'both' ? ` (1 church, ${ballot.myVote.weight} weighted)` : ''}.
+              </p>
+            )}
+          </section>
+        ) : (
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
+              <h2>{ballot.title}</h2>
+              <StatusChip status={ballot.status} />
+            </div>
+            {ballot.description && <p className="small" style={{ margin: '8px 0 10px' }}>{ballot.description}</p>}
+            <div style={{ marginTop: 10 }}><RuleChips ballot={ballot} /></div>
+          </div>
         )}
 
         {ballot.status === 'open' && ballot.myVote && (
           <Banner tone="green" title="Your vote is recorded">
             {church.name} voted <b>{choiceLabel(ballot, ballot.myVote.choice)}</b> at {time(ballot.myVote.at)}.
-            Receipt {ballot.myVote.receipt}. Results appear when the manager closes the ballot.
+            Receipt {ballot.myVote.receipt}. Results appear when voting closes.
           </Banner>
         )}
         {ballot.status === 'open' && ballot.myVote && <DemoResultsButton ballot={ballot} />}

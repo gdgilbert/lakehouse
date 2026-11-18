@@ -430,3 +430,14 @@ table.standings .win { font-weight: 700; color: var(--green); }
 .coach-edited { margin-left: 8px; padding: 1px 6px; border-radius: 2px; background: var(--gold); color: #fff; font-size: 10px; letter-spacing: 0.1em; }
 .coach.coach-top, .start .coach.coach-top { bottom: auto; }
 .start .coach.coach-top { top: 14px; }
+
+/* The open-ballot bar under the header, on every delegate screen */
+.open-bar { border-radius: 0; flex-shrink: 0; padding: 10px 16px 11px; border-bottom: 3px solid var(--gold); }
+.open-bar b { font-size: 18px; }
+/* A finished ballot's information, grouped in one box */
+.result-group { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 12px; box-shadow: var(--shadow); }
+.result-group > * + * { margin-top: 12px; }
+.result-group-head h2 { font-size: 20px; margin: 4px 0 0; }
+.result-group-head .eyebrow-sm { color: #8a6a1f; }
+.result-group .card, .result-group .results-link { box-shadow: none; }
+.result-group .card { background: #faf9f6; }

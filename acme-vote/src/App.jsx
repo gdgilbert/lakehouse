@@ -74,6 +74,7 @@ export default function App() {
   const nav = useMemo(
     () => ({
       canPop: stack ? stack.length > 1 : false,
+      current: stack ? stack[stack.length - 1] : null,
       push: (name, props) => setStack((s) => [...s, { name, props }]),
       replace: (name, props) => setStack((s) => [...s.slice(0, -1), { name, props }]),
       pop: () => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s)),

@@ -278,7 +278,7 @@ export function afterVoteTips(b, mode = 'path') {
 
 const NEXT_PAGE = {
   title: 'Next',
-  body: 'The next ballot is open. Tap Go to the next ballot, or tap the Next ballot is open bar on the screen.',
+  body: 'The next ballot is open. At a real meeting, a Ballot open bar appears at the top of every screen whenever there is a ballot your church has not voted on. Tap it, or tap Go to the next ballot.',
   target: '.next-ballot',
   action: { label: 'Go to the next ballot', onClick: () => document.querySelector('.next-ballot')?.click() },
 };

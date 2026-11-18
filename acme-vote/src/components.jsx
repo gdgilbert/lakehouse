@@ -93,9 +93,39 @@ export function Logo({ large }) {
 // Layout pieces
 // ---------------------------------------------------------------------------
 
+/**
+ * Shown under the header on every delegate screen while a ballot is open that the
+ * delegate's church has not voted on yet, except on that ballot's own screen.
+ */
+function OpenBallotBar() {
+  const nav = useNav();
+  const [session] = useData(() => api.getSession());
+  const churchId = session?.role === 'delegate' ? session.churchId : null;
+  const [ballots] = useData(() => (churchId ? api.listBallots({ churchId }) : Promise.resolve([])), [churchId]);
+  const here = nav.current?.props?.ballotId;
+  const open = (ballots || []).find((b) => b.status === 'open' && b.eligible && !b.myVote && b.id !== here);
+  if (!churchId || !open) return null;
+  const go = () => {
+    const name = nav.current?.name;
+    if (name === 'delegateBallot' || name === 'delegateReceipt') nav.replace('delegateBallot', { ballotId: open.id });
+    else nav.push('delegateBallot', { ballotId: open.id });
+  };
+  return (
+    <button type="button" className="next-ballot open-bar" onClick={go}>
+      <span>
+        <span className="eyebrow-sm">Ballot open · vote now</span>
+        <b>{open.title}</b>
+        <span className="sub">{typeLabel(open)} · {THRESHOLDS[open.threshold].label}{open.countRule === 'church' ? ' · Church count only' : ' · Both counts'}</span>
+      </span>
+      <Icon name="chev" />
+    </button>
+  );
+}
+
 export function AppBar({ title, back, right, logo }) {
   const nav = useNav();
   return (
+    <>
     <header className="appbar">
       {back !== false && nav.canPop && (
         <button className="back" onClick={nav.pop} aria-label="Back">
@@ -105,6 +135,8 @@ export function AppBar({ title, back, right, logo }) {
       {logo ? <div style={{ flex: 1, paddingLeft: 4 }}><Logo /></div> : <h1>{title}</h1>}
       {right && <div className="right">{right}</div>}
     </header>
+    <OpenBallotBar />
+    </>
   );
 }
 
@@ -538,6 +570,7 @@ export function Coach({ tips }) {
   const [closing, setClosing] = useState(null);
   const [collapsed, setCollapsed] = useState(null); // id of the tip that is minimized
   const [chipAt, setChipAt] = useState(null); // where the minimize button was tapped
+  const [recallId, setRecallId] = useState(null); // the last tip finished on this screen, kept as a chip
   const tipEdits = useTipEdits();
   const editing = FEATURES.editTips && tipEdits.canEdit;
   const [draft, setDraft] = useState(null); // { key, title, body } while a page is being edited
@@ -545,7 +578,9 @@ export function Coach({ tips }) {
   const [pageState, setPageState] = useState({ id: null, page: 0 });
   const [place, setPlace] = useState({ id: null, top: false });
   const cardRef = useRef(null);
-  const rawTip = tut && !tut.off ? (tips || []).find((t) => t && !tut.seen.includes(t.id) && t.id !== closing) : null;
+  // The next unread tip; once none is left, the last one read stays available as a chip.
+  const unread = tut && !tut.off ? (tips || []).find((t) => t && !tut.seen.includes(t.id) && t.id !== closing) : null;
+  const rawTip = unread || (tut && !tut.off && recallId ? (tips || []).find((t) => t && t.id === recallId) : null) || null;
   // Show the edited wording where there is one.
   const tip = rawTip && FEATURES.editTips ? {
     ...rawTip,
@@ -557,7 +592,9 @@ export function Coach({ tips }) {
   } : rawTip;
   const page = tip && pageState.id === tip.id ? pageState.page : 0;
   const pg = tip ? tip.pages[Math.min(page, tip.pages.length - 1)] : null;
-  const target = pg ? pg.target || tip.target : null;
+  // No highlight once a tip has been read and put away (Got it); a minimized unread tip keeps it.
+  const putAway = tip && collapsed === tip.id && recallId === tip.id;
+  const target = pg && !putAway ? pg.target || tip.target : null;
   const setPage = (n) => setPageState({ id: tip.id, page: n });
 
   // Decide once per tip, before it is drawn, whether it sits at the top or the
@@ -606,7 +643,16 @@ export function Coach({ tips }) {
     const t = setTimeout(() => setShield(false), 450);
     return () => clearTimeout(t);
   }, [shield]);
-  const press = (fn) => (e) => { e.preventDefault(); e.stopPropagation(); setShield(true); fn(e); };
+  // Card buttons ignore taps for a moment after the card opens from the chip, so the
+  // tap that opened it cannot also press the button that appears under the finger.
+  const openedAt = useRef(0);
+  const press = (fn) => (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (Date.now() - openedAt.current < 450) return;
+    setShield(true);
+    fn(e);
+  };
   const shieldEl = shield ? <div className="coach-shield" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} /> : null;
 
   // Highlight what the tip points to. Scroll only if it is off screen.
@@ -637,19 +683,38 @@ export function Coach({ tips }) {
       <>
         {shieldEl}
         <TipChip label={`Tip${tip.pages.length > 1 ? ` ${page + 1} of ${tip.pages.length}` : ''}`}
-          at={chipAt} onOpen={() => { setShield(true); setCollapsed(null); }} />
+          at={chipAt} onOpen={() => {
+            openedAt.current = Date.now();
+            setShield(true);
+            setCollapsed(null);
+            if (tip.id === recallId && !unread) setPageState({ id: tip.id, page: 0 }); // reread from the start
+          }} />
       </>
     );
   }
-  const done = () => { setClosing(tip.id); api.markTipSeen(tip.id); (tip.alsoMarks || []).forEach((x) => api.markTipSeen(x)); };
-  // Minimize: the chip appears where the minimize button was tapped.
-  const minimize = (e) => {
+  // Got it: the tip counts as read and shrinks to the chip, where it can be reopened while
+  // the viewer stays on this screen. If another tip is waiting, that one opens instead.
+  const placeChip = (e) => {
     const box = cardRef.current && cardRef.current.offsetParent;
-    if (box && e && e.currentTarget) {
+    if (box && e && e.currentTarget && e.currentTarget.getBoundingClientRect) {
       const br = box.getBoundingClientRect();
       const r = e.currentTarget.getBoundingClientRect();
       setChipAt({ cx: (r.left + r.right) / 2 - br.left, cy: (r.top + r.bottom) / 2 - br.top });
     }
+  };
+  const done = (e) => {
+    placeChip(e);
+    if (!tut.seen.includes(tip.id)) {
+      setClosing(tip.id);
+      api.markTipSeen(tip.id);
+      (tip.alsoMarks || []).forEach((x) => api.markTipSeen(x));
+    }
+    setRecallId(tip.id);
+    setCollapsed(tip.id);
+  };
+  // Minimize: the chip appears where the minimize button was tapped.
+  const minimize = (e) => {
+    placeChip(e);
     setCollapsed(tip.id);
   };
 
@@ -747,9 +812,9 @@ export function Coach({ tips }) {
       <div className="coach-actions">
         {page > 0 && <button className="coach-back" onClick={press(() => setPage(page - 1))}>Back</button>}
         {pg.action && (
-          <button className="btn small secondary coach-action" onClick={press(() => { done(); pg.action.onClick(); })}>{pg.action.label}</button>
+          <button className="btn small secondary coach-action" onClick={press((e) => { done(e); pg.action.onClick(); })}>{pg.action.label}</button>
         )}
-        <button className="btn small gold" onClick={press(() => (last ? done() : setPage(page + 1)))}>{last ? 'Got it' : 'Next'}</button>
+        <button className="btn small gold" onClick={press((e) => (last ? done(e) : setPage(page + 1)))}>{last ? 'Got it' : 'Next'}</button>
       </div>
     </div>
     </>
