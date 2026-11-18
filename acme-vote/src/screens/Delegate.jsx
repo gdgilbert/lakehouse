@@ -59,6 +59,9 @@ export function SignIn() {
         <button className="btn link" style={{ width: '100%' }} onClick={() => setShowCodes(true)}>
           Show demo codes
         </button>
+        <button className="btn link" style={{ width: '100%' }} onClick={() => nav.push('outro')}>
+          Skip the examples and go to the end
+        </button>
       </div>
       <Coach tips={signInTips(() => setCode('0000-0001'))} />
       {showCodes && (
