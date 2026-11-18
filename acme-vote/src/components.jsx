@@ -197,6 +197,70 @@ export function Sheet({ onClose, children }) {
   );
 }
 
+/**
+ * A button that must be held down for `ms` milliseconds. The fill grows behind the
+ * finger while it is held; letting go early drains it and nothing happens.
+ */
+export function HoldButton({ label, holdingLabel = 'Keep holding…', doneLabel, onComplete, disabled, ms = 2000 }) {
+  const [progress, setProgress] = useState(0); // 0 to 1
+  const [state, setState] = useState('idle'); // idle | holding | done
+  const raf = useRef(0);
+  const startAt = useRef(0);
+  const from = useRef(0);
+
+  const stopAnim = () => cancelAnimationFrame(raf.current);
+  useEffect(() => stopAnim, []);
+
+  const begin = (e) => {
+    if (disabled || state === 'done') return;
+    if (e && e.currentTarget && e.pointerId != null) e.currentTarget.setPointerCapture(e.pointerId);
+    stopAnim();
+    setState('holding');
+    from.current = progress;
+    startAt.current = performance.now();
+    const step = (now) => {
+      const p = Math.min(1, from.current + (now - startAt.current) / ms);
+      setProgress(p);
+      if (p >= 1) {
+        setState('done');
+        if (navigator.vibrate) { try { navigator.vibrate(30); } catch { /* ignore */ } }
+        onComplete();
+        return;
+      }
+      raf.current = requestAnimationFrame(step);
+    };
+    raf.current = requestAnimationFrame(step);
+  };
+  const cancel = () => {
+    if (state !== 'holding') return;
+    stopAnim();
+    setState('idle');
+    // drain back quickly
+    const start = performance.now();
+    const p0 = progress;
+    const drain = (now) => {
+      const p = Math.max(0, p0 - (now - start) / 350);
+      setProgress(p);
+      if (p > 0) raf.current = requestAnimationFrame(drain);
+    };
+    raf.current = requestAnimationFrame(drain);
+  };
+
+  return (
+    <button type="button" className={`hold-btn${state === 'holding' ? ' holding' : ''}`} disabled={disabled}
+      onPointerDown={begin} onPointerUp={cancel} onPointerCancel={cancel} onPointerLeave={cancel}
+      onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) { e.preventDefault(); begin(); } }}
+      onKeyUp={(e) => { if (e.key === 'Enter' || e.key === ' ') cancel(); }}
+      onClick={(e) => e.preventDefault()}
+      onContextMenu={(e) => e.preventDefault()}
+      onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()}
+      aria-label={`${label}. Press and hold.`}>
+      <span className="hold-fill" style={{ transform: `scaleX(${progress})` }} />
+      <span className="hold-label">{state === 'done' ? (doneLabel || label) : state === 'holding' ? holdingLabel : label}</span>
+    </button>
+  );
+}
+
 export function Row({ title, sub, right, onClick, chevron = true }) {
   return (
     <button className={`row${onClick ? '' : ' static'}`} onClick={onClick} type="button">
@@ -495,11 +559,9 @@ function slowScrollTo(el, zoneTop, zoneBottom) {
   return stop;
 }
 
-const CHIP_KEY = 'acme-vote-tip-chip-v1';
-
 /**
- * The minimized tip. It appears where the viewer tapped minimize, or where they
- * last dragged it. Tap to reopen the tip; drag to move it.
+ * The minimized tip. It appears where the viewer tapped (Got it or minimize).
+ * Tap to reopen the tip; drag to move it out of the way.
  */
 function TipChip({ label, at, onOpen }) {
   const ref = useRef(null);
@@ -519,10 +581,7 @@ function TipChip({ label, at, onOpen }) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    let saved = null;
-    try { saved = JSON.parse(localStorage.getItem(CHIP_KEY) || 'null'); } catch { /* ignore */ }
-    if (saved && typeof saved.x === 'number') setPos(clamp(saved.x, saved.y));
-    else if (at) setPos(clamp(at.cx - el.offsetWidth / 2, at.cy - el.offsetHeight / 2));
+    if (at) setPos(clamp(at.cx - el.offsetWidth / 2, at.cy - el.offsetHeight / 2));
     else setPos(clamp(9999, 9999));
   }, []);
 
@@ -545,11 +604,7 @@ function TipChip({ label, at, onOpen }) {
     drag.current = null;
     if (!d) return;
     e.preventDefault();
-    if (d.moved) {
-      try { localStorage.setItem(CHIP_KEY, JSON.stringify(pos)); } catch { /* ignore */ }
-    } else {
-      onOpen();
-    }
+    if (!d.moved) onOpen(e);
   };
 
   return (
@@ -571,6 +626,7 @@ export function Coach({ tips }) {
   const [collapsed, setCollapsed] = useState(null); // id of the tip that is minimized
   const [chipAt, setChipAt] = useState(null); // where the minimize button was tapped
   const [recallId, setRecallId] = useState(null); // the last tip finished on this screen, kept as a chip
+  const openFrom = useRef(null); // where the chip was, so the card can grow out of it
   const tipEdits = useTipEdits();
   const editing = FEATURES.editTips && tipEdits.canEdit;
   const [draft, setDraft] = useState(null); // { key, title, body } while a page is being edited
@@ -635,6 +691,21 @@ export function Coach({ tips }) {
     return undefined;
   });
 
+  // Reopening from the chip: grow the card out of the chip's position.
+  useLayoutEffect(() => {
+    const el = cardRef.current;
+    const from = openFrom.current;
+    if (!el || !from) return;
+    openFrom.current = null;
+    const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (still) return;
+    el.style.transformOrigin = `${from.cx - el.offsetLeft}px ${from.cy - el.offsetTop}px`;
+    el.classList.remove('coach-closing');
+    el.classList.add('coach-opening');
+    const t = setTimeout(() => el.classList.remove('coach-opening'), 420);
+    return () => clearTimeout(t);
+  });
+
   // After a card button is pressed, briefly block taps on the screen underneath,
   // so a tap cannot fall through to whatever the card was covering.
   const [shield, setShield] = useState(false);
@@ -683,7 +754,11 @@ export function Coach({ tips }) {
       <>
         {shieldEl}
         <TipChip label={`Tip${tip.pages.length > 1 ? ` ${page + 1} of ${tip.pages.length}` : ''}`}
-          at={chipAt} onOpen={() => {
+          at={chipAt} onOpen={(e) => {
+            const chip = e && e.currentTarget;
+            if (chip && chip.offsetParent) {
+              openFrom.current = { cx: chip.offsetLeft + chip.offsetWidth / 2, cy: chip.offsetTop + chip.offsetHeight / 2 };
+            }
             openedAt.current = Date.now();
             setShield(true);
             setCollapsed(null);
@@ -699,23 +774,41 @@ export function Coach({ tips }) {
     if (box && e && e.currentTarget && e.currentTarget.getBoundingClientRect) {
       const br = box.getBoundingClientRect();
       const r = e.currentTarget.getBoundingClientRect();
-      setChipAt({ cx: (r.left + r.right) / 2 - br.left, cy: (r.top + r.bottom) / 2 - br.top });
+      const at = { cx: (r.left + r.right) / 2 - br.left, cy: (r.top + r.bottom) / 2 - br.top };
+      setChipAt(at);
+      return at;
     }
+    return chipAt;
   };
-  const done = (e) => {
-    placeChip(e);
-    if (!tut.seen.includes(tip.id)) {
-      setClosing(tip.id);
-      api.markTipSeen(tip.id);
-      (tip.alsoMarks || []).forEach((x) => api.markTipSeen(x));
-    }
-    setRecallId(tip.id);
-    setCollapsed(tip.id);
+  // Shrink the card into the point where the chip will appear, then run `finish`.
+  const shrinkInto = (at, finish) => {
+    const el = cardRef.current;
+    const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!el || !at || still) { finish(); return; }
+    el.style.transformOrigin = `${at.cx - el.offsetLeft}px ${at.cy - el.offsetTop}px`;
+    el.classList.add('coach-closing');
+    setShield(true);
+    setTimeout(finish, 340);
+  };
+  const done = (e, { now = false } = {}) => {
+    const at = placeChip(e);
+    const id = tip.id;
+    const finish = () => {
+      if (!tut.seen.includes(id)) {
+        setClosing(id);
+        api.markTipSeen(id);
+        (tip.alsoMarks || []).forEach((x) => api.markTipSeen(x));
+      }
+      setRecallId(id);
+      setCollapsed(id);
+    };
+    if (now) finish(); else shrinkInto(at, finish);
   };
   // Minimize: the chip appears where the minimize button was tapped.
   const minimize = (e) => {
-    placeChip(e);
-    setCollapsed(tip.id);
+    const at = placeChip(e);
+    const id = tip.id;
+    shrinkInto(at, () => setCollapsed(id));
   };
 
   const key = editKey(tip.id, Math.min(page, tip.pages.length - 1));
@@ -812,7 +905,7 @@ export function Coach({ tips }) {
       <div className="coach-actions">
         {page > 0 && <button className="coach-back" onClick={press(() => setPage(page - 1))}>Back</button>}
         {pg.action && (
-          <button className="btn small secondary coach-action" onClick={press((e) => { done(e); pg.action.onClick(); })}>{pg.action.label}</button>
+          <button className="btn small secondary coach-action" onClick={press((e) => { done(e, { now: true }); pg.action.onClick(); })}>{pg.action.label}</button>
         )}
         <button className="btn small gold" onClick={press((e) => (last ? done(e) : setPage(page + 1)))}>{last ? 'Got it' : 'Next'}</button>
       </div>

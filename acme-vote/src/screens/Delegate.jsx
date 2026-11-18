@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   AppBar, Banner, Choice, Empty, Icon, ResultView, Row, RuleChips, Sheet, StatusChip, TabBar,
-  WeightPips, choiceLabel, money, time, typeLabel, useData, useNav, useStickyState, Coach, Toggle,
+  WeightPips, choiceLabel, money, time, typeLabel, useData, useNav, useStickyState, Coach, Toggle, HoldButton,
 } from '../components.jsx';
 import * as api from '../server/api.js';
 import { fmt } from '../server/rules.js';
@@ -447,10 +447,10 @@ export function BallotScreen({ ballotId }) {
                   : `${church.name} casts 1 vote in the church count and ${church.weight} in the weighted count.`}
             </div>
           </div>
-          <p className="small muted">You cannot change your vote after you submit it.</p>
+          <p className="small muted">You cannot change your vote after you submit it. Press and hold the button for two seconds to submit.</p>
           {error && <p className="error">{error}</p>}
           <div className="btn-stack">
-            <button className="btn gold" onClick={submit} disabled={busy}>{busy ? 'Submitting…' : 'Submit vote'}</button>
+            <HoldButton label="Hold to submit vote" doneLabel="Submitting…" onComplete={submit} disabled={busy} />
             <button className="btn secondary" onClick={() => setConfirming(false)} disabled={busy}>Go back</button>
           </div>
         </Sheet>

@@ -94,7 +94,7 @@ export function beforeVoteTips(b, church, mode = 'path') {
       },
       {
         title: 'Your turn',
-        body: 'Choose Yes or No, then tap Review vote. You can also abstain. An abstention is not counted as a vote cast, so it does not help or hurt either side.',
+        body: 'Choose Yes or No, then tap Review vote. To submit, press and hold the button for two seconds; this keeps a vote from being sent by a stray tap. You can also abstain. An abstention is not counted as a vote cast, so it does not help or hurt either side.',
       },
     ] });
   }
