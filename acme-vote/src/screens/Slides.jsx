@@ -168,6 +168,7 @@ function VizGivers({ step }) {
         <div className="slide-morph-row givers" key={c.short} style={ms(150 + i * 140)}>
           <div className="slide-giver-icon">
             <Church size={Math.round(churchPx(c.budget) * 0.45)} delay={150 + i * 140} />
+            {punks && c.short === biggest && <span className="bar-bubble shout">Punks!</span>}
           </div>
           <div className="slide-morph-name">
             <b>{c.short}</b>
@@ -175,7 +176,6 @@ function VizGivers({ step }) {
           </div>
           <div className="slide-morph-track">
             {share && [2, 3, 4].map((t) => <i key={t} className="slide-meter-line" style={{ left: `${(t / 5) * 100}%` }} />)}
-            {punks && c.short === biggest && <span className="bar-bubble">Punks!</span>}
             <span className={`slide-morph-bar${flash && top2.includes(c.short) ? ' flash' : ''}`}
               style={{ width: `${share ? (c.pct / 5) * 100 : (c.gives / maxGives) * 100}%`, transitionDelay: share ? `${i * 90}ms` : '0ms', ...ms(300 + i * 140) }} />
           </div>

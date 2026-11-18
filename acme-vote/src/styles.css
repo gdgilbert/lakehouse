@@ -764,3 +764,8 @@ table.standings .win { font-weight: 700; color: var(--green); }
 .dp-church.carry { border-color: transparent; background: none; }
 .dp-dots { flex-wrap: nowrap; gap: 2px; }
 .dp-dots i { width: 11px; height: 11px; flex-shrink: 0; }
+
+/* Punks: a tilted shout just above and right of Covenant's church, its tail pointing at the church */
+.bar-bubble.shout { left: 28px; right: auto; top: -14px; font-size: 14px; padding: 2px 9px 3px; transform: rotate(-12deg); transform-origin: 0 100%; animation: shoutIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1.6) both; }
+.bar-bubble.shout::after { left: 4px; top: auto; bottom: -7px; margin-top: 0; border: 0; border-top: 9px solid #fff; border-right: 9px solid transparent; }
+@keyframes shoutIn { from { transform: rotate(-12deg) scale(0); opacity: 0; } }
