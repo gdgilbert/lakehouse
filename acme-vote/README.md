@@ -1,6 +1,6 @@
 # ACME Voting (demo)
 
-A clickable mockup of a phone voting app for the General Assembly of the ACME Fellowship (Association of Churches for Missions and Evangelism). It was built to show the Bylaws Committee how the proposed voting rules would work in practice.
+A clickable mockup of a phone voting app for the National Business Meeting of the ACME Fellowship (Association of Churches for Missions and Evangelism). It was built to show the Bylaws Committee how the proposed voting rules would work in practice.
 
 This is a demo. It has no real security and no server. All data is stored in the browser that runs it.
 
@@ -94,7 +94,7 @@ Abstentions are not votes cast. A church that abstains is left out of both count
 
 ### Judicial Commission
 
-1. The Assembly first votes on the President's five nominees as a single slate. The slate needs a majority in both counts.
+1. The National Business Meeting first votes on the President's five nominees as a single slate. The slate needs a majority in both counts.
 2. If the slate passes, all five are elected.
 3. If the slate fails, the five seats are filled one at a time. For each seat, the manager takes nominees from the floor; any of the President's nominees may be among them. Each seat is decided by the election rules above before the next seat opens. A person already elected to a seat cannot be nominated for another.
 

@@ -45,7 +45,7 @@ export function seedBallots() {
       kind: 'motion',
       type: 'procedural',
       title: 'Adopt the agenda',
-      description: 'Adopt the printed agenda for the 2026 General Assembly.',
+      description: 'Adopt the printed agenda for the 2027 National Business Meeting.',
       countRule: 'church',
       threshold: 'majority',
       region: null,

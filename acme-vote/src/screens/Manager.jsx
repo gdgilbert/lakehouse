@@ -659,7 +659,7 @@ export function NewCommission() {
       <AppBar title="Judicial Commission" />
       <div className="content form">
         <p className="small" style={{ margin: 0 }}>
-          The Assembly first votes on the President&rsquo;s five nominees as a single slate. A majority in both counts
+          The National Business Meeting first votes on the President&rsquo;s five nominees as a single slate. A majority in both counts
           elects all five. If the slate fails, the five seats are filled one at a time with nominees from the floor.
         </p>
         <div className="field">
