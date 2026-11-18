@@ -229,10 +229,10 @@ export function afterVoteTips(b, mode = 'path') {
   if (mode === 'free') {
     return [{
       id: 'free:groups',
-      target: '.group-votes',
+      target: '.demo-panel',
       pages: [{
-        title: 'You decide how the others vote',
-        body: 'Choose how each kind of church votes, then tap See the result. The Counted different ways card shows what each way of counting would have decided.',
+        title: 'The others vote at random',
+        body: 'Vote however you like. The other churches vote at random, so each run comes out differently. The Counted different ways card shows what each count alone would have decided.',
       }],
     }];
   }

@@ -14,7 +14,7 @@ import {
 } from './rules.js';
 import { GROUPS, MEASURING_YEAR, seedBallots, seedChurches } from './seed.js';
 
-const DB_KEY = 'acme-vote-db-v3'; // v3: story churches and ballots
+const DB_KEY = 'acme-vote-db-v4'; // v4: story ballots carry the guided vote
 const SESSION_KEY = 'acme-vote-session-v2';
 const CHANGE_EVENT = 'acme-vote-db-change';
 
@@ -520,6 +520,28 @@ export async function demoRecordVote(ballotId, churchId, choice) {
   } catch (e) {
     return fail(e.message);
   }
+}
+
+/** Run it yourself: the other churches vote at random, then the ballot closes.
+ *  Each ballot gets its own random lean, so results vary from run to run. */
+export async function demoFinishRandom(ballotId) {
+  return respond(
+    mutate((db) => {
+      const b = db.ballots.find((x) => x.id === ballotId);
+      if (!b || b.status !== 'open') return null;
+      const choices = choiceList(b);
+      const lean = 0.2 + Math.random() * 0.6; // how strongly this ballot leans Yes
+      for (const c of db.churches) {
+        if (!eligible(c, b.region) || b.votes[c.id]) continue;
+        let choice;
+        if (Math.random() < 0.05) choice = 'abstain';
+        else if (b.kind === 'motion') choice = Math.random() < lean ? 'yes' : 'no';
+        else choice = choices[Math.floor(Math.random() * choices.length)];
+        b.votes[c.id] = { choice, weight: churchWeight(c).votes, at: Date.now(), receipt: receiptCode() };
+      }
+      return closeInDb(db, b);
+    })
+  );
 }
 
 export async function demoFillRemaining(ballotId) {

@@ -187,7 +187,7 @@ function TutorialEnd() {
     <div className="tutorial-end">
       <span className="eyebrow-sm">{free ? 'All ballots done' : 'End of the ballots'}</span>
       <h3>{free ? 'That was the last ballot' : 'You have seen both protections'}</h3>
-      <p>Finish for a short summary, run the ballots yourself and set how the other churches vote, or start the tutorial again.</p>
+      <p>Finish for a short summary, run the ballots yourself (vote however you like; the other churches vote at random), or start the tutorial again.</p>
       <div className="btn-stack">
         <button className="btn gold" onClick={() => nav.push('outro')}>Finish</button>
         <button className="btn secondary end-secondary" onClick={runIt}>{free ? 'Run it yourself again' : 'Run it yourself'}</button>
@@ -281,38 +281,6 @@ function countExplanation(ballot, church) {
   };
 }
 
-/** Run it yourself: set how each kind of church votes, then see the result. */
-function GroupVotes({ ballot }) {
-  const nav = useNav();
-  const [groups] = useData(() => api.getGroups());
-  const [choices, setChoices] = useState({ 'large-low': 'yes', 'small-low': 'yes', mid: 'split', 'small-high': 'no' });
-  const [busy, setBusy] = useState(false);
-  if (!groups) return null;
-  const go = async () => {
-    setBusy(true);
-    await api.demoFinishGroups(ballot.id, choices);
-    nav.replace('delegateBallot', { ballotId: ballot.id });
-  };
-  return (
-    <div className="demo-panel group-votes">
-      <p className="tiny" style={{ margin: 0, color: 'var(--amber)' }}>
-        Run it yourself. Choose how the other churches vote, then see the result.
-      </p>
-      {Object.entries(groups).map(([key, label]) => (
-        <div className="group-vote" key={key}>
-          <span>{label}</span>
-          <div className="segmented">
-            {[['yes', 'Yes'], ['no', 'No'], ['split', 'Split'], ['abstain', 'Abstain']].map(([v, l]) => (
-              <button key={v} className={choices[key] === v ? 'on' : ''} onClick={() => setChoices({ ...choices, [key]: v })}>{l}</button>
-            ))}
-          </div>
-        </div>
-      ))}
-      <button className="btn gold" disabled={busy} onClick={go}>{busy ? 'Counting…' : 'See the result'}</button>
-    </div>
-  );
-}
-
 function DemoResultsButton({ ballot }) {
   const nav = useNav();
   const [busy, setBusy] = useState(null);
@@ -336,7 +304,20 @@ function DemoResultsButton({ ballot }) {
       </div>
     );
   }
-  if (ballot.kind === 'motion' && ballot.countRule === 'both') return <GroupVotes ballot={ballot} />;
+  if (tut.mode === 'free') {
+    return (
+      <div className="demo-panel">
+        <p className="tiny" style={{ margin: '0 0 8px', color: 'var(--amber)' }}>
+          Run it yourself. The other churches vote at random, so every run comes out differently.
+        </p>
+        <button className="btn gold" disabled={!!busy} onClick={async () => {
+          setBusy('random');
+          await api.demoFinishRandom(ballot.id);
+          nav.replace('delegateBallot', { ballotId: ballot.id });
+        }}>{busy ? 'Counting…' : 'See the result'}</button>
+      </div>
+    );
+  }
   return (
     <div className="demo-panel">
       <p className="tiny" style={{ margin: '0 0 8px', color: 'var(--amber)' }}>
@@ -355,6 +336,9 @@ function DemoResultsButton({ ballot }) {
   );
 }
 
+// The vote each story ballot needs from Grace in the guided run.
+const GUIDED_CHOICE = { procedural: 'yes', agree: 'yes', size: 'no', spend: 'no', impose: 'yes' };
+
 // ---------------------------------------------------------------------------
 // Vote on one ballot
 // ---------------------------------------------------------------------------
@@ -366,6 +350,7 @@ export function BallotScreen({ ballotId }) {
   const [ballot] = useData(() => (churchId ? api.getBallot(ballotId, { churchId }) : Promise.resolve(null)), [ballotId, churchId]);
   const [church] = useData(() => (churchId ? api.getChurch(churchId) : Promise.resolve(null)), [churchId]);
   const [choice, setChoice] = useState(null);
+  const [refused, setRefused] = useState(null); // a vote the guided run asked the delegate not to cast
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -376,7 +361,14 @@ export function BallotScreen({ ballotId }) {
   if (!ballot || !church) return <div className="screen"><AppBar title="Ballot" /></div>;
   const hasNext = (allBallots || []).some((x) => x.status === 'open' && x.id !== ballot.id && x.eligible && !x.myVote);
   // The guided run asks for the vote each story needs.
-  const guidedWrong = mode === 'path' && ballot.delegateChoice && choice && choice !== ballot.delegateChoice;
+  // The vote this story needs from Grace, taken from the ballot, or from its story for
+  // ballots saved by an earlier version of the demo.
+  const needed = mode === 'path' ? (ballot.delegateChoice || GUIDED_CHOICE[ballot.story] || null) : null;
+  const pick = (id) => {
+    if (needed && id !== needed) { setRefused(id); return; } // kindly refuse; keep the current choice
+    setRefused(null);
+    setChoice(id);
+  };
   const tips = ballot.status === 'closed'
     ? (ballot.result && allBallots ? resultTips(ballot, { hasNext, mode }) : [])
     : ballot.myVote ? afterVoteTips(ballot, mode) : beforeVoteTips(ballot, church, mode);
@@ -457,21 +449,21 @@ export function BallotScreen({ ballotId }) {
             <div className="section-title">Your choice</div>
             <div className="choice-group">
               {options.map((o) => (
-                <Choice key={o.id} className="vote" label={o.label} selected={choice === o.id} onClick={() => setChoice(o.id)} />
+                <Choice key={o.id} className="vote" label={o.label} selected={choice === o.id} onClick={() => pick(o.id)} />
               ))}
             </div>
             <div className="choice-group" style={{ marginTop: 14 }}>
               <Choice label="Abstain" desc="An abstention is not counted as a vote cast."
-                selected={choice === 'abstain'} onClick={() => setChoice('abstain')} />
+                selected={choice === 'abstain'} onClick={() => pick('abstain')} />
             </div>
-            {guidedWrong && (
-              <div className="guide-note" role="status">
-                <b>For this first run-through, please vote {choiceLabel(ballot, ballot.delegateChoice)}.</b>{' '}
+            {refused && (
+              <div className="guide-note" role="status" key={refused}>
+                <b>For this first run-through, please vote {choiceLabel(ballot, needed)}.</b>{' '}
                 That lets this ballot show its part of the story. When you finish, you can run the ballots again
                 and vote however you like.
               </div>
             )}
-            <button className="btn gold" style={{ marginTop: 18 }} disabled={!choice || guidedWrong} onClick={() => setConfirming(true)}>
+            <button className="btn gold" style={{ marginTop: 18 }} disabled={!choice} onClick={() => setConfirming(true)}>
               Review vote
             </button>
           </>
