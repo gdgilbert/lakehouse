@@ -38,11 +38,11 @@ export function startTips(mode = 'path') {
     pages: [
       {
         title: 'Welcome',
-        body: 'This tutorial shows how voting at the ACME National Business Meeting would work under the proposed rules. You will vote as the delegate for one Member Church on each kind of ballot. Notes like this one explain each step.',
+        body: 'This tutorial shows how Double Majority Voting would work at the ACME National Business Meeting. You will vote as the delegate for one Member Church on each kind of ballot. Notes like this one explain each step.',
       },
       {
         title: 'The main idea',
-        body: 'Most votes are counted two ways: once with one vote per church, and once with each church’s votes weighted by its giving to ACME as a share of its own budget. Some ballots use only the first count. The tutorial shows when each is used and why.',
+        body: 'Under Double Majority Voting, most decisions are counted two ways: once with one vote per church, and once with each church’s votes weighted by its giving to ACME as a share of its own budget. A motion or candidate must win in both counts. Some ballots, such as procedural motions, use only the first count. The tutorial shows when each is used and why.',
       },
       {
         title: 'How the tutorial works',
@@ -103,8 +103,8 @@ export function beforeVoteTips(b, church, mode = 'path') {
     const p = church.contributionPct == null ? null : fmt(church.contributionPct);
     tips.push({ id: 'before:budget', pages: [
       {
-        title: 'Counted two ways',
-        body: `Approving the budget must pass both counts. In the church count, ${church.name} casts 1 vote. In the weighted count, it casts ${w}. Both go to the choice you make.`,
+        title: 'A double majority',
+        body: `Approving the budget needs a double majority: it must pass both counts. In the church count, ${church.name} casts 1 vote. In the weighted count, it casts ${w}. Both go to the choice you make.`,
       },
       {
         title: 'Where weighted votes come from',
@@ -140,7 +140,7 @@ export function beforeVoteTips(b, church, mode = 'path') {
       tips.push({ id: 'before:election:1', pages: [
         {
           title: 'Electing a Moderator',
-          body: `There are ${b.options.length} candidates. To be elected, a candidate needs a majority of the votes cast in both counts.`,
+          body: `There are ${b.options.length} candidates. To be elected, a candidate needs a double majority: a majority of the votes cast in both counts.`,
         },
         {
           title: 'If no one wins',
@@ -286,7 +286,11 @@ function bothCountsSentence(b) {
   const need = { majority: 'a majority of the votes cast', twoThirds: 'two-thirds of the votes cast', threeQuarters: '75% of the votes cast' }[b.threshold];
   const cMaj = Number(n.cPct) > 50;
   const wMaj = Number(n.wPct) > 50;
-  if (r.passed) return `It passed both counts: Yes had ${n.cPct}% of the church count and ${n.wPct}% of the weighted count. It needed ${need}.`;
+  if (r.passed) {
+    return b.threshold === 'majority'
+      ? `It won a double majority: Yes had ${n.cPct}% of the church count and ${n.wPct}% of the weighted count.`
+      : `It passed both counts: Yes had ${n.cPct}% of the church count and ${n.wPct}% of the weighted count. It needed ${need}.`;
+  }
   if (r.churchPass) {
     return `Yes had ${n.cPct}% of the church count, enough to pass, but only ${n.wPct}% of the weighted count.` +
       (wMaj ? '' : ' The churches that give a larger share of their budgets mostly voted No.') +
@@ -335,11 +339,11 @@ export function resultTips(b, { hasNext, onRestart }) {
     return [{ id: 'after:budget', pages: [
       { title: 'What happened', body: bothCountsSentence(b) },
       {
-        title: 'Why two counts',
+        title: 'Why a double majority',
         body: 'Each count guards against a different problem. The church count keeps a small group of churches from deciding the fellowship’s spending over the objection of most churches. The weighted count keeps a majority of churches from directing money that comes mostly from others.',
       },
       {
-        title: 'What passing both means',
+        title: 'What a double majority means',
         body: 'A budget that passes both counts has the support of most churches and of the churches that give the most relative to their own budgets.',
       },
       {
@@ -384,7 +388,7 @@ export function resultTips(b, { hasNext, onRestart }) {
       },
       {
         title: 'You have finished the tutorial',
-        body: 'You have seen every kind of ballot: church count only, both counts at a majority, 75% and two-thirds, elections with runoffs, the Judicial Commission slate, and a regional ballot. In each case the rules ask for agreement from most churches and, where money or governance is at stake, from the churches that fund the work. Tap Try it yourself to vote again and choose each result.',
+        body: 'You have seen every kind of ballot under Double Majority Voting: church count only, a double majority, 75% and two-thirds in both counts, elections with runoffs, the Judicial Commission slate, and a regional ballot. In each case the rules ask for agreement from most churches and, where money or governance is at stake, from the churches that fund the work. Tap Try it yourself to vote again and choose each result.',
       },
     ] }];
   }
@@ -410,7 +414,7 @@ export function resultTips(b, { hasNext, onRestart }) {
           body: `${names[r.winner]} won a majority in both counts: ${fmt(win.churchPct)}% of the churches voting and ${fmt(win.weightedPct)}% of the weighted votes.`,
         },
         {
-          title: 'Why require both counts',
+          title: 'Why require a double majority',
           body: 'The winner has the support of most churches and of the churches that give the most relative to their budgets. Neither group can elect someone the other opposes.',
         },
         ...next,

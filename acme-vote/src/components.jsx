@@ -414,11 +414,51 @@ function ElectionResult({ ballot, r }) {
  * ({title, body, target?, action?}) and an optional target selector that is
  * highlighted while the tip is open.
  */
+/**
+ * Scroll the screen so `el` is centered, slowly and with gentle easing.
+ * Stops if the viewer touches or scrolls. Returns a function that cancels it.
+ */
+function slowScrollTo(el, zoneTop, zoneBottom) {
+  const box = el.closest('.content');
+  if (!box) return null;
+  const r = el.getBoundingClientRect();
+  const max = box.scrollHeight - box.clientHeight;
+  const from = box.scrollTop;
+  // move the element to the middle of the visible zone (the part of the screen the tip does not cover)
+  const to = Math.max(0, Math.min(max, from + (r.top + r.bottom) / 2 - (zoneTop + zoneBottom) / 2));
+  const dist = Math.abs(to - from);
+  if (dist < 2) return null;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    box.scrollTop = to;
+    return null;
+  }
+  const duration = Math.min(2000, 1000 + dist * 2); // about 1 to 2 seconds; longer distances take longer
+  const ease = (t) => 0.5 - Math.cos(Math.PI * t) / 2; // slow start, slow finish
+  let raf = 0;
+  const start = performance.now();
+  const stop = () => {
+    cancelAnimationFrame(raf);
+    box.removeEventListener('touchstart', stop);
+    box.removeEventListener('wheel', stop);
+  };
+  const step = (now) => {
+    const t = Math.min(1, (now - start) / duration);
+    box.scrollTop = from + (to - from) * ease(t);
+    if (t < 1) raf = requestAnimationFrame(step);
+    else stop();
+  };
+  box.addEventListener('touchstart', stop, { passive: true });
+  box.addEventListener('wheel', stop, { passive: true });
+  raf = requestAnimationFrame(step);
+  return stop;
+}
+
 export function Coach({ tips }) {
   const [tut] = useData(() => api.getTutorial());
   const [closing, setClosing] = useState(null);
   const [pageState, setPageState] = useState({ id: null, page: 0 });
   const [place, setPlace] = useState({ id: null, top: false });
+  const cardRef = useRef(null);
   const tip = tut && !tut.off ? (tips || []).find((t) => t && !tut.seen.includes(t.id) && t.id !== closing) : null;
   const page = tip && pageState.id === tip.id ? pageState.page : 0;
   const pg = tip ? tip.pages[Math.min(page, tip.pages.length - 1)] : null;
@@ -448,18 +488,26 @@ export function Coach({ tips }) {
     const el = document.querySelector(target);
     if (!el) return undefined;
     el.classList.add('coach-target');
-    const fr = (el.closest('.device') || document.body).getBoundingClientRect();
+    const box = el.closest('.content');
+    const br = (box || el.closest('.device') || document.body).getBoundingClientRect();
+    const card = cardRef.current ? cardRef.current.getBoundingClientRect() : null;
+    // the part of the screen the tip card does not cover
+    let zoneTop = br.top;
+    let zoneBottom = br.bottom;
+    if (card && place.top) zoneTop = Math.max(zoneTop, card.bottom + 8);
+    else if (card) zoneBottom = Math.min(zoneBottom, card.top - 8);
     const r = el.getBoundingClientRect();
-    if (r.top < fr.top + 56 || r.bottom > fr.bottom) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    return () => el.classList.remove('coach-target');
-  }, [target, tip?.id]);
+    let cancel = null;
+    if (box && (r.top < zoneTop || r.bottom > zoneBottom)) cancel = slowScrollTo(el, zoneTop, zoneBottom);
+    return () => { el.classList.remove('coach-target'); if (cancel) cancel(); };
+  }, [target, tip?.id, place.id]);
 
   if (!tip || place.id !== tip.id) return null;
   const last = page >= tip.pages.length - 1;
   const done = () => { setClosing(tip.id); api.markTipSeen(tip.id); (tip.alsoMarks || []).forEach((x) => api.markTipSeen(x)); };
 
   return (
-    <div className={`coach${place.top ? ' coach-top' : ''}`} role="dialog" aria-label={pg.title}>
+    <div ref={cardRef} className={`coach${place.top ? ' coach-top' : ''}`} role="dialog" aria-label={pg.title}>
       <div className="coach-head">
         <span className="eyebrow-sm">Tutorial{tip.pages.length > 1 ? ` · ${page + 1} of ${tip.pages.length}` : ''}</span>
         <button className="coach-hide" onClick={() => api.setTipsOff(true)}>Hide tips</button>

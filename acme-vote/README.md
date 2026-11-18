@@ -1,6 +1,6 @@
 # ACME Voting (demo)
 
-A clickable mockup of a phone voting app for the National Business Meeting of the ACME Fellowship (Association of Churches for Missions and Evangelism). It was built to show the Bylaws Committee how the proposed voting rules would work in practice.
+A clickable mockup of a phone voting app for the National Business Meeting of the ACME Fellowship (Association of Churches for Missions and Evangelism). It was built to show the Bylaws Committee how the proposed voting rules, called Double Majority Voting, would work in practice.
 
 This is a demo. It has no real security and no server. All data is stored in the browser that runs it.
 
@@ -65,7 +65,7 @@ To show the manager and a delegate side by side, open the app in two browser tab
 
 To start over, use **Reset demo data** on the opening screen or in Settings.
 
-## The voting rules
+## The voting rules: Double Majority Voting
 
 ### Two counts
 

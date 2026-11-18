@@ -19,7 +19,7 @@ export default function Start() {
       <div className="hero">
         <Logo large />
         <div className="eyebrow">National Business Meeting</div>
-        <h1>Voting for Member Churches</h1>
+        <h1>Double Majority Voting</h1>
         <div className="rule" />
         <p>Association of Churches for Missions &amp; Evangelism</p>
       </div>
