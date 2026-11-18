@@ -78,9 +78,34 @@ export function LogoMark({ size = 36 }) {
   );
 }
 
+/**
+ * Double-tapping the ACME logo (or a screen title in the header) starts the whole
+ * demo over from the opening screen: votes, results and tutorial progress are
+ * cleared. Edited tip wording is kept.
+ */
+export function useRestartOnDoubleTap() {
+  const nav = useNav();
+  const last = useRef(0);
+  return () => {
+    const now = Date.now();
+    if (now - last.current < 400) {
+      last.current = 0;
+      (async () => {
+        await api.resetDemo({ mode: 'path' });
+        await api.signOut();
+        try { sessionStorage.removeItem('acme-vote-tip-page'); } catch { /* ignore */ }
+        nav.reset('start');
+      })();
+    } else {
+      last.current = now;
+    }
+  };
+}
+
 export function Logo({ large }) {
+  const tap = useRestartOnDoubleTap();
   return (
-    <div className={`logo${large ? ' large' : ''}`}>
+    <div className={`logo${large ? ' large' : ''}`} onClick={tap} title="Double-tap to start over">
       <div className="logo-word">
         <b>ACME</b>
         <small>Fellowship of Churches</small>
@@ -124,6 +149,7 @@ function OpenBallotBar() {
 
 export function AppBar({ title, back, right, logo }) {
   const nav = useNav();
+  const restartTap = useRestartOnDoubleTap();
   return (
     <>
     <header className="appbar">
@@ -132,7 +158,7 @@ export function AppBar({ title, back, right, logo }) {
           <Icon name="back" />
         </button>
       )}
-      {logo ? <div style={{ flex: 1, paddingLeft: 4 }}><Logo /></div> : <h1>{title}</h1>}
+      {logo ? <div style={{ flex: 1, paddingLeft: 4 }}><Logo /></div> : <h1 onClick={restartTap}>{title}</h1>}
       {right && <div className="right">{right}</div>}
     </header>
     <OpenBallotBar />

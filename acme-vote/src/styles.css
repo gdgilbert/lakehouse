@@ -650,3 +650,5 @@ table.standings .win { font-weight: 700; color: var(--green); }
 
 .guide-note { margin-top: 14px; background: var(--gold-soft); border-left: 3px solid var(--gold); border-radius: 3px; padding: 10px 12px; font-size: 14.5px; line-height: 1.5; color: #4d3b10; animation: slideRise 0.35s both; }
 .guide-note b { color: #3a2c0a; }
+
+.logo, .appbar h1 { -webkit-user-select: none; user-select: none; touch-action: manipulation; cursor: default; }
