@@ -827,5 +827,9 @@ table.standings .win { font-weight: 700; color: var(--green); }
 
 /* Full screen sits in the hero's top corner so the opening tip never covers it */
 .hero { position: relative; }
-.hero-fs { position: absolute; top: 12px; right: 12px; display: flex; flex-direction: column; align-items: flex-end; z-index: 2; }
+.hero-fs { position: absolute; top: calc(env(safe-area-inset-top) + 14px); right: 18px; display: flex; flex-direction: column; align-items: flex-end; z-index: 2; }
 .hero-fs .fs-help { margin: 8px 0 0; max-width: 250px; text-align: left; background: #1d2438; border: 1px solid rgba(255,255,255,0.3); box-shadow: 0 6px 18px rgba(0,0,0,0.45); color: #fff; border-radius: 10px; padding: 8px 10px; }
+
+/* On the opening page, Full screen has its own row at the top right, in gold */
+.start .hero { padding-top: calc(env(safe-area-inset-top) + 68px); }
+.hero-fs .fs-btn { color: var(--gold); border-color: var(--gold); border-width: 1.5px; font-size: 14px; font-weight: 600; padding: 7px 14px; }
