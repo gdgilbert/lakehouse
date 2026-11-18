@@ -669,3 +669,24 @@ table.standings .win { font-weight: 700; color: var(--green); }
 
 .slides-replay-btn { align-self: flex-end; width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.85); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; animation: none !important; }
 .slides-replay-btn:active { background: rgba(255,255,255,0.15); }
+
+/* One church, one vote: the press */
+.squash { display: flex; flex-direction: column; gap: 6px; }
+.squash-stage { position: relative; overflow: hidden; border-bottom: 2px solid rgba(255,255,255,0.25); }
+.squash-row { position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-around; align-items: flex-end; }
+.squash-item { position: relative; display: flex; flex-direction: column; align-items: center; animation: slideRise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.squash-church { color: #e9e2cf; display: block; transform-origin: 50% 100%; transition: transform 1.9s cubic-bezier(0.55, 0, 0.3, 1); overflow: visible; }
+.squash-crack, .squash-wrinkle { fill: none; stroke: #2a2f3a; stroke-width: 0.9; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; transition: stroke-dashoffset 0.7s ease-out; }
+.squash-wrinkle { stroke-width: 0.7; opacity: 0.8; }
+.squash-church.crushed .squash-crack, .squash-church.crushed .squash-wrinkle { stroke-dashoffset: 0; }
+.squash-item.quiver { animation: quiver 0.09s linear 22 alternate; }
+@keyframes quiver { from { transform: translateX(-1.5px); } to { transform: translateX(1.5px); } }
+.squash-press { position: absolute; left: 6px; right: 6px; height: 14px; border-radius: 2px; z-index: 2;
+  background: linear-gradient(#8a93a3, #5e6675); box-shadow: 0 4px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.35);
+  transition: bottom 1.9s cubic-bezier(0.55, 0, 0.3, 1); }
+.squash-press::before { content: ''; position: absolute; left: 50%; bottom: 100%; width: 10px; height: 200px; margin-left: -5px; background: linear-gradient(90deg, #5e6675, #8a93a3, #5e6675); }
+.squash-press.up { transition: bottom 1.1s cubic-bezier(0.3, 0, 0.2, 1); }
+.squash-ballot { top: auto; }
+.squash-names { display: flex; justify-content: space-around; }
+.squash-names b { font-family: var(--font-head); font-style: italic; font-weight: 400; font-size: 14px; flex: 1; text-align: center; }
+@media (prefers-reduced-motion: reduce) { .squash-church, .squash-press { transition: none; } .squash-item.quiver { animation: none; } }

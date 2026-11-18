@@ -41,9 +41,12 @@ function Count({ to, delay, label }) {
   return <span className="slide-count"><b>{v}</b>{label}</span>;
 }
 
+/** Church icon size in pixels for a budget: wide contrast, so the smallest looks small. */
+const churchPx = (budget) => Math.round(24 + 72 * Math.pow(budget / FIVE[0].budget, 0.9));
+
 /** A small church building, drawn to scale. */
-function Church({ scale = 1, delay = 0 }) {
-  const w = 30 + 44 * scale;
+function Church({ size, scale = 1, delay = 0 }) {
+  const w = size || 30 + 44 * scale;
   return (
     <svg className="slide-church" width={w} height={w} viewBox="0 0 40 40" style={ms(delay)} aria-hidden="true">
       <path d="M20 3v6M17 5.5h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -70,7 +73,7 @@ function SlideChurches() {
     <div className="slide-town">
       {FIVE.map((c, i) => (
         <div className="slide-town-item" key={c.short} style={ms(200 + i * 180)}>
-          <Church scale={Math.sqrt(c.budget / FIVE[0].budget)} delay={200 + i * 180} />
+          <Church size={churchPx(c.budget)} delay={200 + i * 180} />
           <b>{c.short}</b>
           <span>{money(c.budget)}</span>
         </div>
@@ -79,19 +82,73 @@ function SlideChurches() {
   );
 }
 
-function SlideOneVote() {
+// Crack and wrinkle lines drawn on a crushed church (in the icon's 40 x 40 box).
+const CRACKS = [
+  'M14 21l3 4-2 3 3 4-1 4',
+  'M27 20l-2 4 3 3-2 5 1 4',
+  'M9 29l4 1 2-2 4 2 3-1',
+  'M21 33l3-2 2 2 4-1 2 2',
+];
+const WRINKLES = ['M9 25.5q2.5 1.5 5 0t5 0 5 0 5 0 5 0', 'M9 31.5q2.5 1.5 5 0t5 0 5 0 5 0 5 0'];
+
+/** A church that can be crushed: it shrinks to `ratio` of its height, bulges, and cracks. */
+function SquashChurch({ size, ratio, crushed, cracks }) {
+  const bulge = 1 + (1 - ratio) * 0.32;
   return (
-    <div className="slide-ballots">
-      <div className="slide-town">
-        {FIVE.map((c, i) => (
-          <div className="slide-town-item" key={c.short}>
-            <i className="slide-drop" style={ms(300 + i * 220)} />
-            <Church scale={Math.sqrt(c.budget / FIVE[0].budget)} />
-            <b>{c.short}</b>
-          </div>
-        ))}
+    <svg className={`squash-church${crushed ? ' crushed' : ''}`} width={size} height={size} viewBox="0 0 40 40" aria-hidden="true"
+      style={{ transform: crushed ? `scale(${bulge}, ${ratio})` : 'none' }}>
+      <path d="M20 3v6M17 5.5h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M8 38V20l12-9 12 9v18z" fill="currentColor" opacity="0.92" />
+      <path d="M17 38v-7a3 3 0 016 0v7" fill="var(--navy-dark)" />
+      {CRACKS.slice(0, cracks).map((d, k) => (
+        <path key={d} className="squash-crack" d={d} style={{ transitionDelay: `${700 + k * 220}ms` }} />
+      ))}
+      {cracks >= 2 && WRINKLES.slice(0, cracks >= 4 ? 2 : 1).map((d, k) => (
+        <path key={d} className="squash-wrinkle" d={d} style={{ transitionDelay: `${900 + k * 250}ms` }} />
+      ))}
+    </svg>
+  );
+}
+
+/**
+ * One church, one vote: the churches stand at their sizes, a press comes down and
+ * crushes every church to the size of the smallest (the big ones shake, bulge and
+ * crack), then the press lifts and each gets one ballot.
+ */
+function SlideOneVote() {
+  const [stage, setStage] = useState(0); // 0 standing, 1 pressing, 2 crushed, 3 ballots
+  useEffect(() => {
+    const ts = [3200, 5200, 7600].map((t, i) => setTimeout(() => setStage(i + 1), t));
+    return () => ts.forEach(clearTimeout);
+  }, []);
+  const sizes = FIVE.map((c) => churchPx(c.budget));
+  const smallest = Math.min(...sizes);
+  const tallest = Math.max(...sizes);
+  const crackCount = (ratio) => (ratio > 0.9 ? 0 : ratio > 0.75 ? 1 : ratio > 0.6 ? 2 : ratio > 0.4 ? 3 : 4);
+  const pressDown = stage === 1 || stage === 2;
+  return (
+    <div className="squash">
+      <div className="squash-stage" style={{ height: tallest + 34 }}>
+        <div className={`squash-press${pressDown ? ' down' : ''}${stage >= 3 ? ' up' : ''}`}
+          style={{ bottom: pressDown ? smallest * 0.92 : tallest + 22 }} />
+        <div className="squash-row">
+          {FIVE.map((c, k) => {
+            const ratio = smallest / sizes[k];
+            return (
+              <div className={`squash-item${stage === 1 && ratio < 0.95 ? ' quiver' : ''}`} key={c.short} style={ms(200 + k * 180)}>
+                {stage >= 3 && <i className="slide-drop squash-ballot" style={{ bottom: smallest + 4, ...ms(k * 220) }} />}
+                <SquashChurch size={sizes[k]} ratio={ratio} crushed={stage >= 1} cracks={crackCount(ratio)} />
+              </div>
+            );
+          })}
+        </div>
       </div>
-      <div className="slide-total" style={ms(1500)}><Count to={5} delay={1500} label=" votes, one per church" /></div>
+      <div className="squash-names">{FIVE.map((c) => <b key={c.short}>{c.short}</b>)}</div>
+      <div className="slide-morph-note">
+        {stage === 0 && 'Five churches of very different sizes\u2026'}
+        {(stage === 1 || stage === 2) && '\u2026one church, one vote presses them all down to the same size\u2026'}
+        {stage >= 3 && <Count to={5} delay={600} label=" votes: one per church, whatever it puts in." />}
+      </div>
     </div>
   );
 }
@@ -268,7 +325,7 @@ const INTRO = [
     body: 'Next, you will be the delegate for Grace, the small church that gives 4.5%, at a National Business Meeting. Five ballots, each showing a different side of Double Majority Voting.',
     viz: () => (
       <div className="slide-try">
-        <Church scale={Math.sqrt(FIVE[4].budget / FIVE[0].budget)} delay={200} />
+        <Church size={churchPx(FIVE[4].budget)} delay={200} />
         <Dots n={4} from={700} step={180} />
       </div>
     ),
@@ -343,7 +400,7 @@ const OUTRO = [
         {[FIVE[0], FIVE[4]].map((c, i) => (
           <div className="slide-vs-side" key={c.short} style={ms(200 + i * 400)}>
             <div className="slide-vs-top">
-              <Church scale={Math.sqrt(c.budget / FIVE[0].budget)} delay={200 + i * 400} />
+              <Church size={churchPx(c.budget)} delay={200 + i * 400} />
               <div>
                 <b>{c.short}</b>
                 <span className="slide-two-sub">{money(c.budget)} budget · gives {c.pct.toFixed(1)}%</span>
