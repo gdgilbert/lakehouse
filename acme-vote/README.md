@@ -74,7 +74,7 @@ A church casts all of its votes the same way. Each church has one voting delegat
 This is set on each ballot. The defaults are:
 
 - **Elections, budget approval, and amendments** must pass both counts.
-- **Procedural motions** (adjourn, set the agenda, and similar) are decided by the church count only. The weighted count is still shown, for information.
+- **Procedural motions** (adjourn, set the agenda, and similar) are decided by the church count only. The app does not show a weighted count for these ballots.
 
 ### How many votes are needed
 

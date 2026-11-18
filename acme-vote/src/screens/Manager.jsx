@@ -296,7 +296,7 @@ export function BallotScreen({ ballotId }) {
                   onClick={() => api.demoFillRemaining(ballot.id)}>Fill all remaining at random</button>
                 {notVoted.map((c) => (
                   <div className="demo-row" key={c.id}>
-                    <span className="name">{c.name} <span className="muted">({c.weight})</span></span>
+                    <span className="name">{c.name}{ballot.countRule === 'both' && <span className="muted"> ({c.weight})</span>}</span>
                     <span className="opts">
                       {options.map((o) => (
                         <button key={o.id} onClick={() => api.demoRecordVote(ballot.id, c.id, o.id)}>{o.label}</button>
@@ -323,7 +323,7 @@ export function BallotScreen({ ballotId }) {
                 const v = ballot.votes[c.id];
                 return (
                   <Row key={c.id} title={c.name}
-                    sub={v ? `${choiceLabel(ballot, v.choice)} · ${v.choice === 'abstain' ? 'not counted' : `1 church, ${v.weight} weighted`} · ${time(v.at)}` : 'Did not vote'} />
+                    sub={v ? `${choiceLabel(ballot, v.choice)} · ${v.choice === 'abstain' ? 'not counted' : ballot.countRule === 'church' ? '1 vote' : `1 church, ${v.weight} weighted`} · ${time(v.at)}` : 'Did not vote'} />
                 );
               })}
             </div>
@@ -433,7 +433,7 @@ export function NewMotion() {
           <div className="choice-group">
             <Choice label={COUNT_RULES.both} desc="Passes only if it reaches the threshold in the church count and the weighted count."
               selected={countRule === 'both'} onClick={() => setCountRule('both')} />
-            <Choice label={COUNT_RULES.church} desc="One vote per church. The weighted count is shown for information."
+            <Choice label={COUNT_RULES.church} desc="One vote per church. The weighted count is not used."
               selected={countRule === 'church'} onClick={() => setCountRule('church')} />
           </div>
         </div>

@@ -85,7 +85,7 @@ function Overview({ d, choices }) {
   const stats = (
     <div className="stats">
       <Stat label="Churches voted" value={`${voted.length} of ${rows.length}`} />
-      <Stat label="Votes cast" value={churchCast} sub={`${weightCast} weighted`} />
+      <Stat label="Votes cast" value={churchCast} sub={d.countRule === 'both' ? `${weightCast} weighted` : '1 per church'} />
       <Stat label="Abstained" value={abstained} sub="not counted" />
     </div>
   );
@@ -119,11 +119,11 @@ function Overview({ d, choices }) {
           <h3 className="chart-title">Share of votes cast</h3>
           <Legend items={counted} />
           {line('Church count', false, churchCast, r.churchPass, true)}
-          {line('Weighted count', true, weightCast, r.weightedPass, d.countRule === 'both')}
+          {d.countRule === 'both' && line('Weighted count', true, weightCast, r.weightedPass, true)}
           <div className="tiny muted">The dark line marks {THRESHOLDS[d.threshold].label.toLowerCase()}.</div>
           <Readout text={pick} />
         </div>
-        <div className="card small">
+        {d.countRule === 'both' && <div className="card small">
           <h3 className="chart-title">Why the two counts differ</h3>
           Churches that voted Yes have an average of <b>{fmt(avg('yes'))}</b> weighted votes. Churches that voted No
           have an average of <b>{fmt(avg('no'))}</b>.{' '}
@@ -132,7 +132,7 @@ function Overview({ d, choices }) {
             : avg('yes') > avg('no')
               ? 'Churches with more weighted votes leaned Yes, so Yes does better in the weighted count.'
               : 'Churches with more weighted votes leaned No, so Yes does worse in the weighted count.'}
-        </div>
+        </div>}
       </>
     );
   }
@@ -252,10 +252,12 @@ function ByRegion({ d, choices }) {
             <div className="chart-row-head"><b>{g.name}</b><span>{cCast} of {plural(g.rows.length, 'church', 'churches')} voted</span></div>
             {cCast === 0 ? <div className="tiny muted">No votes cast.</div> : (
               <>
-                <div className="mini-label">Church</div>
+                {d.countRule === 'both' && <div className="mini-label">Church</div>}
                 <SegBar height={12} scale={cCast} segments={segs(false, cCast)} onPick={setPick} />
-                <div className="mini-label">Weighted</div>
-                <SegBar height={12} scale={wCast} segments={segs(true, wCast)} onPick={setPick} />
+                {d.countRule === 'both' && <>
+                  <div className="mini-label">Weighted</div>
+                  <SegBar height={12} scale={wCast} segments={segs(true, wCast)} onPick={setPick} />
+                </>}
               </>
             )}
           </div>
@@ -270,16 +272,16 @@ function Churches({ d, choices }) {
   const label = (id) => (id ? choices.find((c) => c.id === id)?.label : 'Did not vote');
   const color = (id) => (id ? choices.find((c) => c.id === id)?.color : NOT_VOTED);
   const order = [...choices.map((c) => c.id), null];
-  const sorted = [...d.rows].sort((a, b) => order.indexOf(a.choice) - order.indexOf(b.choice) || b.weight - a.weight || a.name.localeCompare(b.name));
+  const sorted = [...d.rows].sort((a, b) => order.indexOf(a.choice) - order.indexOf(b.choice) || (d.countRule === 'both' ? b.weight - a.weight : 0) || a.name.localeCompare(b.name));
   return (
     <div className="card table-wrap">
       <table className="standings">
-        <thead><tr><th>Church</th><th>Weight</th><th>Vote</th></tr></thead>
+        <thead><tr><th>Church</th>{d.countRule === 'both' && <th>Weight</th>}<th>Vote</th></tr></thead>
         <tbody>
           {sorted.map((x) => (
             <tr key={x.churchId}>
               <td>{x.name}<span className="n">{x.region}</span></td>
-              <td>{x.weight}</td>
+              {d.countRule === 'both' && <td>{x.weight}</td>}
               <td style={{ whiteSpace: 'nowrap' }}><i className="swatch" style={{ background: color(x.choice) }} />{label(x.choice)}</td>
             </tr>
           ))}
@@ -308,10 +310,13 @@ export default function ResultDetails({ ballotId }) {
       <div className="content">
         <div>
           <h2 style={{ fontSize: 20 }}>{d.title}</h2>
-          <div className="small muted">{d.region ? `${d.region} churches only` : 'All Member Churches'}</div>
+          <div className="small muted">
+            {d.region ? `${d.region} churches only` : 'All Member Churches'}
+            {d.countRule === 'church' && ' · Church count only, 1 vote per church'}
+          </div>
         </div>
         <div className="segmented">
-          {TABS.filter(([k]) => showRegion || k !== 'region').map(([k, l]) => (
+          {TABS.filter(([k]) => (showRegion || k !== 'region') && (d.countRule === 'both' || k !== 'weight')).map(([k, l]) => (
             <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>
           ))}
         </div>

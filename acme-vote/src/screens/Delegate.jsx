@@ -293,7 +293,7 @@ export function BallotScreen({ ballotId }) {
         {ballot.status === 'closed' && <ResultView ballot={ballot} />}
         {ballot.status === 'closed' && ballot.myVote && (
           <p className="small muted center">
-            {church.name} voted {choiceLabel(ballot, ballot.myVote.choice)} ({ballot.myVote.weight} weighted).
+            {church.name} voted {choiceLabel(ballot, ballot.myVote.choice)}{ballot.countRule === 'both' ? ` (1 church, ${ballot.myVote.weight} weighted)` : ''}.
           </p>
         )}
 

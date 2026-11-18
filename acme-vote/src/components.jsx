@@ -330,13 +330,13 @@ export function NextBallot({ currentId, churchId, screen }) {
   );
 }
 
-function ChartsLink({ ballotId }) {
+function ChartsLink({ ballotId, churchOnly }) {
   const nav = useNav();
   return (
     <button type="button" className="results-link" onClick={() => nav.push('resultDetails', { ballotId })}>
       <span>
         <b>Charts and details</b>
-        <span className="sub">Both counts, votes by weight and Region, and every church&rsquo;s vote</span>
+        <span className="sub">{churchOnly ? 'Votes by Region and every church\u2019s vote' : 'Both counts, votes by weight and Region, and every church\u2019s vote'}</span>
       </span>
       <Icon name="results" />
     </button>
@@ -354,11 +354,13 @@ export function ResultView({ ballot }) {
         ) : (
           <Banner tone="red" title="Did not pass">{r.explanation}</Banner>
         )}
-        <ChartsLink ballotId={ballot.id} />
+        <ChartsLink ballotId={ballot.id} churchOnly={ballot.countRule === 'church'} />
         <MotionCount title="Church count" count={r.tally.church} pass={r.churchPass} unit="churches"
           decides threshold={ballot.threshold} ballotId={ballot.id} />
-        <MotionCount title="Weighted count" count={r.tally.weighted} pass={r.weightedPass} unit="votes"
-          decides={ballot.countRule === 'both'} threshold={ballot.threshold} ballotId={ballot.id} />
+        {ballot.countRule === 'both' && (
+          <MotionCount title="Weighted count" count={r.tally.weighted} pass={r.weightedPass} unit="votes"
+            decides threshold={ballot.threshold} ballotId={ballot.id} />
+        )}
       </>
     );
   }

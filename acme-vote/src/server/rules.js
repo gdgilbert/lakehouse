@@ -109,7 +109,7 @@ export function evaluateMotion({ countRule, threshold }, votes) {
     explanation = 'No votes were cast, so the motion fails.';
   } else if (countRule === 'church') {
     explanation = churchPass
-      ? `Passed the church count (${THRESHOLDS[threshold].short.toLowerCase()} needed). The weighted count does not decide this ballot.`
+      ? `Passed the church count (${THRESHOLDS[threshold].short.toLowerCase()} needed). Each church had 1 vote.`
       : `Did not reach ${THRESHOLDS[threshold].label.toLowerCase()} in the church count.`;
   } else if (passed) {
     explanation = 'Passed both the church count and the weighted count.';
