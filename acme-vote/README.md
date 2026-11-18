@@ -30,12 +30,13 @@ A built copy is committed in `acme-vote/demo/`, so the demo can be served withou
 The guided tutorial follows a set path. After you vote, **See the result** fills in the other churches' votes so that each ballot shows a particular case:
 
 1. Adopt the agenda (church count only): passes.
-2. Approve the budget (both counts): passes the church count but fails the weighted count.
-3. Amendment (75%, both counts): passes both.
-4. Moderator election: no one elected on ballot 1, the runoff splits between the two counts, and ballot 3 is decided by combined score.
-5. Judicial Commission slate: passes.
-6. Regional election: elected on the first ballot.
-7. President's third consecutive term (two-thirds): a majority votes Yes but it falls short of two-thirds.
+2. Approve next year's budget (both counts, Bylaws VIII §7): passes the church count but fails the weighted count.
+3. Amend Article VIII, Section 1 (75% in both counts, XII §14): passes both.
+4. President's third consecutive term (two-thirds in both counts, III §10(b)): a majority votes Yes but it falls short of two-thirds.
+5. Judicial Commission slate (IV §2): passes.
+6. At-Large Director, Seat 1 (III §3, VIII §6): no one elected on ballot 1, the runoff splits between the two counts, and ballot 3 is decided by combined score.
+
+Elections come in the order set by Bylaws XII §15: the President, then the Judicial Commission, then the At-Large Directors. Only business of the National Business Meeting (VIII §4) appears; Regional elections such as Regional Director and Moderator happen at Regional Business Meetings and are not part of the tutorial.
 
 The exact numbers vary from run to run, but each outcome is fixed. At the end, **Try it yourself** runs the same ballots again with a choice of result on each (**Demo pass** / **Demo fail**, or **Someone elected** / **No one elected**), and **Run the guided tutorial again** starts the path over. The **minimize** button (top right of a card) shrinks it to a small **Tip** tab in the header so you can see the screen; tap the tab to reopen it on the same page. **Hide tips** on any card turns them off; the **My church** tab can turn them back on or start the guided tutorial over.
 
@@ -58,7 +59,7 @@ The opening screen asks you to choose a role: **Delegate** or **Manager**. This 
 - Sign in with the church's delegate code. The sample churches use 0000-0001 through 0000-0017. Tap **Show demo codes** to see which code belongs to which church.
 - The **Ballots** tab lists open ballots. Each ballot explains how the church's vote counts: on a church-count-only ballot, every church has a single vote whatever its weight; on a ballot that must pass both counts, the church casts 1 vote in the church count and its full weight in the weighted count. The delegate chooses one option (or abstains), reviews it, and submits. A vote cannot be changed after it is submitted. The app shows a receipt number.
 - After voting, the demo-only buttons **Demo pass** and **Demo fail** (on an election, **Someone elected** and **No one elected**) fill in votes for the other churches and close the ballot, so a delegate can see a result without switching to the manager. The votes are random but steered to the chosen outcome. A failing two-count motion is set up, when possible, to pass the church count and fail the weighted count. A failing election is set up, when possible, as a split between the two counts. The manager has the same buttons on an open ballot.
-- **Sample ballot sequence.** When a ballot closes, the demo opens the next sample ballot, each of a different kind, and the result screen shows a **Next ballot is open** button. The order is: adopt the agenda (procedural, church count only), approve the budget (both counts, majority), an amendment (both counts, 75%), a Moderator election with three candidates, a recess (procedural), the Judicial Commission slate (and, if it fails, the five seats one at a time), a regional election for the delegate's own Region, and a President's third consecutive term (two-thirds). An undecided election goes straight to its next ballot: runoff, ballot 3, ballot 4. Turn this off in the manager's Settings tab.
+- **Sample ballot sequence.** When a ballot closes, the demo opens the next sample ballot, each of a different kind, and the result screen shows a **Next ballot is open** button. The order is: adopt the agenda (procedural, church count only), approve the budget (both counts, majority), an amendment (both counts, 75%), a recess (procedural; Try it yourself only), a President's third consecutive term (two-thirds), the Judicial Commission slate (and, if it fails, the five seats one at a time), and an At-Large Director seat with three nominees. An undecided election goes straight to its next ballot: runoff, ballot 3, ballot 4. Turn this off in the manager's Settings tab.
 - Every result has a **Charts and details** link (tapping the result cards also opens it), with four views: **Overview** (both counts against the threshold, and why they differ), **By weight** (how churches with 1, 2, 3 and 4 weighted votes voted), **By Region**, and **Churches** (every church's vote and weight).
 - The **Results** tab lists closed ballots and their results.
 - The **My church** tab shows the church's weighted votes and the figures they are based on.
@@ -106,28 +107,31 @@ Abstentions are not votes cast. A church that abstains is left out of both count
 
 ### Elections
 
+The draft Bylaws (VIII §6, IV §2) elect a candidate by a majority of the votes cast and, if no one has a majority, hold a runoff between the two candidates who received the most votes. Under Double Majority Voting the app applies that process to both counts, and adds third and fourth ballots for a runoff that splits, which the draft does not address:
+
 - A candidate is elected by a majority of the votes cast in both counts.
-- **Ballot 1:** if no candidate carries both counts, ballot 2 is a runoff between the two candidates with the highest combined scores.
-- **Ballot 2:** a candidate must still carry both counts. If neither does, a third ballot is taken.
-- **Ballot 3:** if one candidate carries both counts, that candidate is elected. If the result splits (one candidate wins the church count and the other wins the weighted count), the candidate with the higher combined score is elected.
+- **Ballot 1:** if no candidate carries both counts, ballot 2 is a runoff between the two candidates with the highest combined scores ("the most votes" under two counts).
+- **Ballot 2 (runoff):** a candidate must still carry both counts. If the runoff splits, a third ballot is taken.
+- **Ballot 3** is different, and the app says so on the ballot: it is final unless the combined scores tie exactly. If one candidate carries both counts, that candidate is elected. If the result splits (one candidate wins the church count and the other wins the weighted count), the candidate with the higher combined score is elected.
 - **Combined score** = the candidate's percentage of the church count + the candidate's percentage of the weighted count. For example, 47.1% of the church count and 68.3% of the weighted count gives a combined score of 115.4.
-- **Ballot 4:** if the combined scores on ballot 3 are tied, a fourth ballot is taken and scored the same way. If the combined scores tie again, both candidates are disqualified and the manager reopens nominations. Voting then starts again from ballot 1. A disqualified candidate cannot be nominated again in that election.
+- **Ballot 4** is the final ballot, and the app says so on the ballot: it is scored the same way as ballot 3. If the combined scores tie again, both candidates are disqualified and nominations are reopened. Voting then starts again from ballot 1. A disqualified candidate cannot be nominated again in that election.
 
 ### Judicial Commission
 
 1. The National Business Meeting first votes on the President's five nominees as a single slate. The slate needs a majority in both counts.
 2. If the slate passes, all five are elected.
-3. If the slate fails, the five seats are filled one at a time. For each seat, the manager takes nominees from the floor; any of the President's nominees may be among them. Each seat is decided by the election rules above before the next seat opens. A person already elected to a seat cannot be nominated for another.
+3. If the slate fails, the five seats are filled one at a time. For each seat, any delegate may nominate a man from the floor, including any of the President's nominees. Each seat is decided by the election rules above before the next seat opens. A person already elected to a seat cannot be nominated for another.
 
 ### Regional ballots
 
-A ballot or election can be limited to the churches of one Region. Only churches in that Region can vote on it, and both counts include only those churches. The demo uses five Regions: Midwest, Northeast, Southeast, Southwest, and West.
+Regional elections belong to Regional Business Meetings (Bylaws VIII §2, §5), so the tutorial has none. The manager screens can still limit a ballot or election to the churches of one Region. Only churches in that Region can vote on it, and both counts include only those churches. The demo uses five Regions: Midwest, Northeast, Southeast, Southwest, and West.
 
 ## Decisions made where the rules were silent
 
 These choices are made in the demo and should be checked by the committee:
 
-- **Regions.** The request was cut off partway through the list of Regions after "Midwest, Northeast,". The demo adds Southeast, Southwest, and West. The list is in `src/server/rules.js` (`REGIONS`).
+- **Double Majority Voting is not yet in the draft Bylaws.** The draft of November 17, 2026 still gives each Member Church one vote at the National Business Meeting (VIII §3). The app follows the draft's procedures (offices, order of business, thresholds, runoff) and applies the double count to them.
+- **Split runoff.** The draft's runoff assumes one count. A runoff that splits between the counts goes to a third ballot, as described under Elections.
 - **Tie for second place on ballot 1.** If two or more candidates tie for second place by combined score, all of them go on to ballot 2.
 - **No votes cast.** If an election ballot closes with no votes cast, the same ballot is taken again. A motion with no votes cast fails.
 - **When a church's weight is fixed.** A church's weight is recorded when it votes. If the registry changes afterward, votes already cast keep their original weight.

@@ -246,7 +246,7 @@ export function evaluateElectionRound({ round, threshold, names }, votes, candid
       ...base,
       outcome: 'next',
       advancing: tiedIds,
-      explanation: `The combined scores are tied (${fmt(top.combined)}). A 4th ballot is taken and scored the same way.`,
+      explanation: `The combined scores are tied (${fmt(top.combined)}). A fourth and final ballot is taken and scored the same way.`,
     };
   }
   return {
@@ -255,7 +255,7 @@ export function evaluateElectionRound({ round, threshold, names }, votes, candid
     disqualified: tiedIds,
     explanation:
       `The combined scores tied again on ballot ${round}. ${tiedIds.map(name).join(' and ')} ` +
-      'are disqualified. The manager must reopen nominations.',
+      'are disqualified, and nominations are reopened.',
   };
 }
 

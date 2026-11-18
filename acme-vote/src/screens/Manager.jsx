@@ -422,7 +422,7 @@ export function NewMotion() {
         <label className="field">
           <span>Title</span>
           <input className="input" value={title} onChange={(e) => setTitle(e.target.value)}
-            placeholder={{ budget: 'Approve the 2027 budget', amendment: 'Amend Article IV, Section 2', procedural: 'Adjourn until 1:30 p.m.' }[type]} />
+            placeholder={{ budget: 'Approve next year’s budget', amendment: 'Amend Article VIII, Section 1', procedural: 'Adjourn until 1:30 p.m.' }[type]} />
         </label>
         <label className="field">
           <span>Text of the motion (optional)</span>

@@ -386,37 +386,35 @@ function sessionRegion(db) {
 }
 
 // Each step opens one ballot of a different kind.
+// Elections follow the order in Bylaws Article XII, Section 15: the President,
+// then the Judicial Commission, then the At-Large Directors.
 const DEMO_STEPS = [
-  (db) => { // budget approval: both counts, majority
+  (db) => { // budget approval (VIII §7): both counts, majority
     const b = db.ballots.find((x) => x.id === 'b-demo-2');
     if (b && b.status === 'draft') { b.status = 'open'; b.openedAt = Date.now(); return true; }
     return false;
   },
-  (db) => addMotion(db, { // amendment: both counts, 75%
+  (db) => addMotion(db, { // amendment (XII §14): both counts, 75%
     type: 'amendment', countRule: 'both', threshold: 'threeQuarters',
-    title: 'Amend Article IV, Section 2',
-    description: 'Require each Member Church to submit its elder-certified budget by March 1 of the year after the measuring year.',
-  }),
-  (db) => addElection(db, { // election with three candidates
-    office: 'Moderator', names: ['Andrew Mills', 'Jonathan Pierce', 'Timothy Walsh'],
+    title: 'Amend Article VIII, Section 1',
+    description: 'Require the National Business Meeting to be held during the National Conference, rather than before, during, or after it.',
   }),
   (db) => db.demo.mode !== 'path' && addMotion(db, { // procedural: church count only (free mode only)
     type: 'procedural', countRule: 'church', threshold: 'majority',
     title: 'Recess until 1:30 p.m.',
     description: 'Recess for lunch and resume the business meeting at 1:30 p.m.',
   }),
-  (db) => { // Judicial Commission slate
+  (db) => addMotion(db, { // President's third consecutive term (III §10(b)): two-thirds
+    type: 'election', countRule: 'both', threshold: 'twoThirds',
+    title: 'President: third consecutive term',
+    description: 'The Board of Directors has nominated Thomas Avery, who is completing his second consecutive term as President. Under Article III, Section 10(b), election to a third consecutive term requires two-thirds of the votes cast.',
+  }),
+  (db) => { // Judicial Commission slate (IV §2)
     const c = createCommissionInDb(db, ['Richard Hale', 'Kevin Ortiz', 'Gregory Lane', 'Martin Cho', 'Edward Banks']);
     openSlateInDb(db, c);
   },
-  (db) => { // regional election for the signed-in delegate's Region
-    const region = sessionRegion(db);
-    addElection(db, { office: `${region} Regional Representative`, names: ['Matthew Cole', 'Joel Harper'], region });
-  },
-  (db) => addMotion(db, { // special case: two-thirds
-    type: 'election', countRule: 'both', threshold: 'twoThirds',
-    title: 'President: third consecutive term',
-    description: 'Elect Thomas Avery to a third consecutive term as President. A third consecutive term requires two-thirds of the votes cast in both counts.',
+  (db) => addElection(db, { // At-Large Director (III §3, VIII §6), three nominees presented by the President
+    office: 'At-Large Director, Seat 1', names: ['Andrew Mills', 'Jonathan Pierce', 'Timothy Walsh'],
   }),
 ];
 
@@ -755,10 +753,7 @@ function openNextInDb(e, db) {
       kind: 'candidates',
       type: 'election',
       title: `${e.office}: Ballot ${e.round}${label}`,
-      description:
-        e.series > 1
-          ? `Nominations were reopened. This is ballot ${e.round} of the new round of voting.`
-          : '',
+      description: roundDescription(e, ids.length),
       countRule: 'both',
       threshold: e.threshold,
       region: e.region,
@@ -775,6 +770,21 @@ function openNextInDb(e, db) {
     e.ballotIds.push(b.id);
     e.status = 'voting';
     e.nextCandidateIds = null;
+}
+
+// What each ballot of an election is, in plain words, shown on the ballot.
+function roundDescription(e, count) {
+  const reopened = e.series > 1 ? 'Nominations were reopened after a tie. ' : '';
+  if (e.round === 1) {
+    return reopened + `A candidate must win a majority of the votes cast in both counts. If no one does, the two candidates with the highest combined scores go to a runoff.`;
+  }
+  if (e.round === 2) {
+    return reopened + `Runoff between the ${count === 2 ? 'two' : count} candidates with the highest combined scores. A candidate must still win a majority in both counts. If the runoff splits, there is a third ballot.`;
+  }
+  if (e.round === 3) {
+    return 'Third ballot. This ballot is final unless the combined scores tie: if the counts split, the higher combined score wins.';
+  }
+  return 'Fourth and final ballot. If the combined scores tie again, both candidates are disqualified and nominations are reopened.';
 }
 
 function afterElectionBallot(db, b) {

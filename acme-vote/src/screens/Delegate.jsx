@@ -267,9 +267,11 @@ function countExplanation(ballot, church) {
   return {
     title: 'This ballot is counted two ways',
     body: `${church.name} casts 1 vote in the church count and ${votes} in the weighted count, all for the choice you make. ` +
-      (ballot.kind === 'candidates'
-        ? 'A candidate must carry both counts to be elected.'
-        : 'The motion must pass both counts.'),
+      (ballot.kind !== 'candidates'
+        ? 'The motion must pass both counts.'
+        : ballot.round >= 3
+          ? 'If neither candidate carries both counts, the higher combined score wins.'
+          : 'A candidate must carry both counts to be elected.'),
   };
 }
 
@@ -334,9 +336,8 @@ export function BallotScreen({ ballotId }) {
   const mode = tut?.mode || 'path';
   if (!ballot || !church) return <div className="screen"><AppBar title="Ballot" /></div>;
   const hasNext = (allBallots || []).some((x) => x.status === 'open' && x.id !== ballot.id && x.eligible && !x.myVote);
-  const restart = async () => { await api.resetDemo({ mode: 'path' }); await api.signOut(); nav.reset('start'); };
   const tips = ballot.status === 'closed'
-    ? (ballot.result ? resultTips(ballot, { hasNext, onRestart: restart }) : [])
+    ? (ballot.result && allBallots ? resultTips(ballot, { hasNext, mode }) : [])
     : ballot.myVote ? afterVoteTips(ballot, mode) : beforeVoteTips(ballot, church, mode);
 
   const options = ballot.kind === 'candidates'
@@ -385,6 +386,18 @@ export function BallotScreen({ ballotId }) {
         )}
         {ballot.status === 'open' && ballot.myVote && <DemoResultsButton ballot={ballot} />}
 
+        {ballot.status === 'open' && ballot.kind === 'candidates' && ballot.round === 3 && (
+          <Banner tone="gold" title="Ballot 3 is final unless there is a tie">
+            If a candidate wins both counts, he is elected. If the counts split, the higher combined score wins.
+            Only an exact tie in combined score leads to a fourth ballot.
+          </Banner>
+        )}
+        {ballot.status === 'open' && ballot.kind === 'candidates' && ballot.round >= 4 && (
+          <Banner tone="red" title="This is the final ballot">
+            It is decided the same way as ballot 3. If the combined scores tie again, both candidates are
+            disqualified and nominations are reopened.
+          </Banner>
+        )}
         {ballot.status === 'open' && !ballot.myVote && (
           <>
             <Banner tone="navy" title={countExplanation(ballot, church).title}>

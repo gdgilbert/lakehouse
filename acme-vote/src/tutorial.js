@@ -58,7 +58,7 @@ export function signInTips(fillCode) {
     target: '.input.code',
     pages: [{
       title: 'Sign in as a delegate',
-      body: 'Each Member Church has one voting delegate. At the meeting, the delegate signs in with the code on the delegate card. For this tutorial, use 0000-0001, the code for Grace Fellowship Church, then tap Sign in.',
+      body: 'At the National Business Meeting, each Member Church has one voting delegate, certified in writing by its elders. The delegate signs in with the code on the delegate card. For this tutorial, use 0000-0001, the code for Grace Fellowship Church, then tap Sign in.',
       action: { label: 'Fill in the code', onClick: fillCode },
     }],
   }];
@@ -139,12 +139,12 @@ export function beforeVoteTips(b, church, mode = 'path') {
     if (b.round === 1 && kind === 'election') {
       tips.push({ id: 'before:election:1', pages: [
         {
-          title: 'Electing a Moderator',
-          body: `There are ${b.options.length} candidates. To be elected, a candidate needs a double majority: a majority of the votes cast in both counts.`,
+          title: 'Electing an At-Large Director',
+          body: `The President has presented ${b.options.length} nominees for this At-Large seat. Each seat is elected separately. To be elected, a candidate needs a double majority: a majority of the votes cast in both counts.`,
         },
         {
           title: 'If no one wins',
-          body: 'With three candidates, that often does not happen on the first ballot. Then the top two go to a runoff.' +
+          body: 'With three candidates, that often does not happen on the first ballot. Then the two with the highest combined scores go to a runoff, as the Bylaws provide.' +
             (guided ? ' Vote for any candidate, then see the result.' : ' Choose a candidate, then choose No one elected to see how the runoff works.'),
         },
       ] });
@@ -156,10 +156,22 @@ export function beforeVoteTips(b, church, mode = 'path') {
           (guided ? '' : ' Choose No one elected again to see ballot 3, or Someone elected to finish here.'),
       }] });
     }
-    if (b.round >= 3) {
-      tips.push({ id: 'before:election:3', pages: [{
-        title: `Ballot ${b.round}`,
-        body: 'If one candidate carries both counts, that candidate is elected. If the counts split, the candidate with the higher combined score is elected. The combined score is a candidate’s share of the church count plus their share of the weighted count.',
+    if (b.round === 3) {
+      tips.push({ id: 'before:election:3', pages: [
+        {
+          title: 'Ballot 3 is different',
+          body: 'This ballot is final unless there is an exact tie. If one candidate carries both counts, he is elected. If the counts split again, the candidate with the higher combined score is elected.',
+        },
+        {
+          title: 'Combined score',
+          body: 'A candidate\u2019s combined score is his share of the church count plus his share of the weighted count. Adding the two shares weighs both counts equally.',
+        },
+      ] });
+    }
+    if (b.round >= 4) {
+      tips.push({ id: 'before:election:4', pages: [{
+        title: 'The final ballot',
+        body: 'The combined scores tied on ballot 3, so this fourth ballot is final. It is decided the same way. If the combined scores tie again, both candidates are disqualified and nominations are reopened.',
       }] });
     }
   }
@@ -195,7 +207,7 @@ export function beforeVoteTips(b, church, mode = 'path') {
   if (kind === 'special') {
     tips.push({ id: 'before:special', pages: [{
       title: 'Two-thirds',
-      body: 'A President serving a third consecutive term needs two-thirds of the votes cast, in both counts. The bylaws set a higher bar where the fellowship has decided that wider agreement is needed.',
+      body: 'Under Article III, Section 10(b), a President seeking a third consecutive term needs two-thirds of the votes cast. Under Double Majority Voting, that means two-thirds in both counts. The Bylaws set a higher bar where the Fellowship has decided that wider agreement is needed.',
     }] });
   }
 
@@ -310,10 +322,15 @@ function electionNames(b) {
   return Object.fromEntries(b.options.map((o) => [o.id, o.label]));
 }
 
-export function resultTips(b, { hasNext, onRestart }) {
+export function resultTips(b, { hasNext, mode = 'path' }) {
   const kind = ballotKind(b);
   const r = b.result;
-  const next = hasNext ? [NEXT_PAGE] : [];
+  // On the last result of the tutorial, the final page sums it up.
+  const next = hasNext ? [NEXT_PAGE] : [{
+    title: mode === 'path' ? 'You have finished the tutorial' : 'That was the last ballot',
+    body: 'You have seen every kind of ballot at the National Business Meeting under Double Majority Voting: church count only, a double majority, 75% and two-thirds in both counts, the Judicial Commission slate, and an election that went to a runoff and a third ballot. In each case the rules ask for agreement from most churches and, where money or governance is at stake, from the churches that fund the work.' +
+      (mode === 'path' ? ' Tap Try it yourself to vote again and choose each result.' : ''),
+  }];
 
   if (r.kind === 'motion' && kind === 'procedural') {
     const n = motionNumbers(b);
@@ -387,10 +404,7 @@ export function resultTips(b, { hasNext, onRestart }) {
         title: 'Why two-thirds',
         body: 'Keeping the same President for a third consecutive term is an exception to the usual pattern, so it needs wider agreement than a normal election: two-thirds of the churches voting and two-thirds of the weighted votes.',
       },
-      {
-        title: 'You have finished the tutorial',
-        body: 'You have seen every kind of ballot under Double Majority Voting: church count only, a double majority, 75% and two-thirds in both counts, elections with runoffs, the Judicial Commission slate, and a regional ballot. In each case the rules ask for agreement from most churches and, where money or governance is at stake, from the churches that fund the work. Tap Try it yourself to vote again and choose each result.',
-      },
+      ...next,
     ] }];
   }
 
@@ -452,7 +466,7 @@ export function resultTips(b, { hasNext, onRestart }) {
       { title: 'Still no winner', body: r.explanation },
       {
         title: 'Why the election still ends',
-        body: 'A split cannot go on forever. From ballot 3 on, a split is settled by combined score. Only an exact tie in combined score leads to another ballot.',
+        body: 'A split cannot go on forever. Ballot 3 is final unless there is an exact tie: if the counts split again, the higher combined score wins.',
       },
       ...next,
     ] }];
