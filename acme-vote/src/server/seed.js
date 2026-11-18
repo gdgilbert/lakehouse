@@ -34,7 +34,7 @@ export const GROUPS = {
 export function seedChurches() {
   const g = (group, credential) => ({ group, credential });
   return [
-    C('c01', 'Grace Fellowship Church', 'Des Moines, IA', 'Midwest', 'Daniel Hart', 300000, 13500, g('small-high', '0000-0001')),
+    C('c01', 'Grace Fellowship Church', 'Des Moines, IA', 'Midwest', 'Daniel Hart', 200000, 9000, g('small-high', '0000-0001')),
     C('c02', 'Covenant Presbyterian Church', 'Springfield, IL', 'Midwest', 'Robert Lin', 1800000, 27000, g('large-low', '0000-0002')),
     C('c03', 'Redeemer Church', 'Fort Wayne, IN', 'Midwest', 'Samuel Okafor', 220000, 9900, g('small-high', '0000-0003')),
     C('c04', 'Trinity Bible Church', 'Lansing, MI', 'Midwest', 'Mark Jensen', 250000, 3000, g('small-low', '0000-0004')),

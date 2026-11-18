@@ -14,7 +14,7 @@ import {
 } from './rules.js';
 import { GROUPS, MEASURING_YEAR, seedBallots, seedChurches } from './seed.js';
 
-const DB_KEY = 'acme-vote-db-v4'; // v4: story ballots carry the guided vote
+const DB_KEY = 'acme-vote-db-v5'; // v5: Grace's figures changed for the slideshow
 const SESSION_KEY = 'acme-vote-session-v2';
 const CHANGE_EVENT = 'acme-vote-db-change';
 

@@ -652,3 +652,17 @@ table.standings .win { font-weight: 700; color: var(--green); }
 .guide-note b { color: #3a2c0a; }
 
 .logo, .appbar h1 { -webkit-user-select: none; user-select: none; touch-action: manipulation; cursor: default; }
+
+/* Who gives the most: dollar bars that turn into share-of-budget bars */
+.slide-morph { display: flex; flex-direction: column; gap: 10px; }
+.slide-morph-caption { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); font-weight: 600; transition: opacity 0.4s; }
+.slide-morph-row { display: grid; grid-template-columns: 104px 1fr 58px; gap: 8px; align-items: center; animation: slideRise 0.5s both; }
+.slide-morph-name b { display: block; font-family: var(--font-head); font-style: italic; font-weight: 400; font-size: 16px; line-height: 1.1; }
+.slide-morph-name span { display: block; white-space: nowrap; font-size: 11px; color: rgba(255,255,255,0.7); max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.5s, opacity 0.5s; }
+.slide-morph-name span.on { max-height: 18px; opacity: 1; }
+.slide-morph-track { position: relative; height: 16px; background: rgba(255,255,255,0.06); border-radius: 3px; }
+.slide-morph-bar { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: #6f8db8; transform-origin: left; animation: growX 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; transition: width 1.3s cubic-bezier(0.65, 0, 0.35, 1), background 1s; }
+.slide-morph.share .slide-morph-bar { background: var(--gold); }
+.slide-morph-value { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+.slide-morph-note { margin-top: 4px; text-align: center; font-family: var(--font-head); font-style: italic; font-size: 18px; color: var(--gold); min-height: 48px; }
+@media (prefers-reduced-motion: reduce) { .slide-morph-bar { transition: none; } }

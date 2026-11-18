@@ -27,7 +27,7 @@ A built copy is committed in `acme-vote/demo/`, so the demo can be served withou
 
 **The app currently runs as a tutorial on Double Majority Voting.** The Manager role is hidden. The app is styled as a plain ACME delegate voting app; the first tip says it is a tutorial.
 
-1. **Opening slideshow.** **Start the tutorial** plays a short slideshow, moved along with one button, using five of the sample churches: their sizes, one church, one vote, how much of its budget each gives, weighted votes by commitment, counting both, and animated examples of why either count alone can be unfair. **Skip** goes straight to the ballots.
+1. **Opening slideshow.** **Start the tutorial** plays a short slideshow, moved along with one button, using five of the sample churches: their sizes, one church, one vote, who gives the most (dollar bars that turn into share-of-budget bars, reversing the order), weighted votes by commitment, counting both, and animated examples of why either count alone can be unfair. **Skip** goes straight to the ballots.
 2. **Ballots.** You sign in as the delegate for Grace Fellowship Church (a small church that gives 4.5% of its budget, so 4 weighted votes) and vote on five ballots. After each vote, **See the result** fills in the other churches' votes so each ballot tells a story:
 
    | Ballot | Story | Grace votes | Church count | Weighted | Double Majority Voting |

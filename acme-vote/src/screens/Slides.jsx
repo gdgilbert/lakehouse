@@ -8,14 +8,15 @@ import * as api from '../server/api.js';
 // animation below.
 
 const FIVE = [
-  { short: 'Emmanuel', budget: 2400000, pct: 1.0, votes: 1 },
-  { short: 'Covenant', budget: 1800000, pct: 1.5, votes: 1 },
-  { short: 'Hope', budget: 600000, pct: 2.2, votes: 2 },
-  { short: 'Harbor', budget: 450000, pct: 3.1, votes: 3 },
-  { short: 'Grace', budget: 300000, pct: 4.5, votes: 4 },
+  { short: 'Emmanuel', budget: 2400000, gives: 24000, pct: 1.0, votes: 1 },
+  { short: 'Covenant', budget: 1800000, gives: 27000, pct: 1.5, votes: 1 },
+  { short: 'Hope', budget: 600000, gives: 13200, pct: 2.2, votes: 2 },
+  { short: 'Harbor', budget: 450000, gives: 13950, pct: 3.1, votes: 3 },
+  { short: 'Grace', budget: 200000, gives: 9000, pct: 4.5, votes: 4 },
 ];
 const TOTAL_VOTES = FIVE.reduce((s, c) => s + c.votes, 0);
 const money = (n) => (n >= 1000000 ? `$${(n / 1000000).toFixed(1)}M` : `$${Math.round(n / 1000)},000`);
+const dollars = (n) => '$' + Math.round(n).toLocaleString('en-US');
 const ms = (n) => ({ animationDelay: `${n}ms` });
 
 /** Counts from 0 up to `to`, starting after `delay` ms. */
@@ -91,6 +92,48 @@ function SlideOneVote() {
         ))}
       </div>
       <div className="slide-total" style={ms(1500)}><Count to={5} delay={1500} label=" votes, one per church" /></div>
+    </div>
+  );
+}
+
+/**
+ * Who gives the most? First the gifts in dollars, where the large churches look
+ * like the biggest givers. Then each church's budget appears, and the bars turn
+ * into the share of that budget given, which reverses the picture.
+ */
+function SlideDollarsToShare() {
+  const [stage, setStage] = useState(0); // 0 dollars, 1 budgets shown, 2 share of budget, 3 done
+  const [run, setRun] = useState(0);
+  useEffect(() => {
+    setStage(0);
+    const ts = [2600, 4600, 6600].map((t, i) => setTimeout(() => setStage(i + 1), t));
+    return () => ts.forEach(clearTimeout);
+  }, [run]);
+  const maxGives = Math.max(...FIVE.map((c) => c.gives));
+  const share = stage >= 2;
+  return (
+    <div className={`slide-morph${share ? ' share' : ''}`}>
+      <div className="slide-morph-caption">{share ? 'Share of its own budget given to ACME' : 'Dollars given to ACME'}</div>
+      {FIVE.map((c, i) => (
+        <div className="slide-morph-row" key={c.short} style={ms(200 + i * 140)}>
+          <div className="slide-morph-name">
+            <b>{c.short}</b>
+            <span className={stage >= 1 ? 'on' : ''}>{money(c.budget)} budget</span>
+          </div>
+          <div className="slide-morph-track">
+            {share && [2, 3, 4].map((t) => <i key={t} className="slide-meter-line" style={{ left: `${(t / 5) * 100}%` }} />)}
+            <span className="slide-morph-bar"
+              style={{ width: `${share ? (c.pct / 5) * 100 : (c.gives / maxGives) * 100}%`, transitionDelay: share ? `${i * 90}ms` : '0ms', ...ms(300 + i * 140) }} />
+          </div>
+          <span className="slide-morph-value">{share ? `${c.pct.toFixed(1)}%` : dollars(c.gives)}</span>
+        </div>
+      ))}
+      <div className="slide-morph-note">
+        {stage === 0 && 'In dollars, the two largest churches give the most…'}
+        {stage === 1 && '…but look at the size of their budgets.'}
+        {stage >= 2 && 'As a share of what they have, the order turns over.'}
+      </div>
+      {stage >= 3 && <button className="slides-replay" onClick={() => setRun(run + 1)}>Play again</button>}
     </div>
   );
 }
@@ -196,9 +239,9 @@ const INTRO = [
     viz: () => <SlideOneVote />,
   },
   {
-    title: 'Some churches give more of themselves',
-    body: 'Each church gives ACME a share of its own budget. That share is the measure of commitment. The smallest church here gives the largest share.',
-    viz: () => <SlideCommitment />,
+    title: 'Who gives the most?',
+    body: 'Counted in dollars, the large churches give the most. But every church gives out of its own budget, and that changes the picture.',
+    viz: () => <SlideDollarsToShare />,
   },
   {
     title: 'Weighted votes follow commitment',
@@ -296,7 +339,7 @@ const OUTRO = [
   },
   {
     title: 'Big does not mean powerful',
-    body: 'Emmanuel’s budget is eight times Grace’s. Emmanuel has 1 weighted vote. Grace has 4.',
+    body: 'Emmanuel’s budget is twelve times Grace’s. Emmanuel has 1 weighted vote. Grace has 4.',
     viz: () => (
       <div className="slide-vs">
         {[FIVE[0], FIVE[4]].map((c, i) => (
