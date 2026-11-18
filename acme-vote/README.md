@@ -37,7 +37,9 @@ The guided tutorial follows a set path. After you vote, **See the result** fills
 6. Regional election: elected on the first ballot.
 7. President's third consecutive term (two-thirds): a majority votes Yes but it falls short of two-thirds.
 
-The exact numbers vary from run to run, but each outcome is fixed. At the end, **Try it yourself** runs the same ballots again with a choice of result on each (**Demo pass** / **Demo fail**, or **Someone elected** / **No one elected**), and **Run the guided tutorial again** starts the path over. **Hide tips** on any card turns them off; the **My church** tab can turn them back on or start the guided tutorial over.
+The exact numbers vary from run to run, but each outcome is fixed. At the end, **Try it yourself** runs the same ballots again with a choice of result on each (**Demo pass** / **Demo fail**, or **Someone elected** / **No one elected**), and **Run the guided tutorial again** starts the path over. The **minimize** button (top right of a card) shrinks it to a small **Tip** tab in the header so you can see the screen; tap the tab to reopen it on the same page. **Hide tips** on any card turns them off; the **My church** tab can turn them back on or start the guided tutorial over.
+
+If the page reloads (for example, when a new version is published or the phone reloads the tab), the app returns to the screen you were on.
 
 All tutorial wording is in `src/tutorial.js`. To bring back the Manager role, set `manager: true` in `src/features.js`. The rest of this section describes both roles.
 

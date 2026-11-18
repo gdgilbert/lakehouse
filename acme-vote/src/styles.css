@@ -403,3 +403,20 @@ table.standings .win { font-weight: 700; color: var(--green); }
   .coach-actions { margin-top: 8px; }
   .coach-actions .btn.small { min-height: 34px; }
 }
+
+/* Minimized tip */
+.coach-tools { display: inline-flex; align-items: center; gap: 4px; }
+.coach-min { width: 32px; height: 32px; border: 1px solid #e3d6b4; background: #fff; border-radius: 4px; color: var(--navy-dark);
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.coach-min:active { background: var(--gold-soft); }
+.coach-pill {
+  /* sits in the header bar, top right, so it never covers the screen's content */
+  position: absolute; right: 10px; top: calc(env(safe-area-inset-top) + 11px); z-index: 15; display: inline-flex; align-items: center; gap: 6px;
+  background: var(--gold); color: #fff; border: 0; border-radius: 999px; padding: 7px 13px 7px 10px;
+  font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); cursor: pointer; animation: coachIn 0.2s ease-out;
+}
+.coach-pill svg { color: #fff; }
+.start .coach-pill { top: 14px; }
+@media (prefers-reduced-motion: reduce) { .coach-pill { animation: none; } }
+/* make room for the minimized tip in the header */
+.screen:has(.coach-pill) .appbar .right { padding-right: 76px; }

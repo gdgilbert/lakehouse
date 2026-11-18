@@ -7,6 +7,8 @@ import * as Manager from './screens/Manager.jsx';
 import ResultDetails from './screens/ResultDetails.jsx';
 import { FEATURES } from './features.js';
 
+const NAV_KEY = 'acme-vote-nav-v1';
+
 const SCREENS = {
   start: Start,
   delegateSignIn: Delegate.SignIn,
@@ -47,11 +49,27 @@ export default function App() {
   // Restore the signed-in role after a page reload.
   useEffect(() => {
     api.getSession().then((s) => {
+      // If the page reloaded (an update arrived, or the phone reloaded it),
+      // go back to the screen the viewer was on.
+      let saved = null;
+      try { saved = JSON.parse(sessionStorage.getItem(NAV_KEY) || 'null'); } catch { /* ignore */ }
+      const okSaved = Array.isArray(saved) && saved.length > 0 && saved.every((x) => x && SCREENS[x.name]);
+      const DELEGATE_SCREENS = ['delegateHome', 'delegateBallot', 'delegateReceipt', 'resultDetails'];
+      if (okSaved && s?.role === 'delegate' && DELEGATE_SCREENS.includes(saved[saved.length - 1].name)) {
+        setStack(saved);
+        return;
+      }
       if (s?.role === 'delegate') setStack([{ name: 'start' }, { name: 'delegateHome', props: { churchId: s.churchId } }]);
       else if (s?.role === 'manager' && FEATURES.manager) setStack([{ name: 'start' }, { name: 'managerHome' }]);
       else setStack([{ name: 'start' }]);
     });
   }, []);
+
+  // Remember the screen stack for this tab, so a reload returns to the same screen.
+  useEffect(() => {
+    if (!stack) return;
+    try { sessionStorage.setItem(NAV_KEY, JSON.stringify(stack)); } catch { /* ignore */ }
+  }, [stack]);
 
   const nav = useMemo(
     () => ({

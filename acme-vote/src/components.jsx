@@ -45,6 +45,8 @@ const paths = {
   people: 'M9 11a4 4 0 100-8 4 4 0 000 8zM2 21v-1a6 6 0 0112 0v1M17 11a3 3 0 000-6M22 21v-1a5 5 0 00-4-4.9',
   gear: 'M12 15a3 3 0 100-6 3 3 0 000 6z M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 01-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 010-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 014 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 010 4h-.1a1.7 1.7 0 00-1.5 1z',
   plus: 'M12 5v14M5 12h14',
+  minus: 'M5 12h14',
+  lightbulb: 'M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z',
   x: 'M6 6l12 12M18 6L6 18',
   info: 'M12 22a10 10 0 100-20 10 10 0 000 20zM12 16v-4M12 8h.01',
   alert: 'M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z',
@@ -456,6 +458,7 @@ function slowScrollTo(el, zoneTop, zoneBottom) {
 export function Coach({ tips }) {
   const [tut] = useData(() => api.getTutorial());
   const [closing, setClosing] = useState(null);
+  const [collapsed, setCollapsed] = useState(null); // id of the tip that is minimized
   const [pageState, setPageState] = useState({ id: null, page: 0 });
   const [place, setPlace] = useState({ id: null, top: false });
   const cardRef = useRef(null);
@@ -537,6 +540,18 @@ export function Coach({ tips }) {
   if (!tip) return shieldEl;
   const measuring = place.id !== tip.id;
   const last = page >= tip.pages.length - 1;
+  if (!measuring && collapsed === tip.id) {
+    return (
+      <>
+        {shieldEl}
+        <button className="coach-pill" onClick={press(() => setCollapsed(null))}
+          aria-label="Open the tip">
+          <Icon name="lightbulb" size={18} />
+          <span>Tip{tip.pages.length > 1 ? ` ${page + 1} of ${tip.pages.length}` : ''}</span>
+        </button>
+      </>
+    );
+  }
   const done = () => { setClosing(tip.id); api.markTipSeen(tip.id); (tip.alsoMarks || []).forEach((x) => api.markTipSeen(x)); };
 
   return (
@@ -545,7 +560,12 @@ export function Coach({ tips }) {
     <div ref={cardRef} className={`coach${!measuring && place.top ? ' coach-top' : ''}${measuring ? ' coach-measuring' : ''}`} role="dialog" aria-label={pg.title}>
       <div className="coach-head">
         <span className="eyebrow-sm">Tutorial{tip.pages.length > 1 ? ` · ${page + 1} of ${tip.pages.length}` : ''}</span>
-        <button className="coach-hide" onClick={press(() => api.setTipsOff(true))}>Hide tips</button>
+        <span className="coach-tools">
+          <button className="coach-hide" onClick={press(() => api.setTipsOff(true))}>Hide tips</button>
+          <button className="coach-min" onClick={press(() => setCollapsed(tip.id))} aria-label="Minimize the tip" title="Minimize">
+            <Icon name="minus" size={18} stroke={2.5} />
+          </button>
+        </span>
       </div>
       {/* Every page sits in the same grid cell, so the card is as tall as its
           longest page and does not change height between pages. */}
@@ -571,10 +591,21 @@ export function Coach({ tips }) {
 
 // State that survives a screen being unmounted and shown again (e.g. the selected tab).
 const sticky = new Map();
-export const resetSticky = () => sticky.clear();
+export const resetSticky = () => {
+  sticky.clear();
+  try { Object.keys(sessionStorage).filter((k) => k.startsWith('acme-sticky-')).forEach((k) => sessionStorage.removeItem(k)); } catch { /* ignore */ }
+};
 export function useStickyState(key, initial) {
-  const [v, setV] = useState(sticky.has(key) ? sticky.get(key) : initial);
-  const set = (x) => { sticky.set(key, x); setV(x); };
+  const [v, setV] = useState(() => {
+    if (sticky.has(key)) return sticky.get(key);
+    try { const x = sessionStorage.getItem(`acme-sticky-${key}`); if (x) return JSON.parse(x); } catch { /* ignore */ }
+    return initial;
+  });
+  const set = (x) => {
+    sticky.set(key, x);
+    try { sessionStorage.setItem(`acme-sticky-${key}`, JSON.stringify(x)); } catch { /* ignore */ }
+    setV(x);
+  };
   return [v, set];
 }
 
